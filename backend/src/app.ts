@@ -5,6 +5,8 @@ import { fileLibrariesRouter } from "./modules/fileLibraries/router.ts";
 import { tasksRouter } from "./modules/tasks/router.ts";
 import { filesRouter } from "./modules/files/router.ts";
 import { fileContentRouter } from "./modules/fileContent/router.ts";
+import { activityLogsRouter } from "./modules/activityLogs/router.ts";
+import { settingsRouter } from "./modules/settings/router.ts";
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.use("/api/file-libraries", fileLibrariesRouter);
 app.use("/api/tasks", tasksRouter);
 app.use("/api/files", filesRouter);
 app.use("/api/file-content", fileContentRouter);
+app.use("/api/activity-logs", activityLogsRouter);
+app.use("/api/settings", settingsRouter);
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

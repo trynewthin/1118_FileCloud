@@ -13,7 +13,7 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
-// 初始化数据库表结构（用户表、系统配置表、文件库表、任务表、文件索引表）
+// 初始化数据库表结构（用户表、系统配置表、文件库表、任务表、文件索引表、操作日志表）
 const initDatabase = () => {
   db.exec(
     [
@@ -86,6 +86,19 @@ const initDatabase = () => {
       "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
       "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       ")",
+      ";",
+      "CREATE TABLE IF NOT EXISTS activity_logs (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  actor_user_id INTEGER,",
+      "  actor_role TEXT,",
+      "  action TEXT NOT NULL,",
+      "  target_type TEXT,",
+      "  target_id TEXT,",
+      "  detail_json TEXT,",
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_activity_logs_actor_created ON activity_logs(actor_user_id, created_at DESC)",
       ";",
     ].join("\n"),
   );

@@ -3,6 +3,7 @@ import { initDatabase } from "./core/db/index.ts";
 import { startTaskWorker } from "./core/tasks/executor.ts";
 import { registerFileIndexTaskHandlers } from "./modules/files/indexTasks.ts";
 import { registerFileOpsTaskHandlers } from "./modules/files/fileOpsTasks.ts";
+import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
 
@@ -13,8 +14,10 @@ initDatabase();
 registerFileIndexTaskHandlers();
 registerFileOpsTaskHandlers();
 
-// 启动任务 worker，为各模块注册的任务处理器提供执行环境
-startTaskWorker();
+// 读取任务 worker 配置并启动 worker
+const workerConfig = getTaskWorkerConfig();
+console.log("Task worker config", workerConfig);
+startTaskWorker(workerConfig);
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);
