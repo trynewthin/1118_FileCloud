@@ -3,6 +3,7 @@ import { initDatabase } from "./core/db/index.ts";
 import { startTaskWorker } from "./core/tasks/executor.ts";
 import { registerFileIndexTaskHandlers } from "./modules/files/indexTasks.ts";
 import { registerFileOpsTaskHandlers } from "./modules/files/fileOpsTasks.ts";
+import { registerThumbnailTaskHandlers } from "./modules/fileContent/thumbnailTasks.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -10,9 +11,10 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
 // 启动服务前初始化数据库表结构
 initDatabase();
 
-// 注册文件索引及文件操作相关任务处理器
+// 注册文件索引、文件操作及缩略图相关任务处理器
 registerFileIndexTaskHandlers();
 registerFileOpsTaskHandlers();
+registerThumbnailTaskHandlers();
 
 // 读取任务 worker 配置并启动 worker
 const workerConfig = getTaskWorkerConfig();

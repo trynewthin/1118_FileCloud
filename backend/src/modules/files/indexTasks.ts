@@ -5,6 +5,8 @@ import { db } from "../../core/db/index.ts";
 import { registerTaskHandler } from "../../core/tasks/executor.ts";
 import type { TaskRecord } from "../tasks/service.ts";
 import { updateTaskStatus } from "../tasks/service.ts";
+import { createTask } from "../tasks/service.ts";
+import { TASK_TYPE_FILE_GENERATE_THUMBNAIL } from "../fileContent/thumbnailTasks.ts";
 
 // 索引相关任务类型常量
 export const TASK_TYPE_FILE_INDEX_LIBRARY = "FILE_INDEX_LIBRARY";
@@ -12,6 +14,17 @@ export const TASK_TYPE_FILE_INDEX_SINGLE = "FILE_INDEX_SINGLE";
 
 // 内部配置目录名称，索引时会跳过
 const INTERNAL_META_DIR = ".filecloud_meta";
+const THUMBNAILS_DIR_NAME = "thumbnails";
+
+// 支持生成缩略图的扩展名（不带点，小写）
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+const VIDEO_EXTS = new Set(["mp4", "webm", "ogv", "mov", "mkv", "avi"]);
+
+const isSupportedForThumbnail = (ext: string | null): boolean => {
+  if (!ext) return false;
+  const lower = ext.toLowerCase();
+  return IMAGE_EXTS.has(lower) || VIDEO_EXTS.has(lower);
+};
 
 // 查询文件库的根路径
 const getLibraryRoot = (libraryId: number) => {
@@ -71,13 +84,13 @@ const ensureDirectoryEntry = (
   return id;
 };
 
-// 确保某个路径对应的文件索引存在或更新
+// 确保某个路径对应的文件索引存在或更新，返回条目的 id
 const upsertFileEntry = (
   libraryId: number,
   parentId: string | null,
   name: string,
   size: number,
-): void => {
+): string => {
   const now = new Date().toISOString();
   const extension = path.extname(name).toLowerCase().replace(/^\./, "") || null;
 
@@ -87,13 +100,43 @@ const upsertFileEntry = (
     db.prepare(
       "UPDATE file_entries SET is_directory = 0, size_bytes = ?, extension = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
     ).run(size, extension, now, existingId);
-    return;
+    return existingId;
   }
 
   const id = crypto.randomUUID();
   db.prepare(
     "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?, ?, NULL, 0, ?, ?)",
   ).run(id, libraryId, parentId, name, extension, size, now, now);
+
+  return id;
+};
+
+// 在需要时为条目创建缩略图生成任务
+const maybeEnqueueThumbnailTask = (
+  libraryId: number,
+  rootPath: string,
+  entryId: string,
+  extension: string | null,
+) => {
+  if (!isSupportedForThumbnail(extension)) {
+    return;
+  }
+
+  const thumbnailPath = path.join(
+    rootPath,
+    INTERNAL_META_DIR,
+    THUMBNAILS_DIR_NAME,
+    `${entryId}.jpg`,
+  );
+
+  if (fs.existsSync(thumbnailPath)) {
+    return;
+  }
+
+  createTask({
+    type: TASK_TYPE_FILE_GENERATE_THUMBNAIL,
+    payload: { entryId },
+  });
 };
 
 // 递归扫描指定目录并同步到索引表（不会删除已有记录，只做新增/更新）
@@ -130,8 +173,10 @@ const scanDirectoryToIndex = (
       );
     } else if (entry.isFile()) {
       const stat = fs.statSync(fullPath);
-      upsertFileEntry(libraryId, parentEntryId, entry.name, stat.size);
+      const extension = path.extname(entry.name).toLowerCase().replace(/^\./, "") || null;
+      const entryId = upsertFileEntry(libraryId, parentEntryId, entry.name, stat.size);
       progress.processed += 1;
+      maybeEnqueueThumbnailTask(libraryId, rootPath, entryId, extension);
     }
   }
 };
@@ -197,8 +242,10 @@ const handleIndexSingleTask = async (task: TaskRecord) => {
     );
   } else if (stat.isFile()) {
     const baseName = path.basename(targetPath);
-    upsertFileEntry(libraryId, null, baseName, stat.size);
+    const extension = path.extname(baseName).toLowerCase().replace(/^\./, "") || null;
+    const entryId = upsertFileEntry(libraryId, null, baseName, stat.size);
     progress.processed += 1;
+    maybeEnqueueThumbnailTask(libraryId, rootPath, entryId, extension);
   }
 
   updateTaskStatus({
