@@ -13,7 +13,7 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
-// 初始化数据库表结构（用户表、系统配置表、文件库表）
+// 初始化数据库表结构（用户表、系统配置表、文件库表、任务表）
 const initDatabase = () => {
   db.exec(
     [
@@ -43,6 +43,22 @@ const initDatabase = () => {
       "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
       "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       ")",
+      ";",
+      "CREATE TABLE IF NOT EXISTS tasks (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  type TEXT NOT NULL,",
+      "  payload TEXT NOT NULL,",
+      "  status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','SUCCESS','FAILED')),",
+      "  progress INTEGER NOT NULL DEFAULT 0,",
+      "  error_message TEXT,",
+      "  created_by_user_id INTEGER,",
+      "  started_at TEXT,",
+      "  finished_at TEXT,",
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
+      "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_tasks_status_created_at ON tasks(status, created_at DESC)",
       ";",
     ].join("\n"),
   );
