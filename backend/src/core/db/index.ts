@@ -13,7 +13,7 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
-// 初始化数据库表结构（用户表、系统配置表、文件库表、任务表）
+// 初始化数据库表结构（用户表、系统配置表、文件库表、任务表、文件索引表）
 const initDatabase = () => {
   db.exec(
     [
@@ -59,6 +59,33 @@ const initDatabase = () => {
       ")",
       ";",
       "CREATE INDEX IF NOT EXISTS idx_tasks_status_created_at ON tasks(status, created_at DESC)",
+      ";",
+      "CREATE TABLE IF NOT EXISTS file_entries (",
+      "  id TEXT PRIMARY KEY,",
+      "  library_id INTEGER NOT NULL,",
+      "  parent_id TEXT,",
+      "  is_directory INTEGER NOT NULL,",
+      "  original_name TEXT NOT NULL,",
+      "  extension TEXT,",
+      "  size_bytes INTEGER NOT NULL DEFAULT 0,",
+      "  mime_type TEXT,",
+      "  is_deleted INTEGER NOT NULL DEFAULT 0,",
+      "  deleted_at TEXT,",
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
+      "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_entries_library_parent ON file_entries(library_id, parent_id, is_deleted)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_entries_library_name ON file_entries(library_id, is_deleted, original_name)",
+      ";",
+      "CREATE TABLE IF NOT EXISTS file_entry_security (",
+      "  entry_id TEXT PRIMARY KEY,",
+      "  password_hash TEXT NOT NULL,",
+      "  hint TEXT,",
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
+      "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
       ";",
     ].join("\n"),
   );

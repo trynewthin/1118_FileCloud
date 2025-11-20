@@ -3,6 +3,8 @@ import type { Request, Response } from "express";
 import { authRouter } from "./modules/auth/router.ts";
 import { fileLibrariesRouter } from "./modules/fileLibraries/router.ts";
 import { tasksRouter } from "./modules/tasks/router.ts";
+import { filesRouter } from "./modules/files/router.ts";
+import { fileContentRouter } from "./modules/fileContent/router.ts";
 
 const app = express();
 
@@ -12,6 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/file-libraries", fileLibrariesRouter);
 app.use("/api/tasks", tasksRouter);
+app.use("/api/files", filesRouter);
+app.use("/api/file-content", fileContentRouter);
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
