@@ -12,9 +12,23 @@ export const setAuthToken = (token: string | null) => {
 
 export const getAuthToken = () => authToken;
 
+// 计算后端 API 的基础地址：
+// 1. 若配置了 VITE_API_BASE_URL，则优先使用（适合生产或代理场景）；
+// 2. 否则在浏览器环境下，根据当前页面 hostname + 固定端口 3001 生成；
+//    这样前端在局域网中通过不同 IP 访问时，仍能自动指向同一台后端主机；
+// 3. 非浏览器环境或兜底场景下，退回 localhost。
 const getBaseUrl = () => {
-  const raw = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api";
-  return raw.replace(/\/+$/, "");
+  const envBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (envBase && envBase.length > 0) {
+    return envBase.replace(/\/+$/, "");
+  }
+
+  if (typeof window !== "undefined" && window.location) {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}:3001/api`;
+  }
+
+  return "http://localhost:3001/api";
 };
 
 export const buildApiUrl = (path: string) => {
