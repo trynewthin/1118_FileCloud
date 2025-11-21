@@ -15,8 +15,16 @@ export interface FileEntry {
   updated_at: string;
 }
 
+export interface TrashEntry extends FileEntry {
+  relative_path: string;
+}
+
 export interface ListEntriesResponse {
   items: FileEntry[];
+}
+
+export interface ListTrashResponse {
+  items: TrashEntry[];
 }
 
 export interface GetEntryResponse {
@@ -41,6 +49,10 @@ export const listEntries = async (params: {
   const qs = searchParams.toString();
   const path = `/files/library/${params.libraryId}/entries${qs ? `?${qs}` : ""}`;
   return apiClient.get<ListEntriesResponse>(path);
+};
+
+export const listTrashEntries = async (libraryId: number): Promise<ListTrashResponse> => {
+  return apiClient.get<ListTrashResponse>(`/files/library/${libraryId}/trash`);
 };
 
 export const getEntry = async (id: string, password?: string): Promise<GetEntryResponse> => {

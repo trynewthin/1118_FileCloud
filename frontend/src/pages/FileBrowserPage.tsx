@@ -10,6 +10,7 @@ import { FileListItem } from "@/components/files/FileListItem";
 import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
+import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +48,9 @@ export function FileBrowserPage() {
   // 重建索引对话框状态
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
 
+  // 回收站对话框状态
+  const [recycleDialogOpen, setRecycleDialogOpen] = useState(false);
+
   // 文件操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
     type: "rename" | "delete" | "move" | "copy" | null;
@@ -66,6 +70,8 @@ export function FileBrowserPage() {
     move,
     copy,
     remove, // delete 是关键字
+    restore,
+    destroy,
   } = useFileBrowser({ libraryId: activeLibraryId });
 
   const breadcrumbItems = useMemo(() => {
@@ -191,6 +197,7 @@ export function FileBrowserPage() {
           onViewModeChange={handleViewModeChange}
           onRefresh={reload}
           onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
+          onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
         />
         
         <div className="px-1">
@@ -261,6 +268,15 @@ export function FileBrowserPage() {
           onSubmit={handleRenameSubmit}
         />
       )}
+
+      {/* 回收站对话框 */}
+      <RecycleBinDialog
+        open={recycleDialogOpen}
+        onOpenChange={setRecycleDialogOpen}
+        libraryId={activeLibraryId}
+        onRestore={(id) => restore(id)}
+        onDestroy={(id) => destroy(id)}
+      />
       {actionDialog.type === "delete" && (
         <DeleteDialog
           entry={actionDialog.entry}

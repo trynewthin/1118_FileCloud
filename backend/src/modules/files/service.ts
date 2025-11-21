@@ -50,6 +50,26 @@ export const listEntriesByParent = (params: {
   return rows.map(mapRowToFileEntry);
 };
 
+// 回收站条目类型，附带相对于文件库根目录的路径
+export interface TrashEntry extends FileEntry {
+  relative_path: string;
+}
+
+// 查询指定文件库中的已删除条目（回收站），按删除时间倒序
+export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => {
+  const rows = db
+    .prepare(
+      "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC, original_name ASC",
+    )
+    .all(libraryId) as any[];
+
+  return rows.map((row) => {
+    const entry = mapRowToFileEntry(row);
+    const relative = buildRelativePathForEntry(entry);
+    return { ...entry, relative_path: relative };
+  });
+};
+
 // 查询单个索引实体
 export const getEntryById = (id: string): FileEntry | null => {
   const row = db

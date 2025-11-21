@@ -1,4 +1,4 @@
-import { Grid, List, RefreshCw, Upload, FolderPlus } from "lucide-react";
+import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -17,6 +17,7 @@ interface FileToolbarProps {
   onViewModeChange: (mode: "grid" | "list") => void;
   onRefresh: () => void;
   onReindex?: () => void;
+  onOpenTrash?: () => void;
 }
 
 export function FileToolbar({
@@ -27,6 +28,7 @@ export function FileToolbar({
   onViewModeChange,
   onRefresh,
   onReindex,
+  onOpenTrash,
 }: FileToolbarProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card p-2 rounded-lg border">
@@ -75,6 +77,18 @@ export function FileToolbar({
         </div>
         
         <div className="h-6 w-px bg-border mx-2 hidden sm:block" />
+
+        {onOpenTrash && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="px-2 sm:px-3 text-muted-foreground hover:text-foreground"
+            onClick={onOpenTrash}
+          >
+            <Trash2 className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">回收站</span>
+          </Button>
+        )}
 
         <div className="flex items-center rounded-md border bg-background p-1 ml-auto sm:ml-0">
           <Button

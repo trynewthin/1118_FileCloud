@@ -2,7 +2,7 @@ import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
-import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors } from "./service.ts";
+import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors, listDeletedEntriesByLibrary } from "./service.ts";
 import { createTask } from "../tasks/service.ts";
 import { TASK_TYPE_FILE_INDEX_LIBRARY, TASK_TYPE_FILE_INDEX_SINGLE } from "./indexTasks.ts";
 import { TASK_TYPE_FILE_DELETE_ENTRY, TASK_TYPE_FILE_RESTORE_ENTRY, TASK_TYPE_FILE_DESTROY_ENTRY, TASK_TYPE_FILE_RENAME_ENTRY, TASK_TYPE_FILE_MOVE_ENTRY, TASK_TYPE_FILE_COPY_ENTRY } from "./fileOpsTasks.ts";
@@ -60,6 +60,27 @@ router.get(
       parentId: parentId ?? null,
     });
 
+    return res.json({ items });
+  },
+);
+
+// 列出指定文件库的回收站条目（仅管理员可用）
+router.get(
+  "/library/:libraryId/trash",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const libraryId = Number(req.params.libraryId);
+    if (!Number.isInteger(libraryId) || libraryId <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const check = ensureLibraryEnabled(libraryId);
+    if (!check.ok) {
+      return res.status(404).json({ message: check.message });
+    }
+
+    const items = listDeletedEntriesByLibrary(libraryId);
     return res.json({ items });
   },
 );
