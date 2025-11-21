@@ -11,6 +11,7 @@ import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
+import { downloadEntry } from "@/lib/api/files";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,6 +73,7 @@ export function FileBrowserPage() {
     remove, // delete 是关键字
     restore,
     destroy,
+    getCachedPassword,
   } = useFileBrowser({ libraryId: activeLibraryId });
 
   const breadcrumbItems = useMemo(() => {
@@ -136,6 +138,25 @@ export function FileBrowserPage() {
 
   // 文件操作（暂未实现具体逻辑）
   const handleFileAction = (action: string, entry: any) => {
+    if (action === "download") {
+      if (entry.is_directory) return;
+
+      try {
+        const pwd = getCachedPassword(entry.id);
+        const url = downloadEntry(entry.id, pwd);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = entry.original_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error("下载失败", err);
+      }
+      return;
+    }
+
     if (action === "rename" || action === "delete" || action === "move" || action === "copy") {
       setActionDialog({ type: action, entry });
     } else {

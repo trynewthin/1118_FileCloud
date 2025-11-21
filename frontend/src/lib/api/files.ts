@@ -1,4 +1,4 @@
-import { apiClient, buildApiUrl } from "./client";
+import { apiClient, buildApiUrl, getAuthToken } from "./client";
 
 export interface FileEntry {
   id: string;
@@ -66,6 +66,12 @@ export const getEntry = async (id: string, password?: string): Promise<GetEntryR
 export const downloadEntry = (id: string, password?: string): string => {
   const searchParams = new URLSearchParams();
   if (password) searchParams.set("password", password);
+  const token =
+    getAuthToken() ||
+    (typeof window !== "undefined"
+      ? window.localStorage.getItem("filecloud_auth_token")
+      : null);
+  if (token) searchParams.set("token", token);
   const qs = searchParams.toString();
   // 返回下载 URL，前端可用于 window.open 或 a[href]
   return buildApiUrl(`/files/entries/${id}/download${qs ? `?${qs}` : ""}`);

@@ -101,21 +101,31 @@ export function FileListItem({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
-              重命名
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("move", entry); }}>
-              移动
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
-              复制
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              className="text-red-600"
-              onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
+          {!isDir && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onAction?.("download", entry);
+              }}
             >
-              删除
+              下载
             </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
+            重命名
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("move", entry); }}>
+            移动
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
+            复制
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="text-red-600"
+            onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
+          >
+            删除
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

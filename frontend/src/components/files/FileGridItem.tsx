@@ -101,6 +101,16 @@ export function FileGridItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {!isDir && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction?.("download", entry);
+                }}
+              >
+                下载
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
               重命名
             </DropdownMenuItem>
