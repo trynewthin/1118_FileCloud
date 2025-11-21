@@ -259,11 +259,13 @@ export function FileBrowserPage() {
             </button>
           </div>
         ) : (
-          <div className={
-            viewMode === "grid" 
-              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-              : "space-y-2"
-          }>
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+                : "space-y-2"
+            }
+          >
             {entries.map((entry) => {
               const Component = viewMode === "grid" ? FileGridItem : FileListItem;
               return (
@@ -279,6 +281,8 @@ export function FileBrowserPage() {
           </div>
         )}
       </div>
+
+      <div className="h-24 md:h-6 flex-none" />
 
       {/* 文件操作对话框 */}
       {actionDialog.type === "rename" && (

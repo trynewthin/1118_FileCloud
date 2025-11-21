@@ -6,7 +6,7 @@ export function AppBottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden pb-[env(safe-area-inset-bottom,0px)]">
       <div className="flex h-16 items-center justify-around">
         {navItems.map((item, index) => {
           const isActive = item.match.test(location.pathname);
