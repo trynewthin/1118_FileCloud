@@ -3,7 +3,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, Save } from "lucide-react";
+import { RefreshCw, Save, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -83,21 +83,25 @@ export function SettingsPage() {
 
       <div className="mt-8 space-y-3">
         <div className="text-sm font-medium text-muted-foreground">系统页面</div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="space-y-2">
+          <div
+            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => navigate("/settings/tasks")}
+            role="button"
+            tabIndex={0}
           >
-            打开任务页面
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <div className="text-sm font-medium">任务管理</div>
+            <ChevronRight className="h-4 w-4" />
+          </div>
+          <div
+            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => navigate("/settings/logs")}
+            role="button"
+            tabIndex={0}
           >
-            打开日志页面
-          </Button>
+            <div className="text-sm font-medium">操作日志</div>
+            <ChevronRight className="h-4 w-4" />
+          </div>
         </div>
       </div>
     </PageContainer>
