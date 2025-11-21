@@ -47,7 +47,6 @@ export function AiChatPage() {
   return (
     <PageContainer
       title="AI 助手"
-      description="与配置好的模型进行对话。"
       action={
         <div className="flex gap-2">
           <Button

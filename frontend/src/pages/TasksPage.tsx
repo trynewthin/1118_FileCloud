@@ -4,10 +4,8 @@ import { TaskItem } from "@/components/tasks/TaskItem";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 export function TasksPage() {
-  const navigate = useNavigate();
   const { items, loading, error, reload, status, setStatus } = useTasks({
     auto: true,
     status: "ALL",
@@ -16,16 +14,9 @@ export function TasksPage() {
   return (
     <PageContainer
       title="任务中心"
-      description="查看后台任务的执行进度与结果。"
+      showBack
       action={
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/settings")}
-          >
-            返回设置
-          </Button>
           <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
              刷新

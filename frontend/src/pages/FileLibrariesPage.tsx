@@ -9,7 +9,6 @@ export function FileLibrariesPage() {
   return (
     <PageContainer
       title="文件库管理"
-      description="管理您的本地文件库，添加目录以开始索引文件。"
       action={<NewLibraryDialog onSuccess={reload} />}
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}

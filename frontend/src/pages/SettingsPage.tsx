@@ -39,7 +39,6 @@ export function SettingsPage() {
   return (
     <PageContainer
       title="系统设置"
-      description="配置系统全局参数。"
       action={
         <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
