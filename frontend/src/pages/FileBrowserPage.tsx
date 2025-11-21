@@ -11,6 +11,7 @@ import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
+import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { downloadEntry } from "@/lib/api/files";
 import {
   AlertDialog,
@@ -52,6 +53,9 @@ export function FileBrowserPage() {
   // 回收站对话框状态
   const [recycleDialogOpen, setRecycleDialogOpen] = useState(false);
 
+  // 上传对话框状态
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
   // 文件操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
     type: "rename" | "delete" | "move" | "copy" | null;
@@ -73,12 +77,21 @@ export function FileBrowserPage() {
     remove, // delete 是关键字
     restore,
     destroy,
+    upload,
     getCachedPassword,
   } = useFileBrowser({ libraryId: activeLibraryId });
 
   const breadcrumbItems = useMemo(() => {
     return ancestors.map(a => ({ id: a.id, name: a.name }));
   }, [ancestors]);
+
+  const currentPathLabel = useMemo(() => {
+    if (!activeLibraryId) return "";
+    if (!currentParentId || breadcrumbItems.length === 0) {
+      return "当前文件库根目录";
+    }
+    return breadcrumbItems.map((b) => b.name).join(" / ");
+  }, [activeLibraryId, currentParentId, breadcrumbItems]);
 
   // 初始化同步：如果 URL 有 parentId，设置给 hook
   useEffect(() => {
@@ -219,6 +232,7 @@ export function FileBrowserPage() {
           onRefresh={reload}
           onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
           onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
+          onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
         />
         
         <div className="px-1">
@@ -283,6 +297,16 @@ export function FileBrowserPage() {
       </div>
 
       <div className="h-24 md:h-6 flex-none" />
+
+      {/* 上传对话框 */}
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        targetPathLabel={currentPathLabel}
+        onSubmit={async (files) => {
+          await upload(files, currentParentId);
+        }}
+      />
 
       {/* 文件操作对话框 */}
       {actionDialog.type === "rename" && (

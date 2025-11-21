@@ -1,5 +1,7 @@
 import express from "express";
 import fs from "node:fs";
+import path from "node:path";
+import Busboy from "busboy";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
@@ -29,6 +31,134 @@ const ensureLibraryEnabled = (libraryId: number) => {
 
   return { ok: true as const, library: row };
 };
+
+router.post(
+  "/library/:libraryId/upload",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const libraryId = Number(req.params.libraryId);
+    if (!Number.isInteger(libraryId) || libraryId <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const check = ensureLibraryEnabled(libraryId);
+    if (!check.ok) {
+      return res.status(404).json({ message: check.message });
+    }
+
+    const parentId = (req.query as { parentId?: string }).parentId ?? null;
+
+    let targetDir = check.library.root_path;
+
+    if (parentId) {
+      const parentEntry = getEntryById(parentId);
+      if (!parentEntry) {
+        return res.status(404).json({ message: "父目录不存在" });
+      }
+      if (!parentEntry.is_directory) {
+        return res.status(400).json({ message: "父条目不是目录" });
+      }
+      if (parentEntry.library_id !== libraryId) {
+        return res.status(400).json({ message: "父目录不属于当前文件库" });
+      }
+
+      const relative = resolveRealPathForEntry(parentEntry, check.library.root_path);
+      targetDir = relative;
+    }
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const bb = Busboy({ headers: req.headers });
+
+    type SavedFile = { filename: string; size: number };
+    const saved: SavedFile[] = [];
+    let hasFile = false;
+    let errorOccurred = false;
+
+    bb.on("file", (_fieldname, file, info) => {
+      hasFile = true;
+      let original = info.filename || "unnamed";
+      try {
+        const buf = Buffer.from(original, "latin1");
+        const decoded = buf.toString("utf8");
+        if (decoded && !decoded.includes("�")) {
+          original = decoded;
+        }
+      } catch {
+        // 保底失败则继续使用原始文件名
+      }
+      const base = original.replace(/[\\/:*?"<>|]/g, "_");
+      const ext = path.extname(base);
+      const nameWithoutExt = path.basename(base, ext);
+      let candidate = base;
+      let index = 1;
+      while (fs.existsSync(path.join(targetDir, candidate))) {
+        candidate = `${nameWithoutExt}(${index})${ext}`;
+        index += 1;
+      }
+
+      const destPath = path.join(targetDir, candidate);
+      const write = fs.createWriteStream(destPath);
+      let size = 0;
+
+      file.on("data", (data) => {
+        size += data.length;
+      });
+
+      file.on("error", () => {
+        errorOccurred = true;
+        write.destroy();
+      });
+
+      write.on("error", () => {
+        errorOccurred = true;
+        file.resume();
+      });
+
+      write.on("close", () => {
+        if (!errorOccurred) {
+          saved.push({ filename: candidate, size });
+        }
+      });
+
+      file.pipe(write);
+    });
+
+    bb.on("error", () => {
+      errorOccurred = true;
+      return res.status(500).json({ message: "上传失败" });
+    });
+
+    bb.on("finish", () => {
+      if (errorOccurred) {
+        return;
+      }
+
+      if (!hasFile) {
+        return res.status(400).json({ message: "未收到任何文件" });
+      }
+
+      const relativePath = path.relative(check.library.root_path, targetDir);
+      const userId = req.user?.id ?? null;
+
+      const task = createTask({
+        type: relativePath === "" ? TASK_TYPE_FILE_INDEX_LIBRARY : TASK_TYPE_FILE_INDEX_SINGLE,
+        payload:
+          relativePath === ""
+            ? { libraryId }
+            : { libraryId, relativePath },
+        createdByUserId: userId,
+      });
+
+      return res.status(201).json({ uploaded: saved.length, task });
+    });
+
+    req.pipe(bb);
+  },
+);
 
 // 列出指定文件库下某个父节点的直接子项（普通登录用户可用）
 router.get(

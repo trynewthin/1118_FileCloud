@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FileEntry, FileTaskResponse } from "@/lib/api/files";
+import type { FileEntry, FileTaskResponse, UploadResponse } from "@/lib/api/files";
 import { getTask } from "@/lib/api/tasks";
 import {
   copyEntry as apiCopyEntry,
@@ -12,6 +12,7 @@ import {
   moveEntry as apiMoveEntry,
   renameEntry as apiRenameEntry,
   restoreEntry as apiRestoreEntry,
+  uploadFiles,
 } from "@/lib/api/files";
 
 interface FileBrowserState {
@@ -38,6 +39,7 @@ interface FileBrowserOperations {
   remove: (id: string, password?: string) => Promise<FileTaskResponse>;
   restore: (id: string) => Promise<FileTaskResponse>;
   destroy: (id: string) => Promise<FileTaskResponse>;
+  upload: (files: FileList, parentId: string | null) => Promise<UploadResponse>;
   indexLibrary: () => Promise<FileTaskResponse | null>;
   indexPath: (relativePath: string) => Promise<FileTaskResponse | null>;
 }
@@ -198,6 +200,12 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
       remove: (id, password) => wrapTask(() => apiDeleteEntry(id, password)),
       restore: (id) => wrapTask(() => apiRestoreEntry(id)),
       destroy: (id) => wrapTask(() => apiDestroyEntry(id)),
+      upload: (files, parentId) => {
+        if (!libraryId) {
+          return Promise.reject(new Error("library not selected"));
+        }
+        return wrapTask(() => uploadFiles({ libraryId, parentId, files })) as Promise<UploadResponse>;
+      },
       indexLibrary: () =>
         libraryId ? wrapTask(() => apiIndexLibrary(libraryId)) : Promise.resolve(null),
       indexPath: (relativePath: string) =>

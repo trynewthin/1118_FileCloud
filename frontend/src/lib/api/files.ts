@@ -97,6 +97,10 @@ export const clearEntryPassword = async (id: string): Promise<void> => {
 
 export type FileTaskResponse = { task: { id: number } };
 
+export interface UploadResponse extends FileTaskResponse {
+  uploaded: number;
+}
+
 export const deleteEntry = async (id: string, password?: string): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/delete`, { password });
 };
@@ -107,6 +111,23 @@ export const restoreEntry = async (id: string): Promise<FileTaskResponse> => {
 
 export const destroyEntry = async (id: string): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/destroy`);
+};
+
+export const uploadFiles = async (params: {
+  libraryId: number;
+  parentId?: string | null;
+  files: FileList;
+}): Promise<UploadResponse> => {
+  const form = new FormData();
+  Array.from(params.files).forEach((file) => {
+    form.append("files", file);
+  });
+
+  const searchParams = new URLSearchParams();
+  if (params.parentId) searchParams.set("parentId", params.parentId);
+  const qs = searchParams.toString();
+  const path = `/files/library/${params.libraryId}/upload${qs ? `?${qs}` : ""}`;
+  return apiClient.post<UploadResponse>(path, form);
 };
 
 export const renameEntry = async (

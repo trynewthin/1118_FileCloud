@@ -18,6 +18,7 @@ interface FileToolbarProps {
   onRefresh: () => void;
   onReindex?: () => void;
   onOpenTrash?: () => void;
+  onUpload?: () => void;
 }
 
 export function FileToolbar({
@@ -29,6 +30,7 @@ export function FileToolbar({
   onRefresh,
   onReindex,
   onOpenTrash,
+  onUpload,
 }: FileToolbarProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card p-2 rounded-lg border">
@@ -70,7 +72,13 @@ export function FileToolbar({
             <FolderPlus className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">新建</span>
           </Button>
-          <Button variant="default" size="sm" disabled className="px-2 sm:px-4">
+          <Button
+            variant="default"
+            size="sm"
+            className="px-2 sm:px-4"
+            disabled={!onUpload}
+            onClick={onUpload}
+          >
             <Upload className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">上传</span>
           </Button>
