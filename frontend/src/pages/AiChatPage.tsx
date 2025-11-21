@@ -3,6 +3,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useAiConfig } from "@/hooks/useAiConfig";
 import { AiConversationList } from "@/components/ai/AiConversationList";
+import { AiMobileConversationManager } from "@/components/ai/AiMobileConversationManager";
 import { ChatMessageList } from "@/components/ai/ChatMessageList";
 import { ChatInputBar } from "@/components/ai/ChatInputBar";
 import { Button } from "@/components/ui/button";
@@ -69,8 +70,8 @@ export function AiChatPage() {
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <div className="mt-4 flex-1 min-h-0 flex flex-col gap-4 md:grid md:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="md:h-full md:min-h-0">
+      <div className="mt-4 h-full min-h-0 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-4">
+        <div className="hidden md:block h-full min-h-0">
           <AiConversationList
             conversations={conversations}
             currentId={currentConversationId}
@@ -80,8 +81,18 @@ export function AiChatPage() {
           />
         </div>
 
-        <div className="mt-4 flex flex-1 min-h-0 flex-col gap-3 md:mt-0">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-4 flex h-full min-h-0 flex-col gap-3 md:mt-0">
+          <div className="md:hidden">
+            <AiMobileConversationManager
+              conversations={conversations}
+              currentId={currentConversationId}
+              loading={loadingConversations}
+              onSelect={selectConversation}
+              onNewConversation={handleCreateConversation}
+            />
+          </div>
+
+          <div className="hidden md:flex rounded-lg border bg-card px-3 py-2 items-center justify-between text-xs text-muted-foreground">
             <div>
               {currentConversation ? (
                 <span className="font-medium text-sm text-foreground">
@@ -117,10 +128,14 @@ export function AiChatPage() {
               </div>
             )}
           </div>
-          <div className="flex-1 min-h-0">
+
+          <div className="flex-1 min-h-0 rounded-lg border bg-background px-3 py-2 overflow-y-auto">
             <ChatMessageList messages={messages} loading={loadingMessages} />
           </div>
-          <ChatInputBar sending={sending} onSend={async (content) => sendMessage(content)} />
+
+          <div className="rounded-lg border bg-card px-3 py-2">
+            <ChatInputBar sending={sending} onSend={async (content) => sendMessage(content)} />
+          </div>
         </div>
       </div>
 

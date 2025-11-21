@@ -31,7 +31,7 @@ export const PageContainer: FC<PageContainerProps> = ({
   }, [title, setConfig]);
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("flex min-h-0 flex-col space-y-4", className)}>
       {(showBack || action) && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export const PageContainer: FC<PageContainerProps> = ({
           {action && <div className="flex items-center gap-2">{action}</div>}
         </div>
       )}
-      <div>{children}</div>
+      <div className="flex-1 min-h-0 h-full flex flex-col pb-6 md:pb-0">{children}</div>
     </div>
   );
 };

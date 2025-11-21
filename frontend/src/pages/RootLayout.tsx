@@ -35,7 +35,7 @@ export function RootLayout() {
         />
         <div className="flex flex-1 flex-col h-full min-w-0">
           <AppHeader />
-          <main className="flex-1 overflow-y-auto bg-background px-4 md:px-6 pt-20 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-6">
+          <main className="flex flex-1 h-full min-h-0 flex-col overflow-y-auto bg-background px-4 md:px-6 pt-20 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-6">
             <Outlet />
           </main>
           <AppBottomNav />
