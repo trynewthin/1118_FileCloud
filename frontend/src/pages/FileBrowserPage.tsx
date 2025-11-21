@@ -7,6 +7,9 @@ import { FileToolbar } from "@/components/files/FileToolbar";
 import { FileBreadcrumb } from "@/components/files/FileBreadcrumb";
 import { FileGridItem } from "@/components/files/FileGridItem";
 import { FileListItem } from "@/components/files/FileListItem";
+import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
+import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
+import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +47,12 @@ export function FileBrowserPage() {
   // 重建索引对话框状态
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
 
+  // 文件操作对话框状态
+  const [actionDialog, setActionDialog] = useState<{
+    type: "rename" | "delete" | "move" | "copy" | null;
+    entry: any;
+  }>({ type: null, entry: null });
+
   const {
     entries,
     ancestors,
@@ -53,6 +62,10 @@ export function FileBrowserPage() {
     setCurrentParentId,
     reload,
     indexLibrary,
+    rename,
+    move,
+    copy,
+    remove, // delete 是关键字
   } = useFileBrowser({ libraryId: activeLibraryId });
 
   const breadcrumbItems = useMemo(() => {
@@ -117,8 +130,35 @@ export function FileBrowserPage() {
 
   // 文件操作（暂未实现具体逻辑）
   const handleFileAction = (action: string, entry: any) => {
-    console.log("Action:", action, entry);
-    // TODO: Implement rename, move, copy, delete dialogs
+    if (action === "rename" || action === "delete" || action === "move" || action === "copy") {
+      setActionDialog({ type: action, entry });
+    } else {
+      console.log("Unknown action:", action, entry);
+    }
+  };
+
+  // 处理重命名提交
+  const handleRenameSubmit = async (entry: any, newName: string, password?: string) => {
+    await rename(entry.id, newName, password);
+  };
+
+  // 处理删除提交
+  const handleDeleteSubmit = async (entry: any, password?: string) => {
+    await remove(entry.id, password);
+  };
+
+  // 处理移动/复制提交
+  const handleMoveCopySubmit = async (
+    entry: any, 
+    targetParentId: string | null, 
+    newName?: string, 
+    password?: string
+  ) => {
+    if (actionDialog.type === "move") {
+      await move(entry.id, { targetParentId, password });
+    } else if (actionDialog.type === "copy") {
+      await copy(entry.id, { targetParentId, newName, password });
+    }
   };
 
   // 手动触发重新索引（确认逻辑）
@@ -211,6 +251,33 @@ export function FileBrowserPage() {
           </div>
         )}
       </div>
+
+      {/* 文件操作对话框 */}
+      {actionDialog.type === "rename" && (
+        <RenameDialog
+          entry={actionDialog.entry}
+          open={true}
+          onOpenChange={(open) => !open && setActionDialog({ type: null, entry: null })}
+          onSubmit={handleRenameSubmit}
+        />
+      )}
+      {actionDialog.type === "delete" && (
+        <DeleteDialog
+          entry={actionDialog.entry}
+          open={true}
+          onOpenChange={(open) => !open && setActionDialog({ type: null, entry: null })}
+          onSubmit={handleDeleteSubmit}
+        />
+      )}
+      {(actionDialog.type === "move" || actionDialog.type === "copy") && (
+        <MoveCopyDialog
+          mode={actionDialog.type}
+          entry={actionDialog.entry}
+          open={true}
+          onOpenChange={(open) => !open && setActionDialog({ type: null, entry: null })}
+          onSubmit={handleMoveCopySubmit}
+        />
+      )}
 
       <AlertDialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
         <AlertDialogContent>

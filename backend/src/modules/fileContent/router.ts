@@ -1,5 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
+import fs from "node:fs";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { resolveFileForStreaming, streamFileWithRange } from "./service.ts";
@@ -49,13 +50,35 @@ router.get(
         return res.status(404).json({ message: "缩略图不存在" });
       }
 
-      res.sendFile(result.thumbnailPath, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "读取缩略图失败" });
+      const thumbPath = result.thumbnailPath;
+
+      if (!fs.existsSync(thumbPath)) {
+        // eslint-disable-next-line no-console
+        console.error("[thumbnail] 文件不存在 (existsSync false)", { id, thumbPath });
+        return res.status(404).json({ message: "缩略图不存在" });
+      }
+
+      res.setHeader("Content-Type", "image/jpeg");
+
+      const stream = fs.createReadStream(thumbPath);
+      stream.on("error", (err) => {
+        // eslint-disable-next-line no-console
+        console.error("[thumbnail] 读取缩略图失败", { id, thumbPath, error: err });
+        if (!res.headersSent) {
+          res.status(500).json({ message: "读取缩略图失败" });
+        } else {
+          res.end();
         }
       });
+
+      stream.pipe(res);
     } catch (err: any) {
       const message = typeof err?.message === "string" ? err.message : "读取缩略图失败";
+      // eslint-disable-next-line no-console
+      console.error("[thumbnail] getThumbnailPathForEntry 抛错", {
+        id,
+        error: err,
+      });
       return res.status(400).json({ message });
     }
   },

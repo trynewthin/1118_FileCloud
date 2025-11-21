@@ -1,6 +1,8 @@
-import { File, Folder, MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
+import { buildApiUrl } from "@/lib/api/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,8 @@ interface FileGridItemProps {
   onAction?: (action: string, entry: FileEntry) => void;
 }
 
+const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
+
 export function FileGridItem({
   entry,
   selected,
@@ -25,6 +29,22 @@ export function FileGridItem({
   onAction,
 }: FileGridItemProps) {
   const isDir = entry.is_directory;
+  const ext = entry.extension?.toLowerCase() || "";
+  const hasThumbnail = !isDir && THUMBNAIL_EXTS.has(ext);
+  const [thumbnailError, setThumbnailError] = useState(false);
+  // 直接从 localStorage 读取持久化 token，避免初始渲染时内存 token 为空导致 401
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("filecloud_auth_token")
+      : null;
+
+  const thumbnailUrl = hasThumbnail
+    ? buildApiUrl(
+        token
+          ? `/file-content/${entry.id}/thumbnail?token=${encodeURIComponent(token)}`
+          : `/file-content/${entry.id}/thumbnail`,
+      )
+    : undefined;
 
   return (
     <div
@@ -36,25 +56,44 @@ export function FileGridItem({
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 w-full">
-        <div className={cn("h-12 w-12 flex items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110")}>
-          {isDir ? (
-            <Folder className="h-6 w-6 fill-current" />
+      <div className="flex flex-1 flex-col items-center gap-3 w-full">
+        {/* 统一的缩略图框架：固定比例 + 边框 */}
+        <div className="w-full max-h-32 aspect-[4/3] rounded-md border bg-muted/20 overflow-hidden flex items-center justify-center">
+          {hasThumbnail && !thumbnailError ? (
+            <img
+              src={thumbnailUrl}
+              alt={entry.original_name}
+              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              onError={() => setThumbnailError(true)}
+              loading="lazy"
+            />
           ) : (
-            <File className="h-6 w-6" />
+            <div className="flex items-center justify-center text-primary">
+              {isDir ? (
+                <Folder className="h-10 w-10" />
+              ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
+                <ImageIcon className="h-10 w-10" />
+              ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
+                <Film className="h-10 w-10" />
+              ) : (
+                <File className="h-10 w-10" />
+              )}
+            </div>
           )}
         </div>
-        <div className="w-full space-y-1">
+
+        <div className="w-full space-y-1 mt-2">
           <p className="truncate text-sm font-medium leading-none" title={entry.original_name}>
             {entry.original_name}
           </p>
           <p className="text-xs text-muted-foreground">
-            {isDir ? "-" : formatSize(entry.size_bytes)}
+            {isDir ? "文件夹" : formatSize(entry.size_bytes)}
           </p>
         </div>
       </div>
 
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* 右下角的操作菜单：在移动端也始终可见，不依赖 hover */}
+      <div className="absolute bottom-2 right-2 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">

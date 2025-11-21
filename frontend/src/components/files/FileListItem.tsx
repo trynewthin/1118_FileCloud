@@ -1,6 +1,8 @@
-import { File, Folder, MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
+import { buildApiUrl } from "@/lib/api/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,8 @@ interface FileListItemProps {
   onAction?: (action: string, entry: FileEntry) => void;
 }
 
+const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
+
 export function FileListItem({
   entry,
   selected,
@@ -25,6 +29,22 @@ export function FileListItem({
   onAction,
 }: FileListItemProps) {
   const isDir = entry.is_directory;
+  const ext = entry.extension?.toLowerCase() || "";
+  const hasThumbnail = !isDir && THUMBNAIL_EXTS.has(ext);
+  const [thumbnailError, setThumbnailError] = useState(false);
+
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("filecloud_auth_token")
+      : null;
+
+  const thumbnailUrl = hasThumbnail
+    ? buildApiUrl(
+        token
+          ? `/file-content/${entry.id}/thumbnail?token=${encodeURIComponent(token)}`
+          : `/file-content/${entry.id}/thumbnail`,
+      )
+    : undefined;
 
   return (
     <div
@@ -37,19 +57,37 @@ export function FileListItem({
       onDoubleClick={onDoubleClick}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary")}>
-          {isDir ? (
-            <Folder className="h-5 w-5 fill-current" />
+        {/* 左侧统一缩略图框架 */}
+        <div className="h-14 w-20 flex items-center justify-center overflow-hidden rounded-md border bg-muted/20">
+          {hasThumbnail && !thumbnailError ? (
+            <img
+              src={thumbnailUrl}
+              alt={entry.original_name}
+              className="h-full w-full object-cover"
+              onError={() => setThumbnailError(true)}
+              loading="lazy"
+            />
           ) : (
-            <File className="h-5 w-5" />
+            <div className="flex items-center justify-center text-primary">
+              {isDir ? (
+                <Folder className="h-8 w-8" />
+              ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
+                <ImageIcon className="h-8 w-8" />
+              ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
+                <Film className="h-8 w-8" />
+              ) : (
+                <File className="h-8 w-8" />
+              )}
+            </div>
           )}
         </div>
+
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium" title={entry.original_name}>
             {entry.original_name}
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{isDir ? "-" : formatSize(entry.size_bytes)}</span>
+            <span>{isDir ? "文件夹" : formatSize(entry.size_bytes)}</span>
             <span>•</span>
             <span>{new Date(entry.updated_at).toLocaleString()}</span>
           </div>
@@ -58,7 +96,7 @@ export function FileListItem({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

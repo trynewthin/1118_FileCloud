@@ -7,6 +7,7 @@ import { filesRouter } from "./modules/files/router.ts";
 import { fileContentRouter } from "./modules/fileContent/router.ts";
 import { activityLogsRouter } from "./modules/activityLogs/router.ts";
 import { settingsRouter } from "./modules/settings/router.ts";
+import { systemRouter } from "./modules/system/router.ts";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/files", filesRouter);
 app.use("/api/file-content", fileContentRouter);
 app.use("/api/activity-logs", activityLogsRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/system", systemRouter);
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

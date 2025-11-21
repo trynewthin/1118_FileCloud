@@ -14,20 +14,30 @@ declare module "express-serve-static-core" {
   }
 }
 
-// 从 Authorization 头中解析并校验 JWT，挂载 req.user
+// 从 Authorization 头或 query 参数中解析并校验 JWT，挂载 req.user
 export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
+  let token: string | undefined;
+
+  // 1. 尝试从 Header 获取
   const authHeader = req.headers["authorization"];
-  if (!authHeader || typeof authHeader !== "string") {
-    return res.status(401).json({ message: "未提供身份令牌" });
+  if (authHeader && typeof authHeader === "string") {
+    const [scheme, val] = authHeader.split(" ");
+    if (scheme === "Bearer") {
+      token = val;
+    }
   }
 
-  const [scheme, token] = authHeader.split(" ");
-  if (scheme !== "Bearer" || !token) {
-    return res.status(401).json({ message: "身份令牌格式错误" });
+  // 2. 尝试从 Query 获取 (用于图片/视频流等无法自定义 Header 的场景)
+  if (!token && req.query && typeof req.query.token === "string") {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: "未提供身份令牌" });
   }
 
   const payload = verifyUserToken(token);

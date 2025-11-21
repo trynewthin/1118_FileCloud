@@ -130,7 +130,11 @@ const maybeEnqueueThumbnailTask = (
   );
 
   if (fs.existsSync(thumbnailPath)) {
-    return;
+    const stat = fs.statSync(thumbnailPath);
+    // 如果缩略图存在但小于 1KB，可能生成失败或为空，强制重新生成
+    if (stat.size > 1024) {
+      return;
+    }
   }
 
   createTask({

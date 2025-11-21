@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
+import { Plus, FolderSearch } from "lucide-react";
+import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialog";
 
 interface NewLibraryDialogProps {
   onSuccess?: () => void;
@@ -24,6 +25,7 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   const [displayName, setDisplayName] = useState("");
   const { create, loading } = useFileLibraries();
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,55 +45,72 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          新建文件库
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>新建文件库</DialogTitle>
-            <DialogDescription>
-              添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rootPath" className="text-right">
-                根路径
-              </Label>
-              <Input
-                id="rootPath"
-                value={rootPath}
-                onChange={(e) => setRootPath(e.target.value)}
-                placeholder="例如: D:\Photos"
-                className="col-span-3"
-              />
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            新建文件库
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>新建文件库</DialogTitle>
+              <DialogDescription>
+                添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="rootPath" className="text-right">
+                  根路径
+                </Label>
+                <div className="col-span-3 flex gap-2">
+                  <Input
+                    id="rootPath"
+                    value={rootPath}
+                    onChange={(e) => setRootPath(e.target.value)}
+                    placeholder="例如: D:\Photos"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="icon" onClick={() => setPickerOpen(true)} title="选择服务器目录">
+                    <FolderSearch className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="displayName" className="text-right">
+                  显示名称
+                </Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="可选"
+                  className="col-span-3"
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="displayName" className="text-right">
-                显示名称
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="可选"
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-          <DialogFooter>
-            <Button type="submit" disabled={loading}>
-              {loading ? "创建中..." : "创建"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? "创建中..." : "创建"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <FolderPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        mode="system"
+        initialPath={rootPath}
+        onSubmit={(val) => setRootPath(val)}
+        title="选择服务器目录"
+        description="请选择服务器上的真实目录作为文件库根路径。"
+      />
+    </>
   );
 }
