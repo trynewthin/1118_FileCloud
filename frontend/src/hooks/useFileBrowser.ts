@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FileEntry, FileTaskResponse } from "@/lib/api/files";
+import { getTask } from "@/lib/api/tasks";
 import {
   copyEntry as apiCopyEntry,
   deleteEntry as apiDeleteEntry,
@@ -129,6 +130,38 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
     }
   }, [libraryId, currentParentId]);
 
+  // 等待后端任务完成后再刷新列表，避免用户手动点“刷新”
+  const waitTaskAndReload = useCallback(
+    async (taskId: number) => {
+      const maxWaitMs = 15000; // 最多等待 15 秒
+      const intervalMs = 800; // 轮询间隔
+      const start = Date.now();
+
+      try {
+        // 简单轮询任务状态直到成功 / 失败或超时
+        // 即使超时，也会在最后调用一次 load 保证状态尽量同步
+        while (Date.now() - start < maxWaitMs) {
+          try {
+            const { task } = await getTask(taskId);
+            if (task.status === "SUCCESS" || task.status === "FAILED") {
+              await load();
+              return;
+            }
+          } catch (err) {
+            console.error("轮询任务状态失败", err);
+            break;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        }
+      } finally {
+        // 超时或轮询失败时，兜底再刷新一次
+        await load();
+      }
+    },
+    [load],
+  );
+
   useEffect(() => {
     // 切换库或 parent 时重新加载
     load();
@@ -138,15 +171,22 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
     async <T extends FileTaskResponse | null>(fn: () => Promise<T>): Promise<T> => {
       try {
         const result = await fn();
-        // 操作成功后刷新列表
-        await load();
+
+        // 若返回了任务 ID，则等待任务完成后再刷新；否则直接刷新
+        const taskId = (result as FileTaskResponse | null)?.task?.id;
+        if (typeof taskId === "number") {
+          await waitTaskAndReload(taskId);
+        } else {
+          await load();
+        }
+
         return result;
       } catch (err) {
         // 这里不处理错误，只让上层自己决定如何提示
         throw err;
       }
     },
-    [load],
+    [load, waitTaskAndReload],
   );
 
   const ops: FileBrowserOperations = useMemo(
