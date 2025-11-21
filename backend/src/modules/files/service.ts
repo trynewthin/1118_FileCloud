@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
 
@@ -15,6 +16,9 @@ export interface FileEntry {
   created_at: string;
   updated_at: string;
 }
+
+const INTERNAL_META_DIR = ".filecloud_meta";
+const TRASH_DIR_NAME = "trash";
 
 // 将数据库行转换为文件索引实体
 const mapRowToFileEntry = (row: any): FileEntry => {
@@ -57,17 +61,40 @@ export interface TrashEntry extends FileEntry {
 
 // 查询指定文件库中的已删除条目（回收站），按删除时间倒序
 export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => {
+  const libRow = db
+    .prepare("SELECT root_path FROM file_libraries WHERE id = ? LIMIT 1")
+    .get(libraryId) as { root_path: string } | undefined;
+
+  if (!libRow) {
+    return [];
+  }
+
+  const libraryRootPath = libRow.root_path;
+
   const rows = db
     .prepare(
       "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC, original_name ASC",
     )
     .all(libraryId) as any[];
 
-  return rows.map((row) => {
-    const entry = mapRowToFileEntry(row);
-    const relative = buildRelativePathForEntry(entry);
-    return { ...entry, relative_path: relative };
-  });
+  return rows
+    .map((row) => {
+      const entry = mapRowToFileEntry(row);
+      const relative = buildRelativePathForEntry(entry);
+      const trashPath = path.join(
+        libraryRootPath,
+        INTERNAL_META_DIR,
+        TRASH_DIR_NAME,
+        relative,
+      );
+
+      if (!fs.existsSync(trashPath)) {
+        return null;
+      }
+
+      return { ...entry, relative_path: relative } as TrashEntry | null;
+    })
+    .filter((item): item is TrashEntry => item !== null);
 };
 
 // 查询单个索引实体

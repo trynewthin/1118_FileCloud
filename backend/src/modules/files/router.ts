@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
@@ -206,11 +207,7 @@ router.post(
 );
 
 // 下载文件内容（普通登录用户可用，目录不支持下载）
-router.get(
-  "/entries/:id/download",
-  authenticate,
-  requirePermission(PermissionLevel.User),
-  (req, res) => {
+const handleDownload = (req: express.Request, res: express.Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
@@ -238,12 +235,114 @@ router.get(
 
     const realPath = resolveRealPathForEntry(entry, check.library.root_path);
 
-    return res.sendFile(realPath, (err) => {
-      if (err) {
-        return res.status(500).json({ message: "文件下载失败" });
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(realPath);
+    } catch (err) {
+      return res.status(500).json({ message: "文件下载失败" });
+    }
+
+    const fileSize = stat.size;
+    const range = req.headers.range as string | undefined;
+
+    const rawName = entry.original_name;
+    const asciiSafeName = rawName
+      .split("")
+      .map((ch) => {
+        const code = ch.charCodeAt(0);
+        if (code < 0x20 || code > 0x7e || ch === '"' || ch === "\\") {
+          return "_";
+        }
+        return ch;
+      })
+      .join("");
+    const fallbackName = asciiSafeName || "download";
+    const encodedName = encodeURIComponent(rawName);
+
+    const setCommonHeaders = () => {
+      res.setHeader("Content-Type", entry.mime_type || "application/octet-stream");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+      );
+    };
+
+    // 支持 Range 请求，提升视频在 iOS 上的播放流畅度
+    if (range) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (!match) {
+        return res.status(416).end();
+      }
+
+      let start = match[1] ? parseInt(match[1], 10) : 0;
+      let end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+
+      if (isNaN(start) || isNaN(end) || start > end || start >= fileSize) {
+        return res.status(416).end();
+      }
+
+      end = Math.min(end, fileSize - 1);
+      const chunkSize = end - start + 1;
+
+      res.status(206);
+      setCommonHeaders();
+      res.setHeader("Content-Length", String(chunkSize));
+      res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+
+      const stream = fs.createReadStream(realPath, { start, end });
+
+      stream.on("error", (err) => {
+        console.error("file download stream error", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "文件下载失败" });
+        } else {
+          res.destroy(err as any);
+        }
+      });
+
+      req.on("aborted", () => {
+        stream.destroy();
+      });
+
+      return stream.pipe(res);
+    }
+
+    // 非 Range 请求，整体下载
+    res.status(200);
+    setCommonHeaders();
+    res.setHeader("Content-Length", String(fileSize));
+
+    const stream = fs.createReadStream(realPath);
+
+    stream.on("error", (err) => {
+      console.error("file download stream error", err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "文件下载失败" });
+      } else {
+        res.destroy(err as any);
       }
     });
-  },
+
+    req.on("aborted", () => {
+      stream.destroy();
+    });
+
+    stream.pipe(res);
+  };
+
+router.get(
+  "/entries/:id/download",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  handleDownload,
+);
+
+router.get(
+  "/entries/:id/download/:filename",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  handleDownload,
 );
 
 // 查询单个文件索引详情（普通登录用户可用）

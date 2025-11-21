@@ -63,7 +63,7 @@ export const getEntry = async (id: string, password?: string): Promise<GetEntryR
   return apiClient.get<GetEntryResponse>(path);
 };
 
-export const downloadEntry = (id: string, password?: string): string => {
+export const downloadEntry = (id: string, password?: string, originalName?: string): string => {
   const searchParams = new URLSearchParams();
   if (password) searchParams.set("password", password);
   const token =
@@ -74,7 +74,11 @@ export const downloadEntry = (id: string, password?: string): string => {
   if (token) searchParams.set("token", token);
   const qs = searchParams.toString();
   // 返回下载 URL，前端可用于 window.open 或 a[href]
-  return buildApiUrl(`/files/entries/${id}/download${qs ? `?${qs}` : ""}`);
+  const safeName = originalName ? encodeURIComponent(originalName) : undefined;
+  const path = safeName
+    ? `/files/entries/${id}/download/${safeName}`
+    : `/files/entries/${id}/download`;
+  return buildApiUrl(`${path}${qs ? `?${qs}` : ""}`);
 };
 
 export const setEntryPassword = async (

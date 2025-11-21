@@ -143,7 +143,7 @@ export function FileBrowserPage() {
 
       try {
         const pwd = getCachedPassword(entry.id);
-        const url = downloadEntry(entry.id, pwd);
+        const url = downloadEntry(entry.id, pwd, entry.original_name);
 
         const link = document.createElement("a");
         link.href = url;
