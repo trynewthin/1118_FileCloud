@@ -102,6 +102,15 @@ export function SettingsPage() {
             <div className="text-sm font-medium">操作日志</div>
             <ChevronRight className="h-4 w-4" />
           </div>
+          <div
+            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+            onClick={() => navigate("/settings/ai")}   
+            role="button"
+            tabIndex={0}
+          >
+            <div className="text-sm font-medium">AI 设置</div>
+            <ChevronRight className="h-4 w-4" />
+          </div>
         </div>
       </div>
     </PageContainer>

@@ -1,0 +1,104 @@
+import { apiClient } from "./client";
+
+export interface AiChatConversation {
+  id: number;
+  user_id: number;
+  model_id: number;
+  title: string | null;
+  metadata: any | null;
+  system_prompt: string | null;
+  max_context_messages: number | null;
+  memory_enabled: boolean;
+  memory_strategy: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiChatMessage {
+  id: number;
+  conversation_id: number;
+  role: string;
+  content: string | null;
+  tool_name: string | null;
+  payload: any | null;
+  created_at: string;
+}
+
+export interface ListAiConversationsResponse {
+  items: AiChatConversation[];
+}
+
+export interface ListAiMessagesResponse {
+  items: AiChatMessage[];
+}
+
+export interface CreateAiConversationRequest {
+  modelId?: number;
+  title?: string | null;
+  metadata?: any;
+  systemPrompt?: string | null;
+  maxContextMessages?: number | null;
+  memoryEnabled?: boolean;
+  memoryStrategy?: string | null;
+}
+
+export interface UpdateAiConversationRequest {
+  modelId?: number;
+  title?: string | null;
+  metadata?: any;
+  systemPrompt?: string | null;
+  maxContextMessages?: number | null;
+  memoryEnabled?: boolean;
+  memoryStrategy?: string | null;
+  isArchived?: boolean;
+}
+
+export interface AppendMessageRequest {
+  content: string;
+}
+
+export interface AppendMessageResponse {
+  userMessage: AiChatMessage;
+  assistantMessage: AiChatMessage;
+}
+
+export const listAiConversations = async (): Promise<ListAiConversationsResponse> => {
+  return apiClient.get<ListAiConversationsResponse>("/ai/conversations");
+};
+
+export const createAiConversation = async (
+  body: CreateAiConversationRequest,
+): Promise<{ conversation: AiChatConversation }> => {
+  return apiClient.post<{ conversation: AiChatConversation }>("/ai/conversations", body as any);
+};
+
+export const updateAiConversation = async (
+  id: number,
+  body: UpdateAiConversationRequest,
+): Promise<{ conversation: AiChatConversation }> => {
+  return apiClient.patch<{ conversation: AiChatConversation }>(
+    `/ai/conversations/${id}`,
+    body as any,
+  );
+};
+
+export const deleteAiConversation = async (id: number): Promise<void> => {
+  await apiClient.delete<unknown>(`/ai/conversations/${id}`);
+};
+
+export const listAiMessages = async (
+  conversationId: number,
+): Promise<ListAiMessagesResponse> => {
+  return apiClient.get<ListAiMessagesResponse>(`/ai/conversations/${conversationId}/messages`);
+};
+
+export const appendUserMessage = async (
+  conversationId: number,
+  body: AppendMessageRequest,
+): Promise<AppendMessageResponse> => {
+  return apiClient.post<AppendMessageResponse>(
+    `/ai/conversations/${conversationId}/messages`,
+    body,
+  );
+};

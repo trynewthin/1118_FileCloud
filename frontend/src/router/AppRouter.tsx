@@ -12,6 +12,8 @@ import { TasksPage } from "@/pages/TasksPage";
 import { ActivityLogsPage } from "@/pages/ActivityLogsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { FilePreviewPage } from "@/pages/FilePreviewPage";
+import { AiChatPage } from "@/pages/AiChatPage";
+import { AiSettingsPage } from "@/pages/AiSettingsPage";
 
 export function AppRouter() {
   return <InitGate />;
@@ -79,9 +81,11 @@ function InitGate() {
         <Route path="/libraries" element={<FileLibrariesPage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
         <Route path="/preview/:id" element={<FilePreviewPage />} />
+        <Route path="/ai" element={<AiChatPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/tasks" element={<TasksPage />} />
         <Route path="/settings/logs" element={<ActivityLogsPage />} />
+        <Route path="/settings/ai" element={<AiSettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

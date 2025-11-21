@@ -92,6 +92,15 @@ export const apiClient = {
           ? (JSON.stringify(body) as BodyInit)
           : ((body as BodyInit | undefined) ?? undefined),
     }),
+  patch: <T>(path: string, body?: unknown, init?: RequestInit) =>
+    request<T>(path, {
+      ...init,
+      method: "PATCH",
+      body:
+        body !== undefined && !(body instanceof FormData)
+          ? (JSON.stringify(body) as BodyInit)
+          : ((body as BodyInit | undefined) ?? undefined),
+    }),
   put: <T>(path: string, body?: unknown, init?: RequestInit) =>
     request<T>(path, {
       ...init,
