@@ -1,4 +1,4 @@
-import { AnimatedCircularProgressBar } from "@/components/ui/animated-circular-progress-bar";
+import { Progress } from "@/components/ui/progress";
 import type { TaskRecord } from "@/lib/api/tasks";
 import { CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
 
@@ -31,38 +31,36 @@ export function TaskItem({ task }: TaskItemProps) {
   };
 
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="h-10 w-10 flex items-center justify-center rounded-full bg-muted/20">
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="h-10 w-10 flex shrink-0 items-center justify-center rounded-full bg-muted/20">
           {getStatusIcon()}
         </div>
-        <div>
-          <p className="font-medium">{formatTaskType(task.type)}</p>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center justify-between">
+            <p className="font-medium truncate">{formatTaskType(task.type)}</p>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {new Date(task.created_at).toLocaleString()}
+            </span>
+          </div>
+          
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>{getStatusText()}</span>
-            <span>•</span>
-            <span>{new Date(task.created_at).toLocaleString()}</span>
+            {task.status === "RUNNING" && <span>{task.progress}%</span>}
           </div>
+
+          {task.status === "RUNNING" && (
+            <div className="mt-2">
+              <Progress value={task.progress} className="h-1.5" />
+            </div>
+          )}
+
           {task.error_message && (
-             <p className="text-xs text-red-500 mt-1 max-w-[300px] truncate" title={task.error_message}>
+             <p className="text-xs text-red-500 mt-1 break-all">
                {task.error_message}
              </p>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        {task.status === "RUNNING" && (
-          <div className="h-12 w-12">
-             <AnimatedCircularProgressBar
-                max={100}
-                min={0}
-                value={task.progress || 0}
-                gaugePrimaryColor="rgb(59 130 246)"
-                gaugeSecondaryColor="rgba(0, 0, 0, 0.1)"
-             />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -70,10 +68,15 @@ export function TaskItem({ task }: TaskItemProps) {
 
 function formatTaskType(type: string) {
   switch (type) {
-    case "index_library": return "索引文件库";
-    case "delete_file": return "删除文件";
-    case "copy_file": return "复制文件";
-    case "move_file": return "移动文件";
+    case "FILE_INDEX_LIBRARY": return "索引文件库";
+    case "FILE_INDEX_SINGLE": return "索引指定路径";
+    case "FILE_GENERATE_THUMBNAIL": return "生成缩略图";
+    case "FILE_DELETE_ENTRY": return "删除文件";
+    case "FILE_COPY_ENTRY": return "复制文件";
+    case "FILE_MOVE_ENTRY": return "移动文件";
+    case "FILE_RENAME_ENTRY": return "重命名文件";
+    case "FILE_RESTORE_ENTRY": return "还原文件";
+    case "FILE_DESTROY_ENTRY": return "彻底删除文件";
     default: return type;
   }
 }

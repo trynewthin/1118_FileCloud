@@ -35,6 +35,7 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
       setOpen(false);
       setRootPath("");
       setDisplayName("");
+      alert("文件库创建成功，正在后台建立索引，稍后即可查看文件内容。");
       onSuccess?.();
     } catch (err: any) {
       setError(err?.message || "创建失败");

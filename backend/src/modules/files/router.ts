@@ -2,7 +2,7 @@ import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
-import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted } from "./service.ts";
+import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors } from "./service.ts";
 import { createTask } from "../tasks/service.ts";
 import { TASK_TYPE_FILE_INDEX_LIBRARY, TASK_TYPE_FILE_INDEX_SINGLE } from "./indexTasks.ts";
 import { TASK_TYPE_FILE_DELETE_ENTRY, TASK_TYPE_FILE_RESTORE_ENTRY, TASK_TYPE_FILE_DESTROY_ENTRY, TASK_TYPE_FILE_RENAME_ENTRY, TASK_TYPE_FILE_MOVE_ENTRY, TASK_TYPE_FILE_COPY_ENTRY } from "./fileOpsTasks.ts";
@@ -248,9 +248,11 @@ router.get(
     }
 
     const security = getEntrySecurity(id);
+    const ancestors = getEntryAncestors(entry);
 
     return res.json({
       entry,
+      ancestors,
       security: security
         ? {
             hasPassword: true,

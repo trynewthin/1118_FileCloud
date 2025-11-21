@@ -4,6 +4,7 @@ import {
   copyEntry as apiCopyEntry,
   deleteEntry as apiDeleteEntry,
   destroyEntry as apiDestroyEntry,
+  getEntry,
   indexLibrary as apiIndexLibrary,
   indexLibraryPath as apiIndexLibraryPath,
   listEntries,
@@ -14,6 +15,7 @@ import {
 
 interface FileBrowserState {
   entries: FileEntry[];
+  ancestors: { id: string; name: string }[];
   loading: boolean;
   error: string | null;
 }
@@ -43,9 +45,9 @@ interface UseFileBrowserResult extends FileBrowserState, FileBrowserOperations {
   libraryId: number | null;
   currentParentId: string | null;
   setCurrentParentId: (parentId: string | null) => void;
-   getCachedPassword: (entryId: string) => string | undefined;
-   setCachedPassword: (entryId: string, password: string) => void;
-   clearCachedPassword: (entryId?: string) => void;
+  getCachedPassword: (entryId: string) => string | undefined;
+  setCachedPassword: (entryId: string, password: string) => void;
+  clearCachedPassword: (entryId?: string) => void;
   reload: () => Promise<void>;
 }
 
@@ -79,25 +81,48 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const [state, setState] = useState<FileBrowserState>({
     entries: [],
+    ancestors: [],
     loading: false,
     error: null,
   });
 
   const load = useCallback(async () => {
     if (!libraryId) {
-      setState({ entries: [], loading: false, error: null });
+      setState({ entries: [], ancestors: [], loading: false, error: null });
       return;
     }
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const cachedPwd = currentParentId ? passwordCache.get(currentParentId) : undefined;
-      const res = await listEntries({
+
+      // 并行加载列表和面包屑（如果有 parentId）
+      const listPromise = listEntries({
         libraryId,
         parentId: currentParentId,
         password: cachedPwd,
       });
-      setState({ entries: res.items, loading: false, error: null });
+
+      let ancestors: { id: string; name: string }[] = [];
+
+      // 只有在进入非根目录时才需要去 fetch 详情以获取 ancestors
+      if (currentParentId) {
+        // 注意：这里的 getEntry 可能会因为密码保护失败，但如果 cachedPwd 正确则没问题
+        // 实际中 listEntries 和 getEntry 可能需要共享错误处理逻辑
+        try {
+          const detail = await getEntry(currentParentId, cachedPwd);
+          if (detail.ancestors) {
+            ancestors = [...detail.ancestors, { id: detail.entry.id, name: detail.entry.original_name }];
+          }
+        } catch (err) {
+          // 如果获取详情失败（比如密码不对），可能无法构建面包屑，但这不应阻塞列表显示（或者应该阻塞？）
+          // 这里简单处理：忽略详情获取失败，只显示列表（如果列表也失败，会在下面 catch）
+          console.error("Failed to fetch directory details for breadcrumbs", err);
+        }
+      }
+
+      const res = await listPromise;
+      setState({ entries: res.items, ancestors, loading: false, error: null });
     } catch (err: any) {
       const message = typeof err?.message === "string" ? err.message : "加载文件列表失败";
       setState((prev) => ({ ...prev, loading: false, error: message }));

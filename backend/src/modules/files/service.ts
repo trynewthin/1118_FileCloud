@@ -104,6 +104,31 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
   return path.join(...segments);
 };
 
+// 获取指定条目的所有祖先节点（从根到直接父级），用于构建面包屑
+export const getEntryAncestors = (entry: FileEntry): { id: string; name: string }[] => {
+  const ancestors: { id: string; name: string }[] = [];
+  let currentParentId = entry.parent_id;
+
+  while (currentParentId) {
+    const parentRow = db
+      .prepare(
+        "SELECT id, parent_id, original_name FROM file_entries WHERE id = ?",
+      )
+      .get(currentParentId) as { id: string; parent_id: string | null; original_name: string } | undefined;
+
+    if (!parentRow) break;
+
+    ancestors.unshift({
+      id: parentRow.id,
+      name: parentRow.original_name,
+    });
+
+    currentParentId = parentRow.parent_id;
+  }
+
+  return ancestors;
+};
+
 // 解析指定索引对应的真实文件路径（内部使用，接口层不会直接返回）
 export const resolveRealPathForEntry = (entry: FileEntry, libraryRootPath: string): string => {
   const relative = buildRelativePathForEntry(entry);

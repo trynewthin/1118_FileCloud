@@ -80,10 +80,11 @@ const buildRealPathFromEntryRow = (
   return path.join(libraryRoot, ...segments);
 };
 
-// 使用 ffmpeg 生成缩略图（第一帧缩略图，统一为 jpg）
+// 使用 ffmpeg 生成缩略图（对于视频，尝试截取第 5 秒以避免黑屏）
 const generateThumbnailWithFfmpeg = async (
   inputPath: string,
   outputPath: string,
+  isVideo: boolean,
 ): Promise<void> => {
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) {
@@ -93,6 +94,14 @@ const generateThumbnailWithFfmpeg = async (
   return new Promise((resolve, reject) => {
     const args = [
       "-y", // 覆盖输出
+    ];
+
+    // 如果是视频，尝试跳过前 5 秒；如果是图片，则无需 seek
+    if (isVideo) {
+      args.push("-ss", "00:00:05");
+    }
+
+    args.push(
       "-i",
       inputPath,
       "-frames:v",
@@ -100,7 +109,7 @@ const generateThumbnailWithFfmpeg = async (
       "-vf",
       "scale=320:-1:force_original_aspect_ratio=decrease",
       outputPath,
-    ];
+    );
 
     const child = spawn("ffmpeg", args, { stdio: "ignore" });
 
@@ -112,7 +121,23 @@ const generateThumbnailWithFfmpeg = async (
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`ffmpeg 退出码 ${code}`));
+        // 如果 seek 失败（例如视频短于 5 秒），可能会导致无输出或错误
+        // 这里可以做一个简单的回退策略：如果不成功且是视频，尝试 seek 0
+        if (isVideo && !fs.existsSync(outputPath)) {
+          // Fallback to 00:00:00
+          const fallbackArgs = [
+            "-y", "-i", inputPath, "-frames:v", "1",
+            "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+            outputPath
+          ];
+          const fallbackChild = spawn("ffmpeg", fallbackArgs, { stdio: "ignore" });
+          fallbackChild.on("close", (fbCode) => {
+            if (fbCode === 0) resolve();
+            else reject(new Error(`ffmpeg fallback failed with code ${fbCode}`));
+          });
+        } else {
+          reject(new Error(`ffmpeg 退出码 ${code}`));
+        }
       }
     });
   });
@@ -175,7 +200,8 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 
-  await generateThumbnailWithFfmpeg(fullPath, thumbnailPath);
+  const isVideo = VIDEO_EXTS.has(entryRow.extension?.toLowerCase() || "");
+  await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, isVideo);
 
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };

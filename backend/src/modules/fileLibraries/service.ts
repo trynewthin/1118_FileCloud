@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
+import { createTask } from "../tasks/service.ts";
+import { TASK_TYPE_FILE_INDEX_LIBRARY } from "../files/indexTasks.ts";
 
 export interface FileLibrary {
   id: number;
@@ -110,6 +112,13 @@ export const createFileLibrary = (input: CreateFileLibraryInput): FileLibrary =>
   );
 
   const id = Number(result.lastInsertRowid);
+  // 创建文件库后自动触发一次全量索引任务，便于前端立即浏览内容
+  createTask({
+    type: TASK_TYPE_FILE_INDEX_LIBRARY,
+    payload: { libraryId: id },
+    createdByUserId: null,
+  });
+
   return getFileLibraryById(id)!;
 };
 

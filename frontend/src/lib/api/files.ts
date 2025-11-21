@@ -21,6 +21,7 @@ export interface ListEntriesResponse {
 
 export interface GetEntryResponse {
   entry: FileEntry;
+  ancestors?: { id: string; name: string }[];
   security:
     | { hasPassword: false }
     | {
