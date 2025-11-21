@@ -26,6 +26,12 @@ const markSystemInitialized = () => {
   ).run(SYSTEM_INITIALIZED_KEY, "true");
 };
 
+// 查询系统是否已初始化
+router.get("/init-status", (_req, res) => {
+  const initialized = isSystemInitialized();
+  return res.json({ initialized });
+});
+
 // 初始化管理员账号
 router.post("/init-admin", (req, res) => {
   const { username, secret } = req.body as {

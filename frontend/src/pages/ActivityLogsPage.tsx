@@ -1,0 +1,83 @@
+import { useActivityLogs } from "@/hooks/useActivityLogs";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, User, Activity } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export function ActivityLogsPage() {
+  const { items, loading, error, reload } = useActivityLogs({ auto: true });
+
+  return (
+    <PageContainer
+      title="操作日志"
+      description="审计用户的系统操作记录。"
+      action={
+        <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
+           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+           刷新
+        </Button>
+      }
+    >
+      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
+
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>时间</TableHead>
+              <TableHead>用户</TableHead>
+              <TableHead>动作</TableHead>
+              <TableHead>目标</TableHead>
+              <TableHead>详情</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  {loading ? "加载中..." : "暂无日志记录"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              items.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(log.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                       <User className="h-3 w-3 text-muted-foreground" />
+                       <span className="text-sm">{log.actor_user_id ? `User #${log.actor_user_id}` : "System"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3 w-3 text-muted-foreground" />
+                      <span className="font-medium text-sm">{log.action}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col text-xs">
+                      {log.target_type && <span className="text-muted-foreground">{log.target_type}</span>}
+                      <span>{log.target_id || "-"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[300px] truncate text-xs text-muted-foreground" title={JSON.stringify(log.detail)}>
+                    {JSON.stringify(log.detail)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </PageContainer>
+  );
+}
