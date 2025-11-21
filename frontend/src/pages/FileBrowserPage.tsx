@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -30,6 +30,7 @@ interface BreadcrumbItem {
 }
 
 export function FileBrowserPage() {
+  const navigate = useNavigate();
   // URL 参数控制当前库，便于分享链接
   const [searchParams, setSearchParams] = useSearchParams();
   const libraryIdParam = searchParams.get("libraryId");
@@ -286,8 +287,20 @@ export function FileBrowserPage() {
                 <Component
                   key={entry.id}
                   entry={entry}
-                  onClick={() => entry.is_directory && handleEnterDirectory(entry)}
-                  onDoubleClick={() => entry.is_directory && handleEnterDirectory(entry)}
+                  onClick={() => {
+                    if (entry.is_directory) {
+                      handleEnterDirectory(entry);
+                    } else {
+                      navigate(`/preview/${entry.id}`);
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    if (entry.is_directory) {
+                      handleEnterDirectory(entry);
+                    } else {
+                      navigate(`/preview/${entry.id}`);
+                    }
+                  }}
                   onAction={handleFileAction}
                 />
               );
