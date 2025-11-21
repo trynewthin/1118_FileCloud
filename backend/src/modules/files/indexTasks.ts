@@ -143,6 +143,33 @@ const maybeEnqueueThumbnailTask = (
   });
 };
 
+const cleanupDeletedChildren = (
+  libraryId: number,
+  parentId: string | null,
+  existingNames: Set<string>,
+) => {
+  const rows = db
+    .prepare(
+      "SELECT id, original_name FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0",
+    )
+    .all(libraryId, parentId) as { id: string; original_name: string }[];
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const stmt = db.prepare(
+    "UPDATE file_entries SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ? AND is_deleted = 0",
+  );
+
+  for (const row of rows) {
+    if (!existingNames.has(row.original_name)) {
+      stmt.run(now, now, row.id);
+    }
+  }
+};
+
 // 递归扫描指定目录并同步到索引表（不会删除已有记录，只做新增/更新）
 const scanDirectoryToIndex = (
   libraryId: number,
@@ -157,11 +184,15 @@ const scanDirectoryToIndex = (
 
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
+  const existingNames = new Set<string>();
+
   for (const entry of entries) {
     // 跳过内部配置目录
     if (entry.name === INTERNAL_META_DIR && dirPath === rootPath) {
       continue;
     }
+
+    existingNames.add(entry.name);
 
     const fullPath = path.join(dirPath, entry.name);
 
@@ -183,6 +214,8 @@ const scanDirectoryToIndex = (
       maybeEnqueueThumbnailTask(libraryId, rootPath, entryId, extension);
     }
   }
+
+  cleanupDeletedChildren(libraryId, parentEntryId, existingNames);
 };
 
 // 全库索引任务处理
