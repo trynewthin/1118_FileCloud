@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RefreshCw, Save } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { items, loading, error, reload, update } = useSettings();
   // 本地编辑状态
   const [editValues, setEditValues] = useState<Record<string, string>>({});
@@ -77,6 +79,26 @@ export function SettingsPage() {
         {!loading && items.length === 0 && (
           <div className="col-span-2 text-center text-muted-foreground">暂无公开设置项</div>
         )}
+      </div>
+
+      <div className="mt-8 space-y-3">
+        <div className="text-sm font-medium text-muted-foreground">系统页面</div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/settings/tasks")}
+          >
+            打开任务页面
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/settings/logs")}
+          >
+            打开日志页面
+          </Button>
+        </div>
       </div>
     </PageContainer>
   );

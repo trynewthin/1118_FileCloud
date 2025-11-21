@@ -1,9 +1,7 @@
-import { 
-  FolderOpen, 
-  CheckSquare, 
-  Settings, 
-  History,
-  HardDrive
+import {
+  FolderOpen,
+  Settings,
+  HardDrive,
 } from "lucide-react";
 
 export const navItems = [
@@ -18,18 +16,6 @@ export const navItems = [
     href: "/files",
     icon: FolderOpen,
     match: /^\/files/,
-  },
-  {
-    title: "任务",
-    href: "/tasks",
-    icon: CheckSquare,
-    match: /^\/tasks/,
-  },
-  {
-    title: "日志",
-    href: "/logs",
-    icon: History,
-    match: /^\/logs/,
   },
   {
     title: "设置",

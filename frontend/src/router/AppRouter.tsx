@@ -77,9 +77,9 @@ function InitGate() {
         <Route path="/" element={<Navigate to="/files" replace />} />
         <Route path="/libraries" element={<FileLibrariesPage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
-        <Route path="/tasks" element={<TasksPage />} />
-        <Route path="/logs" element={<ActivityLogsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/tasks" element={<TasksPage />} />
+        <Route path="/settings/logs" element={<ActivityLogsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

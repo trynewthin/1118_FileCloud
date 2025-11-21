@@ -2,6 +2,7 @@ import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, User, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/table";
 
 export function ActivityLogsPage() {
+  const navigate = useNavigate();
   const { items, loading, error, reload } = useActivityLogs({ auto: true });
 
   return (
@@ -19,10 +21,19 @@ export function ActivityLogsPage() {
       title="操作日志"
       description="审计用户的系统操作记录。"
       action={
-        <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-           刷新
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/settings")}
+          >
+            返回设置
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
+             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+             刷新
+          </Button>
+        </div>
       }
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
