@@ -245,7 +245,7 @@ export function FileBrowserPage() {
         </div>
       </div>
 
-      <div className="flex-1 mt-4 min-h-0 overflow-y-auto rounded-lg border bg-muted/5 px-4 pt-4 ">
+      <div className="flex-1 mt-4 min-h-0 overflow-y-auto rounded-lg border bg-muted/5 px-4 py-4 ">
         {libsLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             加载文件库...
