@@ -6,9 +6,7 @@ import { AiConversationList } from "@/components/ai/AiConversationList";
 import { AiMobileConversationManager } from "@/components/ai/AiMobileConversationManager";
 import { ChatMessageList } from "@/components/ai/ChatMessageList";
 import { ChatInputBar } from "@/components/ai/ChatInputBar";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw } from "lucide-react";
 
 export function AiChatPage() {
   const {
@@ -48,29 +46,11 @@ export function AiChatPage() {
   return (
     <PageContainer
       title="AI 助手"
-      action={
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => reloadConversations()}
-            disabled={loadingConversations}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${loadingConversations ? "animate-spin" : ""}`}
-            />
-            刷新会话
-          </Button>
-          <Button size="sm" onClick={handleCreateConversation} disabled={creating}>
-            {creating ? "创建中..." : "新建会话"}
-          </Button>
-        </div>
-      }
       className="h-full flex flex-col"
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <div className="mt-4 h-full min-h-0 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-4">
+      <div className="h-full min-h-0 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-4">
         <div className="hidden md:block h-full min-h-0">
           <AiConversationList
             conversations={conversations}
@@ -81,7 +61,7 @@ export function AiChatPage() {
           />
         </div>
 
-        <div className="mt-4 flex h-full min-h-0 flex-col gap-3 md:mt-0">
+        <div className="mt-1 flex h-full min-h-0 flex-col gap-3 md:mt-0">
           <div className="md:hidden">
             <AiMobileConversationManager
               conversations={conversations}
@@ -89,6 +69,11 @@ export function AiChatPage() {
               loading={loadingConversations}
               onSelect={selectConversation}
               onNewConversation={handleCreateConversation}
+              models={models}
+              onChangeModel={async (modelId) => {
+                if (!currentConversation) return;
+                await updateConversation(currentConversation.id, { modelId });
+              }}
             />
           </div>
 
@@ -130,7 +115,12 @@ export function AiChatPage() {
           </div>
 
           <div className="flex-1 min-h-0 rounded-lg border bg-background px-3 py-2 overflow-y-auto">
-            <ChatMessageList messages={messages} loading={loadingMessages} />
+            <ChatMessageList
+              messages={messages}
+              loading={loadingMessages}
+              onReloadConversations={reloadConversations}
+              reloadingConversations={loadingConversations}
+            />
           </div>
 
           <div className="rounded-lg border bg-card px-3 py-2">

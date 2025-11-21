@@ -245,7 +245,7 @@ export function FileBrowserPage() {
         </div>
       </div>
 
-      <div className="flex-1 mt-4 min-h-0 overflow-y-auto rounded-lg border bg-muted/5 p-4">
+      <div className="flex-1 mt-4 min-h-0 overflow-y-auto rounded-lg border bg-muted/5 px-4 pt-4 ">
         {libsLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             加载文件库...
@@ -309,7 +309,7 @@ export function FileBrowserPage() {
         )}
       </div>
 
-      <div className="h-24 md:h-6 flex-none" />
+     
 
       {/* 上传对话框 */}
       <UploadDialog
