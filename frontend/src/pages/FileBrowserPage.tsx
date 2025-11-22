@@ -13,6 +13,8 @@ import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { downloadEntry } from "@/lib/api/files";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 
 interface BreadcrumbItem {
   id: string;
@@ -222,8 +226,8 @@ export function FileBrowserPage() {
   );
 
   return (
-    <PageContainer title="文件浏览" className="h-full flex flex-col">
-      <div className="flex-none space-y-4">
+    <PageContainer title="文件浏览" className="h-full flex flex-col relative">
+      <div className="flex-none space-y-4 z-10 relative">
         <FileToolbar
           libraries={libraries}
           currentLibraryId={activeLibraryId}
@@ -245,7 +249,7 @@ export function FileBrowserPage() {
         </div>
       </div>
 
-      <div className="flex-1 mt-4 min-h-0 overflow-y-auto rounded-lg border bg-muted/5 px-4 py-4 ">
+      <GlassCard variant="ghost" className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2 z-10">
         {libsLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             加载文件库...
@@ -266,12 +270,13 @@ export function FileBrowserPage() {
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
             <p>此文件夹为空</p>
             <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
-            <button 
+            <GlassButton 
               onClick={() => setReindexDialogOpen(true)}
               className="text-xs text-primary hover:underline mt-2"
+              glassVariant="ghost"
             >
               手动触发索引
-            </button>
+            </GlassButton>
           </div>
         ) : (
           <div
@@ -307,9 +312,7 @@ export function FileBrowserPage() {
             })}
           </div>
         )}
-      </div>
-
-     
+      </GlassCard>
 
       {/* 上传对话框 */}
       <UploadDialog

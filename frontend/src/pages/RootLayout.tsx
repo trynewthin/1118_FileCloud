@@ -4,6 +4,9 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppBottomNav } from "@/components/layout/AppBottomNav";
 import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
+import { DS } from "@/lib/design-system";
+import { cn } from "@/lib/utils";
+import { AmbientGlow } from "@/components/common/AmbientGlow";
 
 const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 
@@ -28,14 +31,23 @@ export function RootLayout() {
 
   return (
     <PageHeaderProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <div className={cn("flex h-screen w-screen overflow-hidden relative", DS.layout.pageBackground)}>
+        {/* Global Ambient Glow */}
+        <AmbientGlow position="top-right" variant="primary" className="opacity-50 pointer-events-none fixed z-0" />
+        <AmbientGlow position="bottom-left" variant="cool" className="opacity-30 pointer-events-none fixed z-0" />
+
         <AppSidebar
           collapsed={sidebarCollapsed}
           onToggleSidebar={toggleSidebar}
         />
-        <div className="flex flex-1 flex-col h-full min-w-0">
+        <div className="relative flex flex-1 flex-col h-full min-w-0 z-10">
           <AppHeader />
-          <main className="flex flex-1 h-full min-h-0 flex-col overflow-y-auto bg-background px-4 md:px-6 pt-20 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-6">
+          <main className={cn(
+            "flex flex-1 h-full min-h-0 flex-col overflow-y-auto",
+            DS.layout.mainContent,
+            // 移动端底部导航适配
+            "pb-[calc(4rem+env(safe-area-inset-bottom,20px))] md:pb-6"
+          )}>
             <Outlet />
           </main>
           <AppBottomNav />

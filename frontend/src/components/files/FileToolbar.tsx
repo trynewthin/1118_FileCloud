@@ -1,5 +1,6 @@
-import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2 } from "lucide-react";
+import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   Select,
   SelectContent,
@@ -8,6 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 
 interface FileToolbarProps {
   libraries: FileLibrary[];
@@ -33,13 +36,14 @@ export function FileToolbar({
   onUpload,
 }: FileToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card p-2 rounded-lg border">
-      <div className="flex flex-wrap items-center gap-2 flex-1">
+    <GlassCard className="p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {/* Left Section: Library Select & Basic Actions */}
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <Select
           value={currentLibraryId?.toString() ?? ""}
           onValueChange={onLibraryChange}
         >
-          <SelectTrigger className="w-[140px] sm:w-[200px]">
+          <SelectTrigger className="w-[180px] h-9 bg-background/50 border-transparent shadow-sm focus:ring-1">
             <SelectValue placeholder="选择文件库" />
           </SelectTrigger>
           <SelectContent>
@@ -51,72 +55,71 @@ export function FileToolbar({
           </SelectContent>
         </Select>
         
-        <div className="h-6 w-px bg-border mx-1 sm:mx-2" />
+        <div className="h-6 w-px bg-border/50 mx-1" />
 
-        <Button variant="ghost" size="sm" onClick={onRefresh} className="px-2 sm:px-4">
-          <RefreshCw className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">刷新</span>
+        <Button variant="ghost" size="icon-sm" onClick={onRefresh} title="刷新" className="text-muted-foreground hover:text-foreground">
+          <RefreshCw className="h-4 w-4" />
         </Button>
 
         {onReindex && (
-          <Button variant="ghost" size="sm" onClick={onReindex} className="text-muted-foreground hover:text-foreground px-2 sm:px-4">
-            <span className="hidden sm:inline">重建索引</span>
-            <span className="sm:hidden">重建</span>
+          <Button variant="ghost" size="icon-sm" onClick={onReindex} title="重建索引" className="text-muted-foreground hover:text-foreground">
+            <RotateCw className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      <div className="flex items-center gap-2 justify-between sm:justify-end">
+      {/* Right Section: Operations & View Toggle */}
+      <div className="flex flex-wrap items-center gap-2 justify-between md:justify-end min-w-0">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled className="px-2 sm:px-4">
-            <FolderPlus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">新建</span>
+          <Button variant="outline" size="sm" disabled className="bg-background/50 border-transparent shadow-sm">
+            <FolderPlus className="h-4 w-4 mr-1.5" />
+            新建
           </Button>
           <Button
             variant="default"
             size="sm"
-            className="px-2 sm:px-4"
             disabled={!onUpload}
             onClick={onUpload}
+            className="shadow-md"
           >
-            <Upload className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">上传</span>
+            <Upload className="h-4 w-4 mr-1.5" />
+            上传
           </Button>
         </div>
         
-        <div className="h-6 w-px bg-border mx-2 hidden sm:block" />
+        <div className="h-6 w-px bg-border/50 mx-2" />
 
         {onOpenTrash && (
           <Button
             variant="ghost"
-            size="sm"
-            className="px-2 sm:px-3 text-muted-foreground hover:text-foreground"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-destructive transition-colors"
             onClick={onOpenTrash}
+            title="回收站"
           >
-            <Trash2 className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">回收站</span>
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
 
-        <div className="flex items-center rounded-md border bg-background p-1 ml-auto sm:ml-0">
+        <div className={cn("flex items-center p-1 gap-1", DS.radius.md, "bg-muted/50")}>
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-6 w-6"
+            size="icon-sm"
+            className={cn("h-7 w-7 shadow-none", viewMode === "grid" && "bg-background shadow-sm")}
             onClick={() => onViewModeChange("grid")}
           >
-            <Grid className="h-4 w-4" />
+            <Grid className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-6 w-6"
+            size="icon-sm"
+            className={cn("h-7 w-7 shadow-none", viewMode === "list" && "bg-background shadow-sm")}
             onClick={() => onViewModeChange("list")}
           >
-            <List className="h-4 w-4" />
+            <List className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 }

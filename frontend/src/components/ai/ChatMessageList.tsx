@@ -1,6 +1,7 @@
 import type { AiChatMessage } from "@/lib/api/aiChat";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { Bot, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 
 interface ChatMessageListProps {
   messages: AiChatMessage[];
@@ -12,60 +13,92 @@ interface ChatMessageListProps {
 export function ChatMessageList({
   messages,
   loading,
-  onReloadConversations,
-  reloadingConversations,
 }: ChatMessageListProps) {
   return (
-    <div className="flex h-full flex-col rounded border bg-card p-3 text-sm">
-      <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          {onReloadConversations && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full"
-              onClick={() => onReloadConversations()}
-              disabled={reloadingConversations}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${reloadingConversations ? "animate-spin" : ""}`}
-              />
-            </Button>
-          )}
+    <div className="flex flex-col gap-6 px-4 py-6">
+      {loading && messages.length === 0 && (
+        <div className="flex flex-col items-center justify-center min-h-[300px] text-muted-foreground/50 gap-3 animate-pulse">
+          <Bot className="h-8 w-8 opacity-20" />
+          <span className="text-xs">思考中...</span>
         </div>
-      </div>
-
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto pt-5">
-        {loading && messages.length === 0 && (
-          <div className="py-2 text-center text-xs text-muted-foreground">加载中...</div>
-        )}
-        {!loading && messages.length === 0 && (
-          <div className="py-2 text-center text-xs text-muted-foreground">暂无消息，发送一条试试。</div>
-        )}
-        {messages.map((m) => {
+      )}
+      {!loading && messages.length === 0 && (
+        <div className="flex flex-col items-center justify-center min-h-[300px] text-muted-foreground/50 gap-4">
+          <div className="p-4 rounded-full bg-primary/5 border border-primary/10">
+            <Bot className="h-8 w-8 text-primary/40" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium">AI 助手准备就绪</p>
+            <p className="text-xs opacity-70">发送消息开始对话</p>
+          </div>
+        </div>
+      )}
+      
+      {messages.map((m) => {
         const isAssistant = m.role === "assistant";
         const isSystem = m.role === "system";
+        const isUser = m.role === "user";
+
+        if (isSystem) {
+          return (
+            <div key={m.id} className="flex w-full justify-center my-2">
+              <div className="bg-muted/30 backdrop-blur-sm border border-white/5 rounded-full px-3 py-1 text-[10px] text-muted-foreground">
+                {m.content || "系统消息"}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div
             key={m.id}
-            className={`flex w-full ${isAssistant || isSystem ? "justify-start" : "justify-end"}`}
+            className={cn(
+              "flex w-full gap-3",
+              isUser ? "justify-end" : "justify-start"
+            )}
           >
+            {isAssistant && (
+              <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 border border-primary/10 flex items-center justify-center text-primary shadow-sm mt-1">
+                <Bot className="h-4 w-4" />
+              </div>
+            )}
+
             <div
-              className={`max-w-[80%] rounded px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
-                isSystem
-                  ? "bg-muted text-muted-foreground"
-                  : isAssistant
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-primary text-primary-foreground"
-              }`}
+              className={cn(
+                "relative max-w-[85%] md:max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-sm transition-all",
+                DS.radius.xl,
+                isUser
+                  ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm shadow-blue-500/20"
+                  : "bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md border border-black/5 dark:border-white/10 text-foreground rounded-tl-sm"
+              )}
             >
-              {m.content || (isSystem ? "(系统消息)" : "")}
+              {m.content}
             </div>
+
+            {isUser && (
+              <div className="shrink-0 h-8 w-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground mt-1">
+                <User className="h-4 w-4" />
+              </div>
+            )}
           </div>
         );
       })}
-      </div>
+      
+      {/* Loading Indicator at bottom */}
+      {loading && messages.length > 0 && (
+        <div className="flex w-full justify-start gap-3">
+           <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mt-1">
+              <Bot className="h-4 w-4" />
+           </div>
+           <div className={cn("px-4 py-3 bg-background/40 backdrop-blur-md border border-white/5 rounded-2xl rounded-tl-sm")}>
+             <div className="flex gap-1">
+               <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+               <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+               <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+             </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

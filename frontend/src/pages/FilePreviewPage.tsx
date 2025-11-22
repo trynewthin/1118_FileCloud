@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { getEntry, type FileEntry } from "@/lib/api/files";
 import { VideoPreview } from "@/components/preview/adapters/VideoPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
+import { GlassCard } from "@/components/common/GlassCard";
 
 export function FilePreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,9 +64,9 @@ export function FilePreviewPage() {
             {error}
           </div>
         ) : (
-          <div className="flex-1 bg-background border rounded-lg overflow-hidden shadow-sm relative">
+          <GlassCard variant="strong" className="flex-1 relative flex flex-col p-0">
              {renderPreviewer()}
-          </div>
+          </GlassCard>
         )}
       </div>
     </PageContainer>

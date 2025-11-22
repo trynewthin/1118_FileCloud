@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
+import { DS } from "@/lib/design-system";
+import { cn } from "@/lib/utils";
 
 export function AppHeader() {
   const { user, logout } = useAuth();
@@ -18,36 +20,57 @@ export function AppHeader() {
   const title = config.title ?? "FileCloud";
 
   return (
-    <header className="pointer-events-none relative z-10 flex h-0 items-start justify-center">
-      <div className="pointer-events-auto mt-4 w-full px-4 md:px-6">
-        <div className="flex h-12 items-center gap-3 rounded-full border bg-background/80 px-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="font-semibold text-sm truncate flex-1 md:flex-none pl-2">{title}</div>
-          <div className="hidden md:block flex-1" />
+    // 修改定位策略：使用 absolute 定位于父容器（Main Area）的顶部
+    // z-20 确保在内容之上
+    <header className="absolute top-0 left-0 right-0 z-20 flex justify-center pt-4 px-4 md:px-8 pointer-events-none">
+      <div className={cn(
+        // Header Bar 本体
+        "pointer-events-auto h-14 flex items-center gap-4 px-2 pr-2 w-full",
+        "border shadow-sm transition-all duration-300",
+        DS.radius.full,
+        DS.glass.strong
+      )}>
+        {/* Title Section */}
+        <div className={cn("flex-1 md:flex-none pl-4 truncate", DS.text.heading)}>
+          {title}
+        </div>
+        
+        {/* Action Placeholder (Spacer) */}
+        <div className="hidden md:block flex-1" />
 
-          <div className="flex items-center gap-2">
-            {user && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <div className="h-full w-full rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <User className="h-4 w-4" />
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>我的账户</DropdownMenuLabel>
-                  <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate max-w-[150px]">
-                    {user.username}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => logout()} className="text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    退出登录
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+        {/* User Profile */}
+        <div className="flex items-center gap-2 pr-1">
+          {config.actions && <div className="flex items-center gap-1 mr-2">{config.actions}</div>}
+          
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "h-9 w-9 transition-all hover:bg-primary/10",
+                    DS.radius.full
+                  )}
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/5 text-primary shadow-sm border border-primary/10">
+                    <User className="h-4 w-4" />
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className={DS.radius.lg}>
+                <DropdownMenuLabel>我的账户</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate max-w-[150px]">
+                  {user.username}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => logout()} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

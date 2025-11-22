@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/common/GlassButton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  GlassDialog,
+  GlassDialogContent,
+  GlassDialogDescription,
+  GlassDialogFooter,
+  GlassDialogHeader,
+  GlassDialogTitle,
+  GlassDialogTrigger,
+} from "@/components/common/GlassDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, FolderSearch } from "lucide-react";
@@ -46,61 +47,61 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button className="gap-2">
+      <GlassDialog open={open} onOpenChange={setOpen}>
+        <GlassDialogTrigger asChild>
+          <GlassButton className="gap-2" glassVariant="lite">
             <Plus className="h-4 w-4" />
             新建文件库
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+          </GlassButton>
+        </GlassDialogTrigger>
+        <GlassDialogContent className="sm:max-w-[450px]" glowVariant="primary">
           <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>新建文件库</DialogTitle>
-              <DialogDescription>
+            <GlassDialogHeader>
+              <GlassDialogTitle>新建文件库</GlassDialogTitle>
+              <GlassDialogDescription>
                 添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="rootPath" className="text-right">
-                  根路径
+              </GlassDialogDescription>
+            </GlassDialogHeader>
+            <div className="grid gap-5 py-6">
+              <div className="grid gap-2">
+                <Label htmlFor="rootPath">
+                  根路径 <span className="text-destructive">*</span>
                 </Label>
-                <div className="col-span-3 flex gap-2">
+                <div className="flex gap-2">
                   <Input
                     id="rootPath"
                     value={rootPath}
                     onChange={(e) => setRootPath(e.target.value)}
                     placeholder="例如: D:\Photos"
-                    className="flex-1"
+                    className="flex-1 bg-background/50 border-white/10 focus:bg-background/80"
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setPickerOpen(true)} title="选择服务器目录">
+                  <GlassButton type="button" glassVariant="ghost" size="icon" onClick={() => setPickerOpen(true)} title="选择服务器目录">
                     <FolderSearch className="h-4 w-4" />
-                  </Button>
+                  </GlassButton>
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="displayName" className="text-right">
+              <div className="grid gap-2">
+                <Label htmlFor="displayName">
                   显示名称
                 </Label>
                 <Input
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="可选"
-                  className="col-span-3"
+                  placeholder="可选，默认为未命名"
+                  className="bg-background/50 border-white/10 focus:bg-background/80"
                 />
               </div>
             </div>
             {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-            <DialogFooter>
+            <GlassDialogFooter>
               <Button type="submit" disabled={loading}>
-                {loading ? "创建中..." : "创建"}
+                {loading ? "创建中..." : "立即创建"}
               </Button>
-            </DialogFooter>
+            </GlassDialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </GlassDialogContent>
+      </GlassDialog>
 
       <FolderPickerDialog
         open={pickerOpen}

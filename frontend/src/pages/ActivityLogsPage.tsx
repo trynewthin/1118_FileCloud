@@ -1,6 +1,7 @@
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/common/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 import { RefreshCw, User, Activity } from "lucide-react";
 import {
   Table,
@@ -20,19 +21,19 @@ export function ActivityLogsPage() {
       showBack
       action={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
+          <GlassButton variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
              刷新
-          </Button>
+          </GlassButton>
         </div>
       }
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <div className="rounded-md border bg-card">
+      <GlassCard variant="lite" className="p-0">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent border-b border-white/10">
               <TableHead>时间</TableHead>
               <TableHead>用户</TableHead>
               <TableHead>动作</TableHead>
@@ -49,7 +50,7 @@ export function ActivityLogsPage() {
               </TableRow>
             ) : (
               items.map((log) => (
-                <TableRow key={log.id}>
+                <TableRow key={log.id} className="hover:bg-white/5 border-b border-white/5">
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(log.created_at).toLocaleString()}
                   </TableCell>
@@ -79,7 +80,7 @@ export function ActivityLogsPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </GlassCard>
     </PageContainer>
   );
 }
