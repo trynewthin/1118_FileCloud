@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FileEntry } from "@/lib/api/files";
+import { XIcon, Check } from "lucide-react";
 
 interface RenameDialogProps {
   entry: FileEntry | null;
@@ -33,8 +33,10 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
     }
   }, [open, entry]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!entry) return;
     
     const trimmed = newName.trim();
@@ -62,8 +64,8 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[425px]" showCloseButton={false}>
+        <form onSubmit={(e) => handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>重命名</DialogTitle>
             <DialogDescription>
@@ -84,13 +86,14 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
             {/* 如果需要支持加密目录操作，可以在这里加密码输入框，或者由外层 logic 决定是否显示 */}
           </div>
           {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              取消
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "提交中..." : "确定"}
-            </Button>
+          <DialogFooter
+            leftButtonIcon={<XIcon className="h-4 w-4" />}
+            onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
+            leftButtonGlassVariant="ghost"
+            rightButtonIcon={<Check className="h-4 w-4" />}
+            onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+            rightButtonGlassVariant="lite"
+          >
           </DialogFooter>
         </form>
       </DialogContent>

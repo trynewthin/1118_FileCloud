@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { FileEntry } from "@/lib/api/files";
+import { XIcon, Trash2 } from "lucide-react";
 
 interface DeleteDialogProps {
   entry: FileEntry | null;
@@ -29,8 +29,10 @@ export function DeleteDialog({ entry, open, onOpenChange, onSubmit }: DeleteDial
     }
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!entry) return;
 
     setLoading(true);
@@ -47,8 +49,8 @@ export function DeleteDialog({ entry, open, onOpenChange, onSubmit }: DeleteDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[425px]" showCloseButton={false}>
+        <form onSubmit={(e) => handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
@@ -69,13 +71,14 @@ export function DeleteDialog({ entry, open, onOpenChange, onSubmit }: DeleteDial
           </div>
           */}
           {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              取消
-            </Button>
-            <Button type="submit" variant="destructive" disabled={loading}>
-              {loading ? "删除中..." : "删除"}
-            </Button>
+          <DialogFooter
+            leftButtonIcon={<XIcon className="h-4 w-4" />}
+            onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
+            leftButtonGlassVariant="ghost"
+            rightButtonIcon={<Trash2 className="h-4 w-4" />}
+            onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+            rightButtonGlassVariant="lite"
+          >
           </DialogFooter>
         </form>
       </DialogContent>

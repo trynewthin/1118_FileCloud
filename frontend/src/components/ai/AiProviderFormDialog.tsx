@@ -90,7 +90,7 @@ export function AiProviderFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
-      <DialogContent>
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{editingProvider ? "编辑供应商" : "新建供应商"}</DialogTitle>
         </DialogHeader>

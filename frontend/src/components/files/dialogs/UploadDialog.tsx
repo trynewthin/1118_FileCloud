@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { XIcon, Check } from "lucide-react";
 
 interface UploadDialogProps {
   open: boolean;
@@ -21,8 +21,10 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!files || files.length === 0) {
       setError("请选择要上传的文件");
       return;
@@ -48,8 +50,8 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[480px]" showCloseButton={false}>
+        <form onSubmit={(e) => handleSubmit(e)}>
           <DialogHeader>
             <DialogTitle>上传文件</DialogTitle>
             <DialogDescription>
@@ -76,18 +78,14 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
 
           {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "上传中..." : "开始上传"}
-            </Button>
+          <DialogFooter
+            leftButtonIcon={<XIcon className="h-4 w-4" />}
+            onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
+            leftButtonGlassVariant="ghost"
+            rightButtonIcon={<Check className="h-4 w-4" />}
+            onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+            rightButtonGlassVariant="lite"
+          >
           </DialogFooter>
         </form>
       </DialogContent>

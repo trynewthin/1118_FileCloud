@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import type { AiChatModel, AiProvider, CreateAiChatModelRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Check } from "lucide-react";
 
 interface AiModelFormDialogProps {
   open: boolean;
@@ -13,6 +23,7 @@ interface AiModelFormDialogProps {
   providers: AiProvider[];
   editingModel?: AiChatModel;
   onSubmit: (data: CreateAiChatModelRequest) => Promise<void>;
+  onDelete?: (id: number) => Promise<void>;
 }
 
 export function AiModelFormDialog({
@@ -21,6 +32,7 @@ export function AiModelFormDialog({
   providers,
   editingModel,
   onSubmit,
+  onDelete,
 }: AiModelFormDialogProps) {
   const [key, setKey] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -31,6 +43,8 @@ export function AiModelFormDialog({
   const [allowOverrideContextLimit, setAllowOverrideContextLimit] = useState(true);
   const [isEnabled, setIsEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (editingModel) {
@@ -81,9 +95,20 @@ export function AiModelFormDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editingModel || !onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete(editingModel.id);
+      onOpenChange(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !submitting && onOpenChange(v)}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{editingModel ? "编辑模型" : "新建模型"}</DialogTitle>
         </DialogHeader>
@@ -169,12 +194,38 @@ export function AiModelFormDialog({
             <Label htmlFor="model-enabled">启用</Label>
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {editingModel ? "保存" : "创建"}
-          </Button>
+        <DialogFooter
+          leftButtonIcon={editingModel && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
+          onLeftButtonClick={editingModel && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
+          leftButtonGlassVariant="ghost"
+          rightButtonIcon={<Check className="h-4 w-4" />}
+          onRightButtonClick={handleSubmit}
+          rightButtonGlassVariant="lite"
+        >
         </DialogFooter>
       </DialogContent>
+      {editingModel && onDelete && (
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除模型</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除该模型吗？此操作不可恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Dialog>
   );
 }

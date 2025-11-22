@@ -16,8 +16,10 @@ import { AiModelFormDialog } from "@/components/ai/AiModelFormDialog";
 import { AiPromptList } from "@/components/ai/AiPromptList";
 import { AiPromptFormDialog } from "@/components/ai/AiPromptFormDialog";
 import type { AiProvider, AiChatModel, AiChatPrompt } from "@/lib/api/aiConfig";
-import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { SettingsLinkCard } from "@/components/common/SettingsLinkCard";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { XIcon } from "lucide-react";
 
 export function AiSettingsPage() {
   const {
@@ -50,6 +52,8 @@ export function AiSettingsPage() {
 
   const [promptDialogOpen, setPromptDialogOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<AiChatPrompt | undefined>(undefined);
+
+  const [conversationDialogOpen, setConversationDialogOpen] = useState(false);
 
   const defaultModelSetting = settings.find((s) => s.key === "ai.chat.defaultModelId");
   const parsedDefaultModelId = defaultModelSetting ? Number(defaultModelSetting.value) : NaN;
@@ -104,12 +108,6 @@ export function AiSettingsPage() {
     setModelDialogOpen(true);
   };
 
-  const handleDeleteModel = async (id: number) => {
-    if (confirm("确定要删除该模型吗？")) {
-      await deleteModel(id);
-    }
-  };
-
   const handleCreatePrompt = () => {
     setEditingPrompt(undefined);
     setPromptDialogOpen(true);
@@ -152,7 +150,7 @@ export function AiSettingsPage() {
       >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <GlassCard variant="lite" className="p-4 md:p-5 border-white/10 space-y-4">
+      <div className="flex-1 min-h-0 flex flex-col space-y-4">
         <TabsContent value="providers" className="space-y-4">
           <div className="flex justify-end">
             <GlassButton
@@ -169,64 +167,30 @@ export function AiSettingsPage() {
         </TabsContent>
 
         <TabsContent value="models" className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>默认会话模型：</span>
-              <Select value={defaultModelSelectValue} onValueChange={handleChangeDefaultModel}>
-                <SelectTrigger className="h-8 w-56">
-                  <SelectValue placeholder="请选择默认模型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">不设置默认模型</SelectItem>
-                  {models
-                    .filter((m) => m.is_enabled)
-                    .map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.display_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button size="sm" onClick={handleCreateModel}>
-              <Plus className="mr-2 h-4 w-4" />
-              新建模型
-            </Button>
-          </div>
+          <SettingsLinkCard
+            title="会话配置"
+            onClick={() => setConversationDialogOpen(true)}
+          />
 
-          <div className="rounded-md border bg-muted/40 p-4 space-y-3">
-            <div className="text-sm font-medium">会话命名配置</div>
-            <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)] items-start">
-              <div className="space-y-1">
-                <Label htmlFor="naming-context">命名上下文条数</Label>
-                <Input
-                  id="naming-context"
-                  type="number"
-                  min={1}
-                  value={namingContextLocal}
-                  onChange={(e) => setNamingContextLocal(e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="naming-prompt">命名提示词</Label>
-                <Textarea
-                  id="naming-prompt"
-                  value={namingPromptLocal}
-                  onChange={(e) => setNamingPromptLocal(e.target.value)}
-                  className="min-h-[80px] text-sm"
-                  placeholder="可选。若不填写，将使用内置的中文默认提示进行会话命名。"
-                />
-              </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">模型管理</div>
+              <GlassButton
+                glassVariant="lite"
+                size="sm"
+                className="gap-2 px-3"
+                onClick={handleCreateModel}
+              >
+                <Plus className="h-4 w-4" />
+                <span>新建模型</span>
+              </GlassButton>
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={handleSaveNamingConfig}>
-                保存命名配置
-              </Button>
-            </div>
+            <AiModelList
+              models={models}
+              providers={providers}
+              onEdit={handleEditModel}
+            />
           </div>
-
-          <AiModelList models={models} providers={providers} onEdit={handleEditModel} onDelete={handleDeleteModel} />
         </TabsContent>
 
         <TabsContent value="prompts" className="space-y-4">
@@ -247,7 +211,72 @@ export function AiSettingsPage() {
             onSetDefault={handleSetDefaultPrompt}
           />
         </TabsContent>
-      </GlassCard>
+      </div>
+
+      <Dialog open={conversationDialogOpen} onOpenChange={setConversationDialogOpen}>
+        <DialogContent showCloseButton={false}>
+          <div className="space-y-4 py-2">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>默认会话模型：</span>
+                <Select value={defaultModelSelectValue} onValueChange={handleChangeDefaultModel}>
+                  <SelectTrigger className="h-8 w-56">
+                    <SelectValue placeholder="请选择默认模型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不设置默认模型</SelectItem>
+                    {models
+                      .filter((m) => m.is_enabled)
+                      .map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.display_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="rounded-md border bg-muted/40 p-4 space-y-3">
+              <div className="text-sm font-medium">会话命名配置</div>
+              <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)] items-start">
+                <div className="space-y-1">
+                  <Label htmlFor="naming-context">命名上下文条数</Label>
+                  <Input
+                    id="naming-context"
+                    type="number"
+                    min={1}
+                    value={namingContextLocal}
+                    onChange={(e) => setNamingContextLocal(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="naming-prompt">命名提示词</Label>
+                  <Textarea
+                    id="naming-prompt"
+                    value={namingPromptLocal}
+                    onChange={(e) => setNamingPromptLocal(e.target.value)}
+                    className="min-h-[80px] text-sm"
+                    placeholder="可选。若不填写，将使用内置的中文默认提示进行会话命名。"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" onClick={handleSaveNamingConfig}>
+                  保存命名配置
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter
+            rightButtonIcon={<XIcon className="h-4 w-4" />}
+            onRightButtonClick={() => setConversationDialogOpen(false)}
+            rightButtonGlassVariant="ghost"
+          >
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AiProviderFormDialog
         open={providerDialogOpen}
@@ -276,6 +305,9 @@ export function AiSettingsPage() {
           } else {
             await createModel(data);
           }
+        }}
+        onDelete={async (id: number) => {
+          await deleteModel(id);
         }}
       />
 

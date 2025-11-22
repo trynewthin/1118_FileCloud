@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trash2, RotateCcw, XCircle } from "lucide-react";
+import { Trash2, RotateCcw, XCircle, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -89,7 +89,7 @@ export function RecycleBinDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] h-[520px] flex flex-col">
+      <DialogContent className="sm:max-w-[700px] h-[520px] flex flex-col" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="h-4 w-4" />
@@ -165,10 +165,11 @@ export function RecycleBinDialog({
           )}
         </div>
 
-        <DialogFooter className="justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            关闭
-          </Button>
+        <DialogFooter
+          rightButtonIcon={<XIcon className="h-4 w-4" />}
+          onRightButtonClick={() => onOpenChange(false)}
+          rightButtonGlassVariant="ghost"
+        >
         </DialogFooter>
       </DialogContent>
     </Dialog>

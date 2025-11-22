@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FolderSearch } from "lucide-react";
+import { FolderSearch, XIcon, Check } from "lucide-react";
 import type { FileEntry } from "@/lib/api/files";
 import { FolderPickerDialog } from "./FolderPickerDialog";
 
@@ -39,8 +39,10 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
     }
   }, [open, entry, mode]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!entry) return;
 
     setLoading(true);
@@ -62,8 +64,8 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={handleSubmit}>
+        <DialogContent className="sm:max-w-[425px]" showCloseButton={false}>
+          <form onSubmit={(e) => handleSubmit(e)}>
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
               <DialogDescription>
@@ -99,13 +101,14 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
               )}
             </div>
             {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                取消
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "处理中..." : "确定"}
-              </Button>
+            <DialogFooter
+              leftButtonIcon={<XIcon className="h-4 w-4" />}
+              onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
+              leftButtonGlassVariant="ghost"
+              rightButtonIcon={<Check className="h-4 w-4" />}
+              onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+              rightButtonGlassVariant="lite"
+            >
             </DialogFooter>
           </form>
         </DialogContent>

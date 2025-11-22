@@ -75,7 +75,7 @@ export function AiPromptFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
-      <DialogContent>
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{editingPrompt ? "编辑提示词" : "新建提示词"}</DialogTitle>
         </DialogHeader>

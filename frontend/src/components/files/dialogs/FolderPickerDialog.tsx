@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Folder, ChevronRight, Home } from "lucide-react";
+import { Folder, ChevronRight, Home, XIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -156,7 +156,7 @@ export function FolderPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] h-[500px] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] h-[500px] flex flex-col" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{title || "选择文件夹"}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
@@ -206,13 +206,16 @@ export function FolderPickerDialog({
           )}
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between gap-2">
+        <DialogFooter
+          leftButtonIcon={<XIcon className="h-4 w-4" />}
+          onLeftButtonClick={() => onOpenChange(false)}
+          leftButtonGlassVariant="ghost"
+          rightButtonIcon={<Check className="h-4 w-4" />}
+          onRightButtonClick={handleSubmit}
+          rightButtonGlassVariant="lite"
+        >
           <div className="text-xs text-muted-foreground truncate flex-1">
              {selectedId ? "已选择: " + (items.find(i => i.id === selectedId)?.name) : "选择当前目录"}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button onClick={handleSubmit}>确定</Button>
           </div>
         </DialogFooter>
       </DialogContent>

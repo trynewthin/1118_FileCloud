@@ -3,11 +3,12 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, Save, ChevronRight } from "lucide-react";
+import { RefreshCw, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { SettingsLinkCard } from "@/components/common/SettingsLinkCard";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -95,36 +96,18 @@ export function SettingsPage() {
       <div className="mt-8 space-y-3">
         <div className="text-sm font-medium text-muted-foreground">系统页面</div>
         <div className="space-y-2">
-          <GlassCard
-            variant="lite"
-            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
+          <SettingsLinkCard
+            title="任务管理"
             onClick={() => navigate("/settings/tasks")}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="text-sm font-medium">任务管理</div>
-            <ChevronRight className="h-4 w-4" />
-          </GlassCard>
-          <GlassCard
-            variant="lite"
-            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
+          />
+          <SettingsLinkCard
+            title="操作日志"
             onClick={() => navigate("/settings/logs")}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="text-sm font-medium">操作日志</div>
-            <ChevronRight className="h-4 w-4" />
-          </GlassCard>
-          <GlassCard
-            variant="lite"
-            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
+          />
+          <SettingsLinkCard
+            title="AI 设置"
             onClick={() => navigate("/settings/ai")}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="text-sm font-medium">AI 设置</div>
-            <ChevronRight className="h-4 w-4" />
-          </GlassCard>
+          />
         </div>
       </div>
     </PageContainer>

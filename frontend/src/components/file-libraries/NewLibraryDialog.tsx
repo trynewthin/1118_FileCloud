@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
-import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/common/GlassButton";
 import {
   Dialog,
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, FolderSearch } from "lucide-react";
+import { Plus, FolderSearch, XIcon, Check } from "lucide-react";
 import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialog";
 
 interface NewLibraryDialogProps {
@@ -28,8 +27,10 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   const [error, setError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!rootPath) return;
     
     setError("");
@@ -54,8 +55,8 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
             新建文件库
           </GlassButton>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[450px]">
-          <form onSubmit={handleSubmit}>
+        <DialogContent className="sm:max-w-[450px]" showCloseButton={false}>
+          <form onSubmit={(e) => handleSubmit(e)}>
             <DialogHeader>
               <DialogTitle>新建文件库</DialogTitle>
               <DialogDescription>
@@ -94,10 +95,14 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
               </div>
             </div>
             {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading ? "创建中..." : "立即创建"}
-              </Button>
+            <DialogFooter
+              leftButtonIcon={<XIcon className="h-4 w-4" />}
+              onLeftButtonClick={() => { if (!loading) setOpen(false); }}
+              leftButtonGlassVariant="ghost"
+              rightButtonIcon={<Check className="h-4 w-4" />}
+              onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+              rightButtonGlassVariant="lite"
+            >
             </DialogFooter>
           </form>
         </DialogContent>
