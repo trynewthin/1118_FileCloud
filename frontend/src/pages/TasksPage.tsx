@@ -2,8 +2,8 @@ import { useTasks } from "@/hooks/useTasks";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TaskItem } from "@/components/tasks/TaskItem";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
+import { GlassButton } from "@/components/common/GlassButton";
 
 export function TasksPage() {
   const { items, loading, error, reload, status, setStatus } = useTasks({
@@ -17,10 +17,16 @@ export function TasksPage() {
       showBack
       action={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-             刷新
-          </Button>
+          <GlassButton
+            glassVariant="lite"
+            size="sm"
+            onClick={() => reload()}
+            disabled={loading}
+            className="gap-2 px-3"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span>刷新</span>
+          </GlassButton>
         </div>
       }
     >

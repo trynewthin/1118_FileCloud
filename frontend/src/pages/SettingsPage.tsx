@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { RefreshCw, Save, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -40,10 +42,16 @@ export function SettingsPage() {
     <PageContainer
       title="系统设置"
       action={
-        <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-           刷新
-        </Button>
+        <GlassButton
+          glassVariant="lite"
+          size="sm"
+          onClick={() => reload()}
+          disabled={loading}
+          className="gap-2 px-3"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>刷新</span>
+        </GlassButton>
       }
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
@@ -53,7 +61,11 @@ export function SettingsPage() {
           <div className="col-span-2 text-center text-muted-foreground">加载中...</div>
         ) : (
           items.map((item) => (
-            <div key={item.key} className="flex flex-col gap-2 p-4 border rounded-lg bg-card">
+            <GlassCard
+              key={item.key}
+              variant="lite"
+              className="flex flex-col gap-2 p-4 border-white/10"
+            >
               <Label htmlFor={item.key} className="font-medium">{formatSettingKey(item.key)}</Label>
               <div className="flex gap-2">
                 <Input
@@ -72,7 +84,7 @@ export function SettingsPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground font-mono">{item.key}</p>
-            </div>
+            </GlassCard>
           ))
         )}
         {!loading && items.length === 0 && (
@@ -83,33 +95,36 @@ export function SettingsPage() {
       <div className="mt-8 space-y-3">
         <div className="text-sm font-medium text-muted-foreground">系统页面</div>
         <div className="space-y-2">
-          <div
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+          <GlassCard
+            variant="lite"
+            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
             onClick={() => navigate("/settings/tasks")}
             role="button"
             tabIndex={0}
           >
             <div className="text-sm font-medium">任务管理</div>
             <ChevronRight className="h-4 w-4" />
-          </div>
-          <div
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+          </GlassCard>
+          <GlassCard
+            variant="lite"
+            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
             onClick={() => navigate("/settings/logs")}
             role="button"
             tabIndex={0}
           >
             <div className="text-sm font-medium">操作日志</div>
             <ChevronRight className="h-4 w-4" />
-          </div>
-          <div
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-            onClick={() => navigate("/settings/ai")}   
+          </GlassCard>
+          <GlassCard
+            variant="lite"
+            className="flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors"
+            onClick={() => navigate("/settings/ai")}
             role="button"
             tabIndex={0}
           >
             <div className="text-sm font-medium">AI 设置</div>
             <ChevronRight className="h-4 w-4" />
-          </div>
+          </GlassCard>
         </div>
       </div>
     </PageContainer>

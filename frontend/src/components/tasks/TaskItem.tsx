@@ -1,6 +1,7 @@
 import { Progress } from "@/components/ui/progress";
 import type { TaskRecord } from "@/lib/api/tasks";
 import { CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import { GlassCard } from "@/components/common/GlassCard";
 
 interface TaskItemProps {
   task: TaskRecord;
@@ -31,7 +32,7 @@ export function TaskItem({ task }: TaskItemProps) {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <GlassCard variant="lite" className="p-4 border-white/10">
       <div className="flex items-start gap-4">
         <div className="h-10 w-10 flex shrink-0 items-center justify-center rounded-full bg-muted/20">
           {getStatusIcon()}
@@ -62,7 +63,7 @@ export function TaskItem({ task }: TaskItemProps) {
           )}
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 

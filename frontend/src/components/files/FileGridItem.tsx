@@ -9,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 
 interface FileGridItemProps {
   entry: FileEntry;
@@ -47,18 +48,19 @@ export function FileGridItem({
     : undefined;
 
   return (
-    <div
+    <GlassCard
+      variant="lite"
+      hoverEffect
       className={cn(
-        "group relative flex flex-col items-center justify-between rounded-lg border bg-card p-4 text-center transition-colors hover:bg-accent/50",
-        selected && "border-primary bg-accent",
-        "cursor-pointer"
+        "group relative flex flex-col items-center justify-between p-4 text-center cursor-pointer transition-all duration-300 border border-white/10",
+        selected && "border-primary/60 ring-2 ring-primary/30"
       )}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
       <div className="flex flex-1 flex-col items-center gap-3 w-full">
         {/* 统一的缩略图框架：固定比例 + 边框 */}
-        <div className="w-full max-h-32 aspect-[4/3] rounded-md border bg-muted/20 overflow-hidden flex items-center justify-center">
+        <div className="w-full max-h-32 aspect-[4/3] rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
           {hasThumbnail && !thumbnailError ? (
             <img
               src={thumbnailUrl}
@@ -96,9 +98,14 @@ export function FileGridItem({
       <div className="absolute bottom-2 right-2 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <GlassButton
+              glassVariant="lite"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreVertical className="h-4 w-4" />
-            </Button>
+            </GlassButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {!isDir && (
@@ -129,7 +136,7 @@ export function FileGridItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 

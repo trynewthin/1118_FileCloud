@@ -149,3 +149,8 @@
     background-color: rgba(150, 150, 150, 0.4);
   }
 }
+
+::view-transition-old(root), ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}

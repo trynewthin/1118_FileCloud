@@ -30,7 +30,7 @@ export function ActivityLogsPage() {
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <GlassCard variant="lite" className="p-0">
+      <GlassCard variant="lite" className="p-0 border-white/10 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-white/10">

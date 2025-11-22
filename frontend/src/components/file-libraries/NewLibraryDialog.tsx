@@ -3,14 +3,14 @@ import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/common/GlassButton";
 import {
-  GlassDialog,
-  GlassDialogContent,
-  GlassDialogDescription,
-  GlassDialogFooter,
-  GlassDialogHeader,
-  GlassDialogTitle,
-  GlassDialogTrigger,
-} from "@/components/common/GlassDialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, FolderSearch } from "lucide-react";
@@ -47,21 +47,21 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
 
   return (
     <>
-      <GlassDialog open={open} onOpenChange={setOpen}>
-        <GlassDialogTrigger asChild>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
           <GlassButton className="gap-2" glassVariant="lite">
             <Plus className="h-4 w-4" />
             新建文件库
           </GlassButton>
-        </GlassDialogTrigger>
-        <GlassDialogContent className="sm:max-w-[450px]" glowVariant="primary">
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[450px]">
           <form onSubmit={handleSubmit}>
-            <GlassDialogHeader>
-              <GlassDialogTitle>新建文件库</GlassDialogTitle>
-              <GlassDialogDescription>
+            <DialogHeader>
+              <DialogTitle>新建文件库</DialogTitle>
+              <DialogDescription>
                 添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
-              </GlassDialogDescription>
-            </GlassDialogHeader>
+              </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-5 py-6">
               <div className="grid gap-2">
                 <Label htmlFor="rootPath">
@@ -94,14 +94,14 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
               </div>
             </div>
             {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-            <GlassDialogFooter>
+            <DialogFooter>
               <Button type="submit" disabled={loading}>
                 {loading ? "创建中..." : "立即创建"}
               </Button>
-            </GlassDialogFooter>
+            </DialogFooter>
           </form>
-        </GlassDialogContent>
-      </GlassDialog>
+        </DialogContent>
+      </Dialog>
 
       <FolderPickerDialog
         open={pickerOpen}

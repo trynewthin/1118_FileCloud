@@ -9,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 
 interface FileListItemProps {
   entry: FileEntry;
@@ -47,18 +48,19 @@ export function FileListItem({
     : undefined;
 
   return (
-    <div
+    <GlassCard
+      variant="lite"
+      hoverEffect
       className={cn(
-        "group flex items-center justify-between rounded-md border bg-card px-4 py-3 transition-colors hover:bg-accent/50",
-        selected && "border-primary bg-accent",
-        "cursor-pointer"
+        "group flex items-center justify-between px-4 py-3 cursor-pointer border border-white/10 transition-all duration-300",
+        selected && "border-primary/60 ring-2 ring-primary/30"
       )}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* 左侧统一缩略图框架 */}
-        <div className="h-14 w-20 flex items-center justify-center overflow-hidden rounded-md border bg-muted/20">
+        <div className="h-14 w-20 flex items-center justify-center overflow-hidden rounded-lg bg-background/40 border border-white/10">
           {hasThumbnail && !thumbnailError ? (
             <img
               src={thumbnailUrl}
@@ -96,9 +98,14 @@ export function FileListItem({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <GlassButton
+            glassVariant="lite"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
             <MoreVertical className="h-4 w-4" />
-          </Button>
+          </GlassButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {!isDir && (
@@ -128,7 +135,7 @@ export function FileListItem({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </GlassCard>
   );
 }
 

@@ -16,6 +16,8 @@ import { AiModelFormDialog } from "@/components/ai/AiModelFormDialog";
 import { AiPromptList } from "@/components/ai/AiPromptList";
 import { AiPromptFormDialog } from "@/components/ai/AiPromptFormDialog";
 import type { AiProvider, AiChatModel, AiChatPrompt } from "@/lib/api/aiConfig";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 
 export function AiSettingsPage() {
   const {
@@ -139,22 +141,29 @@ export function AiSettingsPage() {
       title="AI 设置"
       showBack
       action={
-        <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          刷新
-        </Button>
+        <GlassButton
+          glassVariant="lite"
+          size="sm"
+          onClick={() => reload()}
+          disabled={loading}
+          className="gap-2 px-3"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>刷新</span>
+        </GlassButton>
       }
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
+      <GlassCard variant="lite" className="p-4 md:p-5 border-white/10 space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList>
           <TabsTrigger value="providers">供应商</TabsTrigger>
           <TabsTrigger value="models">模型</TabsTrigger>
           <TabsTrigger value="prompts">提示词</TabsTrigger>
-        </TabsList>
+          </TabsList>
 
-        <TabsContent value="providers" className="space-y-4">
+          <TabsContent value="providers" className="space-y-4">
           <div className="flex justify-end">
             <Button size="sm" onClick={handleCreateProvider}>
               <Plus className="mr-2 h-4 w-4" />
@@ -164,7 +173,7 @@ export function AiSettingsPage() {
           <AiProviderList providers={providers} onEdit={handleEditProvider} onDelete={handleDeleteProvider} />
         </TabsContent>
 
-        <TabsContent value="models" className="space-y-4">
+          <TabsContent value="models" className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>默认会话模型：</span>
@@ -225,7 +234,7 @@ export function AiSettingsPage() {
           <AiModelList models={models} providers={providers} onEdit={handleEditModel} onDelete={handleDeleteModel} />
         </TabsContent>
 
-        <TabsContent value="prompts" className="space-y-4">
+          <TabsContent value="prompts" className="space-y-4">
           <div className="flex justify-end">
             <Button size="sm" onClick={handleCreatePrompt}>
               <Plus className="mr-2 h-4 w-4" />
@@ -233,8 +242,9 @@ export function AiSettingsPage() {
             </Button>
           </div>
           <AiPromptList prompts={prompts} onEdit={handleEditPrompt} onDelete={handleDeletePrompt} onSetDefault={handleSetDefaultPrompt} />
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </GlassCard>
 
       <AiProviderFormDialog
         open={providerDialogOpen}

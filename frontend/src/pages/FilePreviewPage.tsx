@@ -52,9 +52,11 @@ export function FilePreviewPage() {
     return <DefaultPreview entry={entry} />;
   };
 
+  const pageTitle = entry ? entry.original_name : "文件预览";
+
   return (
-    <PageContainer title="文件预览" showBack>
-      <div className="flex-1 flex flex-col min-h-0 h-full">
+    <PageContainer title={pageTitle} showBack>
+      <div className="flex flex-col min-h-0">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             加载中...
@@ -64,8 +66,11 @@ export function FilePreviewPage() {
             {error}
           </div>
         ) : (
-          <GlassCard variant="strong" className="flex-1 relative flex flex-col p-0">
-             {renderPreviewer()}
+          <GlassCard
+            variant="strong"
+            className="relative flex flex-col p-0 max-w-5xl w-full mx-auto"
+          >
+            {renderPreviewer()}
           </GlassCard>
         )}
       </div>

@@ -68,7 +68,7 @@ export function ChatMessageList({
                 "relative max-w-[85%] md:max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-sm transition-all",
                 DS.radius.xl,
                 isUser
-                  ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm shadow-blue-500/20"
+                  ? "bg-linear-to-br from-blue-500 to-blue-600 text-white rounded-tr-sm shadow-blue-500/20"
                   : "bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md border border-black/5 dark:border-white/10 text-foreground rounded-tl-sm"
               )}
             >

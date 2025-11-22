@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
 import { ArrowLeft } from "lucide-react";
-import { DS } from "@/lib/design-system";
 import { GlassButton } from "@/components/common/GlassButton";
+import { DS } from "@/lib/design-system";
 
 interface PageContainerProps extends PropsWithChildren {
   title?: string;
@@ -39,9 +39,9 @@ export const PageContainer: FC<PageContainerProps> = ({
           <div className="flex items-center gap-2">
             {showBack && (
               <GlassButton
-                glassVariant="ghost"
+                glassVariant="lite"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground"
+                className="h-9 w-9 rounded-full text-foreground hover:text-primary"
                 onClick={() => navigate(-1)}
                 title="返回"
               >
@@ -54,7 +54,7 @@ export const PageContainer: FC<PageContainerProps> = ({
       )}
 
       {/* Content Area */}
-      <div className="relative z-10 flex-1 min-h-0 h-full flex flex-col pb-3 md:pb-0">
+      <div className={cn(DS.layout.pageBody)}>
         {children}
       </div>
     </div>
