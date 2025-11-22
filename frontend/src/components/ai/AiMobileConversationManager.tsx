@@ -1,7 +1,7 @@
 import type { AiChatConversation } from "@/lib/api/aiChat";
-import type { AiChatModel } from "@/lib/api/aiConfig";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AiMobileConversationManagerProps {
   conversations: AiChatConversation[];
@@ -9,8 +9,6 @@ interface AiMobileConversationManagerProps {
   loading: boolean;
   onSelect: (id: number) => void;
   onNewConversation: () => void;
-  models: AiChatModel[];
-  onChangeModel: (modelId: number) => void;
 }
 
 export function AiMobileConversationManager({
@@ -19,76 +17,50 @@ export function AiMobileConversationManager({
   loading,
   onSelect,
   onNewConversation,
-  models,
-  onChangeModel,
 }: AiMobileConversationManagerProps) {
   const hasConversations = conversations.length > 0;
-  const currentConversation = conversations.find((c) => c.id === currentId) ?? null;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          {hasConversations ? (
-            <Select
-              value={currentConversation ? String(currentConversation.id) : undefined}
-              onValueChange={(value) => {
-                const id = Number(value);
-                if (!Number.isInteger(id)) return;
-                onSelect(id);
-              }}
-              disabled={loading}
-            >
-              <SelectTrigger className="h-8 w-full text-xs">
-                <SelectValue placeholder={loading ? "加载会话中..." : "选择会话"} />
-              </SelectTrigger>
-              <SelectContent>
-                {conversations.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)} className="text-xs">
-                    {c.title || `会话 #${c.id}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <span>{loading ? "加载会话中..." : "暂无会话"}</span>
-          )}
-        </div>
+    <Card className="flex flex-col gap-2 px-3 py-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-foreground">会话列表</span>
         <Button size="sm" className="shrink-0" onClick={onNewConversation} disabled={loading}>
           新会话
         </Button>
       </div>
 
-      {currentConversation && (
-        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-          <span className="shrink-0">模型：</span>
-          <Select
-            value={String(currentConversation.model_id)}
-            onValueChange={(value) => {
-              const modelId = Number(value);
-              if (!Number.isInteger(modelId) || modelId <= 0) return;
-              onChangeModel(modelId);
-            }}
-          >
-            <SelectTrigger className="h-8 flex-1 min-w-0 text-xs">
-              <SelectValue placeholder="选择模型" />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((m) => (
-                <SelectItem
-                  key={m.id}
-                  value={String(m.id)}
-                  disabled={!m.is_enabled}
-                  className="text-xs"
-                >
-                  {m.display_name}
-                  {!m.is_enabled ? "（已禁用）" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {loading && !hasConversations && (
+        <div className="py-3 text-center text-[11px] text-muted-foreground">加载中...</div>
       )}
-    </div>
+      {!loading && !hasConversations && (
+        <div className="py-3 text-center text-[11px] text-muted-foreground">暂无会话</div>
+      )}
+      {hasConversations && (
+        <ScrollArea className="max-h-72 -mx-1">
+          <div className="py-1">
+            {conversations.map((c) => {
+              const active = c.id === currentId;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs hover:bg-accent ${
+                    active ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                  onClick={() => onSelect(c.id)}
+                >
+                  <span className="truncate">
+                    {c.title || `会话 #${c.id}`}
+                  </span>
+                  {c.is_archived && (
+                    <span className="ml-2 text-[10px] text-muted-foreground">已归档</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
+    </Card>
   );
 }

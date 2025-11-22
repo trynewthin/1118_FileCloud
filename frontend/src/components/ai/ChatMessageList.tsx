@@ -36,7 +36,7 @@ export function ChatMessageList({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto pt-5">
         {loading && messages.length === 0 && (
           <div className="py-2 text-center text-xs text-muted-foreground">加载中...</div>
         )}

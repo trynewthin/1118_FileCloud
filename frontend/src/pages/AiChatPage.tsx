@@ -2,11 +2,11 @@ import { useState } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useAiConfig } from "@/hooks/useAiConfig";
-import { AiConversationList } from "@/components/ai/AiConversationList";
 import { AiMobileConversationManager } from "@/components/ai/AiMobileConversationManager";
 import { ChatMessageList } from "@/components/ai/ChatMessageList";
 import { ChatInputBar } from "@/components/ai/ChatInputBar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { MessageCircle } from "lucide-react";
 
 export function AiChatPage() {
   const {
@@ -27,6 +27,7 @@ export function AiChatPage() {
   const { models } = useAiConfig();
 
   const [creating, setCreating] = useState(false);
+  const [conversationPanelOpen, setConversationPanelOpen] = useState(false);
 
   const handleCreateConversation = async () => {
     if (creating) return;
@@ -50,71 +51,9 @@ export function AiChatPage() {
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <div className="h-full min-h-0 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-4">
-        <div className="hidden md:block h-full min-h-0">
-          <AiConversationList
-            conversations={conversations}
-            currentId={currentConversationId}
-            loading={loadingConversations}
-            onSelect={selectConversation}
-            onNewConversation={handleCreateConversation}
-          />
-        </div>
-
-        <div className="mt-1 flex h-full min-h-0 flex-col gap-3 md:mt-0">
-          <div className="md:hidden">
-            <AiMobileConversationManager
-              conversations={conversations}
-              currentId={currentConversationId}
-              loading={loadingConversations}
-              onSelect={selectConversation}
-              onNewConversation={handleCreateConversation}
-              models={models}
-              onChangeModel={async (modelId) => {
-                if (!currentConversation) return;
-                await updateConversation(currentConversation.id, { modelId });
-              }}
-            />
-          </div>
-
-          <div className="hidden md:flex rounded-lg border bg-card px-3 py-2 items-center justify-between text-xs text-muted-foreground">
-            <div>
-              {currentConversation ? (
-                <span className="font-medium text-sm text-foreground">
-                  {currentConversation.title || `会话 #${currentConversation.id}`}
-                </span>
-              ) : (
-                <span>尚未选择会话</span>
-              )}
-            </div>
-            {currentConversation && (
-              <div className="flex items-center gap-2">
-                <span>模型：</span>
-                <Select
-                  value={String(currentConversation.model_id)}
-                  onValueChange={async (value) => {
-                    const modelId = Number(value);
-                    if (!Number.isInteger(modelId) || modelId <= 0) return;
-                    await updateConversation(currentConversation.id, { modelId });
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-40">
-                    <SelectValue placeholder="选择模型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)} disabled={!m.is_enabled}>
-                        {m.display_name}
-                        {!m.is_enabled ? "（已禁用）" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 min-h-0 rounded-lg border bg-background px-3 py-2 overflow-y-auto">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="relative flex-1 min-h-0 rounded-xl border bg-background ">
+          <div className="h-full overflow-y-auto rounded-xl ">
             <ChatMessageList
               messages={messages}
               loading={loadingMessages}
@@ -123,8 +62,57 @@ export function AiChatPage() {
             />
           </div>
 
-          <div className="rounded-lg border bg-card px-3 py-2">
-            <ChatInputBar sending={sending} onSend={async (content) => sendMessage(content)} />
+          <div className="pointer-events-none absolute inset-x-0 top-0 px-3 pt-2">
+            <div className="pointer-events-auto space-y-2">
+              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div className="min-w-0">
+                  <div className="inline-flex max-w-full items-center rounded-full border bg-card px-3 py-1 shadow-sm">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {currentConversation
+                        ? currentConversation.title || `会话 #${currentConversation.id}`
+                        : "尚未选择会话"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full shadow-sm"
+                    onClick={() => setConversationPanelOpen((open) => !open)}
+                    disabled={loadingConversations}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {conversationPanelOpen && (
+                <AiMobileConversationManager
+                  conversations={conversations}
+                  currentId={currentConversationId}
+                  loading={loadingConversations}
+                  onSelect={selectConversation}
+                  onNewConversation={handleCreateConversation}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-3">
+            <div className="pointer-events-auto">
+              <ChatInputBar
+                sending={sending}
+                onSend={async (content) => sendMessage(content)}
+                models={models}
+                currentModelId={currentConversation?.model_id ?? null}
+                onChangeModel={async (modelId: number) => {
+                  if (!currentConversation) return;
+                  await updateConversation(currentConversation.id, { modelId });
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -50,7 +50,7 @@ export const PageContainer: FC<PageContainerProps> = ({
           {action && <div className="flex items-center gap-2">{action}</div>}
         </div>
       )}
-      <div className="flex-1 min-h-0 h-full flex flex-col pb-6 md:pb-0">{children}</div>
+      <div className="flex-1 min-h-0 h-full flex flex-col pb-3 md:pb-0">{children}</div>
     </div>
   );
 };

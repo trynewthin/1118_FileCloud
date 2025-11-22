@@ -158,19 +158,60 @@ export const useAiChat = () => {
         return;
       }
 
-      setState((prev) => ({ ...prev, sending: true, error: null }));
+      const now = new Date().toISOString();
+      const tempUserId = -Date.now();
+      const tempAssistantId = tempUserId - 1;
+
+      const tempUserMessage: AiChatMessage = {
+        id: tempUserId,
+        conversation_id: convId,
+        role: "user",
+        content,
+        tool_name: null,
+        payload: null,
+        created_at: now,
+      };
+
+      const tempAssistantMessage: AiChatMessage = {
+        id: tempAssistantId,
+        conversation_id: convId,
+        role: "assistant",
+        content: "...",
+        tool_name: null,
+        payload: { placeholder: true } as any,
+        created_at: now,
+      };
+
+      setState((prev) => ({
+        ...prev,
+        sending: true,
+        error: null,
+        messages: [...prev.messages, tempUserMessage, tempAssistantMessage],
+      }));
       try {
         const res = await appendUserMessage(convId, { content });
-        setState((prev) => ({
-          ...prev,
-          sending: false,
-          messages: [...prev.messages, res.userMessage, res.assistantMessage],
-        }));
+        setState((prev) => {
+          const filtered = prev.messages.filter(
+            (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+          );
+          return {
+            ...prev,
+            sending: false,
+            messages: [...filtered, res.userMessage, res.assistantMessage],
+          };
+        });
         // 重新加载会话列表，以便获取后端自动命名后的标题
         void reloadConversations();
       } catch (err: any) {
         const message = typeof err?.message === "string" ? err.message : "发送消息失败";
-        setState((prev) => ({ ...prev, sending: false, error: message }));
+        setState((prev) => ({
+          ...prev,
+          sending: false,
+          error: message,
+          messages: prev.messages.filter(
+            (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+          ),
+        }));
       }
     },
     [state.currentConversationId, setError, reloadConversations],
