@@ -94,12 +94,6 @@ export function AiSettingsPage() {
     setProviderDialogOpen(true);
   };
 
-  const handleDeleteProvider = async (id: number) => {
-    if (confirm("确定要删除该供应商吗？")) {
-      await deleteProvider(id);
-    }
-  };
-
   const handleCreateModel = () => {
     setEditingModel(undefined);
     setModelDialogOpen(true);
@@ -126,54 +120,55 @@ export function AiSettingsPage() {
     setPromptDialogOpen(true);
   };
 
-  const handleDeletePrompt = async (id: number) => {
-    if (confirm("确定要删除该提示词吗？")) {
-      await deletePrompt(id);
-    }
-  };
-
   const handleSetDefaultPrompt = async (id: number) => {
     await updatePrompt(id, { isDefault: true });
   };
 
   return (
-    <PageContainer
-      title="AI 设置"
-      showBack
-      action={
-        <GlassButton
-          glassVariant="lite"
-          size="sm"
-          onClick={() => reload()}
-          disabled={loading}
-          className="gap-2 px-3"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          <span>刷新</span>
-        </GlassButton>
-      }
-    >
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <PageContainer
+        title="AI 设置"
+        showBack
+        headerCenter={
+          <TabsList>
+            <TabsTrigger value="providers">供应商</TabsTrigger>
+            <TabsTrigger value="models">模型</TabsTrigger>
+            <TabsTrigger value="prompts">提示词</TabsTrigger>
+          </TabsList>
+        }
+        action={
+          <GlassButton
+            glassVariant="lite"
+            size="sm"
+            onClick={() => reload()
+            }
+            disabled={loading}
+            className="gap-2 px-3"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span>刷新</span>
+          </GlassButton>
+        }
+      >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
       <GlassCard variant="lite" className="p-4 md:p-5 border-white/10 space-y-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-          <TabsTrigger value="providers">供应商</TabsTrigger>
-          <TabsTrigger value="models">模型</TabsTrigger>
-          <TabsTrigger value="prompts">提示词</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="providers" className="space-y-4">
+        <TabsContent value="providers" className="space-y-4">
           <div className="flex justify-end">
-            <Button size="sm" onClick={handleCreateProvider}>
-              <Plus className="mr-2 h-4 w-4" />
-              新建供应商
-            </Button>
+            <GlassButton
+              glassVariant="lite"
+              size="sm"
+              className="gap-2 px-3"
+              onClick={handleCreateProvider}
+            >
+              <Plus className="h-4 w-4" />
+              <span>新建供应商</span>
+            </GlassButton>
           </div>
-          <AiProviderList providers={providers} onEdit={handleEditProvider} onDelete={handleDeleteProvider} />
+          <AiProviderList providers={providers} onEdit={handleEditProvider} />
         </TabsContent>
 
-          <TabsContent value="models" className="space-y-4">
+        <TabsContent value="models" className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>默认会话模型：</span>
@@ -234,16 +229,24 @@ export function AiSettingsPage() {
           <AiModelList models={models} providers={providers} onEdit={handleEditModel} onDelete={handleDeleteModel} />
         </TabsContent>
 
-          <TabsContent value="prompts" className="space-y-4">
+        <TabsContent value="prompts" className="space-y-4">
           <div className="flex justify-end">
-            <Button size="sm" onClick={handleCreatePrompt}>
-              <Plus className="mr-2 h-4 w-4" />
-              新建提示词
-            </Button>
+            <GlassButton
+              glassVariant="lite"
+              size="sm"
+              className="gap-2 px-3"
+              onClick={handleCreatePrompt}
+            >
+              <Plus className="h-4 w-4" />
+              <span>新建提示词</span>
+            </GlassButton>
           </div>
-          <AiPromptList prompts={prompts} onEdit={handleEditPrompt} onDelete={handleDeletePrompt} onSetDefault={handleSetDefaultPrompt} />
-          </TabsContent>
-        </Tabs>
+          <AiPromptList
+            prompts={prompts}
+            onEdit={handleEditPrompt}
+            onSetDefault={handleSetDefaultPrompt}
+          />
+        </TabsContent>
       </GlassCard>
 
       <AiProviderFormDialog
@@ -256,6 +259,9 @@ export function AiSettingsPage() {
           } else {
             await createProvider(data);
           }
+        }}
+        onDelete={async (id) => {
+          await deleteProvider(id);
         }}
       />
 
@@ -284,7 +290,11 @@ export function AiSettingsPage() {
             await createPrompt(data);
           }
         }}
+        onDelete={async (id) => {
+          await deletePrompt(id);
+        }}
       />
-    </PageContainer>
+      </PageContainer>
+    </Tabs>
   );
 }

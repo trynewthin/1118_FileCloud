@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 import type { AiProvider, CreateAiProviderRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Check } from "lucide-react";
 
 interface AiProviderFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingProvider?: AiProvider;
   onSubmit: (data: CreateAiProviderRequest) => Promise<void>;
+  onDelete?: (id: number) => Promise<void>;
 }
 
 export function AiProviderFormDialog({
@@ -18,6 +29,7 @@ export function AiProviderFormDialog({
   onOpenChange,
   editingProvider,
   onSubmit,
+  onDelete,
 }: AiProviderFormDialogProps) {
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -26,6 +38,8 @@ export function AiProviderFormDialog({
   const [extraHeadersJson, setExtraHeadersJson] = useState("");
   const [timeoutMs, setTimeoutMs] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (editingProvider) {
@@ -63,8 +77,19 @@ export function AiProviderFormDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editingProvider || !onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete(editingProvider.id);
+      onOpenChange(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !submitting && onOpenChange(v)}>
+    <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{editingProvider ? "编辑供应商" : "新建供应商"}</DialogTitle>
@@ -129,12 +154,38 @@ export function AiProviderFormDialog({
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {editingProvider ? "保存" : "创建"}
-          </Button>
+        <DialogFooter
+          leftButtonIcon={editingProvider && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
+          onLeftButtonClick={editingProvider && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
+          leftButtonGlassVariant="ghost"
+          rightButtonIcon={<Check className="h-4 w-4" />}
+          onRightButtonClick={handleSubmit}
+          rightButtonGlassVariant="lite"
+        >
         </DialogFooter>
       </DialogContent>
+      {editingProvider && onDelete && (
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除供应商</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除该供应商吗？此操作不可恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Dialog>
   );
 }

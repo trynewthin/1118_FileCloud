@@ -25,8 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
 
 interface BreadcrumbItem {
   id: string;

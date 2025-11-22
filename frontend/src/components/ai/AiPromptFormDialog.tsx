@@ -1,17 +1,28 @@
 import { useEffect, useState } from "react";
 import type { AiChatPrompt, CreateAiChatPromptRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Check } from "lucide-react";
 
 interface AiPromptFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingPrompt?: AiChatPrompt;
   onSubmit: (data: CreateAiChatPromptRequest) => Promise<void>;
+  onDelete?: (id: number) => Promise<void>;
 }
 
 export function AiPromptFormDialog({
@@ -19,11 +30,14 @@ export function AiPromptFormDialog({
   onOpenChange,
   editingPrompt,
   onSubmit,
+  onDelete,
 }: AiPromptFormDialogProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (editingPrompt) {
@@ -48,8 +62,19 @@ export function AiPromptFormDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editingPrompt || !onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete(editingPrompt.id);
+      onOpenChange(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !submitting && onOpenChange(v)}>
+    <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{editingPrompt ? "编辑提示词" : "新建提示词"}</DialogTitle>
@@ -82,12 +107,38 @@ export function AiPromptFormDialog({
             <Label htmlFor="prompt-default">设为默认提示词</Label>
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {editingPrompt ? "保存" : "创建"}
-          </Button>
+        <DialogFooter
+          leftButtonIcon={editingPrompt && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
+          onLeftButtonClick={editingPrompt && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
+          leftButtonGlassVariant="ghost"
+          rightButtonIcon={<Check className="h-4 w-4" />}
+          onRightButtonClick={handleSubmit}
+          rightButtonGlassVariant="lite"
+        >
         </DialogFooter>
       </DialogContent>
+      {editingPrompt && onDelete && (
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除提示词</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除该提示词吗？此操作不可恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Dialog>
   );
 }

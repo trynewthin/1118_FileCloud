@@ -12,6 +12,7 @@ interface PageContainerProps extends PropsWithChildren {
   action?: ReactNode;
   showBack?: boolean;
   className?: string;
+  headerCenter?: ReactNode;
 }
 
 export const PageContainer: FC<PageContainerProps> = ({
@@ -20,6 +21,7 @@ export const PageContainer: FC<PageContainerProps> = ({
   showBack = false,
   children,
   className,
+  headerCenter,
 }) => {
   const { setConfig } = usePageHeader();
   const navigate = useNavigate();
@@ -33,8 +35,8 @@ export const PageContainer: FC<PageContainerProps> = ({
 
   return (
     <div className={cn("relative flex min-h-0 flex-col space-y-4 w-full h-full overflow-hidden", className)}>
-      {/* Header Area (Back button & Actions) */}
-      {(showBack || action) && (
+      {/* Header Area (Back button, Center content & Actions) */}
+      {(showBack || action || headerCenter) && (
         <div className="flex items-center justify-between shrink-0 z-10 relative">
           <div className="flex items-center gap-2">
             {showBack && (
@@ -49,6 +51,15 @@ export const PageContainer: FC<PageContainerProps> = ({
               </GlassButton>
             )}
           </div>
+
+          {headerCenter && (
+            <div className="absolute inset-x-0 flex justify-center pointer-events-none">
+              <div className="pointer-events-auto">
+                {headerCenter}
+              </div>
+            </div>
+          )}
+
           {action && <div className="flex items-center gap-2">{action}</div>}
         </div>
       )}
