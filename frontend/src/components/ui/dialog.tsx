@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { DS } from "@/lib/design-system"
+import { GlassButton } from "@/components/common/GlassButton"
 
 function Dialog({
   ...props
@@ -45,14 +46,24 @@ function DialogOverlay({
   )
 }
 
+interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
+  showCloseButton?: boolean
+  leftButtonIcon?: React.ReactNode
+  onLeftButtonClick?: () => void
+  leftButtonGlassVariant?: "strong" | "lite" | "ghost"
+  rightButton?: React.ReactNode
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  leftButtonIcon,
+  onLeftButtonClick,
+  leftButtonGlassVariant = "lite",
+  rightButton,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+}: DialogContentProps) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -68,14 +79,33 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+        {leftButtonIcon && (
+          <GlassButton
+            size="icon"
+            glassVariant={leftButtonGlassVariant}
+            className="absolute top-4 left-4"
+            onClick={onLeftButtonClick}
           >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
+            {leftButtonIcon}
+          </GlassButton>
+        )}
+
+        {(rightButton || showCloseButton) && (
+          <div className="absolute top-4 right-4">
+            {rightButton
+              ? rightButton
+              : (
+                <DialogPrimitive.Close data-slot="dialog-close" asChild>
+                  <GlassButton
+                    size="icon"
+                    glassVariant="lite"
+                  >
+                    <XIcon className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                  </GlassButton>
+                </DialogPrimitive.Close>
+              )}
+          </div>
         )}
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -92,16 +122,60 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
+interface DialogFooterProps extends React.ComponentProps<"div"> {
+  leftButtonIcon?: React.ReactNode
+  onLeftButtonClick?: () => void
+  leftButtonGlassVariant?: "strong" | "lite" | "ghost"
+  rightButtonIcon?: React.ReactNode
+  onRightButtonClick?: () => void
+  rightButtonGlassVariant?: "strong" | "lite" | "ghost"
+}
+
+function DialogFooter({
+  className,
+  children,
+  leftButtonIcon,
+  onLeftButtonClick,
+  leftButtonGlassVariant = "ghost",
+  rightButtonIcon,
+  onRightButtonClick,
+  rightButtonGlassVariant = "lite",
+  ...props
+}: DialogFooterProps) {
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex items-center justify-between gap-2",
         className
       )}
       {...props}
-    />
+    >
+      <div className="flex items-center gap-2">
+        {leftButtonIcon && (
+          <GlassButton
+            size="icon"
+            glassVariant={leftButtonGlassVariant}
+            onClick={onLeftButtonClick}
+          >
+            {leftButtonIcon}
+          </GlassButton>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {children}
+        {rightButtonIcon && (
+          <GlassButton
+            size="icon"
+            glassVariant={rightButtonGlassVariant}
+            onClick={onRightButtonClick}
+          >
+            {rightButtonIcon}
+          </GlassButton>
+        )}
+      </div>
+    </div>
   )
 }
 

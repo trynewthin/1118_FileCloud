@@ -2,7 +2,9 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { DS } from "@/lib/design-system"
+import { GlassButton } from "@/components/common/GlassButton"
+import { Trash2, XIcon } from "lucide-react"
 
 function AlertDialog({
   ...props
@@ -34,7 +36,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "fixed inset-0 z-50 bg-black/5 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 dark:bg-black/40",
         className
       )}
       {...props}
@@ -52,7 +54,10 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          DS.radius.xl,
+          DS.glass.strong,
+          "border-white/20 dark:border-white/10",
           className
         )}
         {...props}
@@ -82,7 +87,7 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex items-center justify-between gap-2",
         className
       )}
       {...props}
@@ -97,7 +102,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("text-lg font-semibold", className)}
+      className={cn("text-lg leading-none", DS.text.heading, className)}
       {...props}
     />
   )
@@ -118,25 +123,51 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+  const label = typeof children === "string" ? children : "删除"
+
   return (
     <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
+      data-slot="alert-dialog-action"
       {...props}
-    />
+      asChild
+    >
+      <GlassButton
+        size="icon"
+        glassVariant="lite"
+        className={cn("bg-destructive/10 text-destructive hover:bg-destructive/20", className)}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">{label}</span>
+      </GlassButton>
+    </AlertDialogPrimitive.Action>
   )
 }
 
 function AlertDialogCancel({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+  const label = typeof children === "string" ? children : "取消"
+
   return (
     <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: "outline" }), className)}
+      data-slot="alert-dialog-cancel"
       {...props}
-    />
+      asChild
+    >
+      <GlassButton
+        size="icon"
+        glassVariant="ghost"
+        className={cn(className)}
+      >
+        <XIcon className="h-4 w-4" />
+        <span className="sr-only">{label}</span>
+      </GlassButton>
+    </AlertDialogPrimitive.Cancel>
   )
 }
 
