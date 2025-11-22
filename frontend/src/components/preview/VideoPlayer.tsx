@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
 
 interface VideoPlayerProps {
@@ -18,6 +18,8 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const hideTimerRef = useRef<number | null>(null);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekingPercent, setSeekingPercent] = useState<number | null>(null);
 
   // 时间格式化：秒 -> mm:ss 或 hh:mm:ss
   const formatTime = (sec: number) => {
@@ -83,6 +85,44 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
     setCurrentTime(target);
   };
 
+  // 进度条开始拖动
+  const handleSeekStart = (event: PointerEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    handleUserInteract();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const clamped = Math.min(1, Math.max(0, ratio));
+    const value = clamped * 100;
+    setIsSeeking(true);
+    setSeekingPercent(value);
+  };
+
+  // 进度条拖动中
+  const handleSeekMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isSeeking || duration <= 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const clamped = Math.min(1, Math.max(0, ratio));
+    const value = clamped * 100;
+    setSeekingPercent(value);
+  };
+
+  // 进度条结束拖动并提交
+  const handleSeekEnd = () => {
+    if (!isSeeking || duration <= 0) return;
+    const value = seekingPercent ?? 0;
+    setIsSeeking(false);
+    setSeekingPercent(null);
+    handleSeekCommit(value);
+  };
+
+  // 进度条拖动被取消（不提交，仅复位拖动状态）
+  const handleSeekCancel = () => {
+    if (!isSeeking) return;
+    setIsSeeking(false);
+    setSeekingPercent(null);
+  };
+
   // 自定义进度条点击跳转
   const handleProgressBarClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (duration <= 0) return;
@@ -104,15 +144,26 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
   const progressPercent =
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
   const sliderValue = progressPercent;
+  const displayPercent = isSeeking && seekingPercent !== null ? seekingPercent : sliderValue;
 
   // 视频层：仅负责渲染 video
   // 浮动操作层：叠加在顶部/底部，负责交互
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-black/90 p-4">
-      <div className="w-full max-w-5xl flex flex-col gap-3">
+    <div
+      className={
+        "flex flex-col items-center justify-center w-full h-full bg-black/90 " +
+        (isFullscreen ? "p-0" : "p-4")
+      }
+    >
+      <div
+        className={
+          "w-full flex flex-col gap-3 " + (isFullscreen ? "max-w-none h-full" : "max-w-5xl")
+        }
+      >
         <div
           className="relative w-full bg-black overflow-hidden shadow-lg aspect-video"
           onMouseMove={handleUserInteract}
+          onTouchStart={handleUserInteract}
           onClick={handleUserInteract}
         >
           {/* 视频层 */}
@@ -202,14 +253,23 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
 
                   {/* 中间进度条 + 下方时间 */}
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    {/* 自定义简洁线条进度条 */}
+                    {/* 自定义可拖动线条进度条 */}
                     <div
-                      className="relative h-1 rounded-full bg-white/20 cursor-pointer overflow-hidden"
+                      className="relative h-1 rounded-full bg-white/20 cursor-pointer overflow-hidden touch-none"
                       onClick={handleProgressBarClick}
+                      onPointerDown={handleSeekStart}
+                      onPointerMove={handleSeekMove}
+                      onPointerUp={handleSeekEnd}
+                      onPointerCancel={handleSeekCancel}
+                      onPointerLeave={handleSeekCancel}
                     >
                       <div
                         className="absolute inset-y-0 left-0 bg-white"
-                        style={{ width: `${sliderValue}%` }}
+                        style={{ width: `${displayPercent}%` }}
+                      />
+                      <div
+                        className="absolute -top-1.5 h-3 w-3 rounded-full bg-white shadow-md"
+                        style={{ left: `${displayPercent}%`, transform: "translateX(-50%)" }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-[10px] tabular-nums text-white/90">

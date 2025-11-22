@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { getEntry, type FileEntry } from "@/lib/api/files";
 import { VideoPreview } from "@/components/preview/adapters/VideoPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
 
 export function FilePreviewPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [entry, setEntry] = useState<FileEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,15 +52,7 @@ export function FilePreviewPage() {
   };
 
   return (
-    <PageContainer
-      title="文件预览"
-      action={
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回
-        </Button>
-      }
-    >
+    <PageContainer title="文件预览" showBack>
       <div className="flex-1 flex flex-col min-h-0 h-full">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
