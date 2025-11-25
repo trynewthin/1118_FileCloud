@@ -6,7 +6,13 @@ export type ChatRole = "system" | "user" | "assistant";
 export interface ChatMessageInput {
   role: ChatRole;
   content: string;
-  // 这里后续可扩展附件（图片、视频等）
+  attachments?: ChatAttachment[];
+}
+
+export interface ChatAttachment {
+  kind: "image";
+  mimeType: string;
+  dataBase64: string;
 }
 
 // 模型调用配置，由上层根据 provider / model 记录组装
@@ -66,9 +72,35 @@ async function callOpenAiCompatible(
     }
   }
 
+  const openAiMessages = messages.map((m) => {
+    if (!m.attachments || m.attachments.length === 0) {
+      return { role: m.role, content: m.content };
+    }
+
+    const parts: any[] = [];
+
+    if (m.content && m.content.trim().length > 0) {
+      parts.push({ type: "text", text: m.content });
+    }
+
+    for (const att of m.attachments) {
+      if (att.kind === "image" && att.dataBase64) {
+        const mime = att.mimeType || "image/png";
+        const url = `data:${mime};base64,${att.dataBase64}`;
+        parts.push({ type: "image_url", image_url: { url } });
+      }
+    }
+
+    if (parts.length === 0) {
+      return { role: m.role, content: m.content };
+    }
+
+    return { role: m.role, content: parts };
+  });
+
   const body = {
     model: config.model,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    messages: openAiMessages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.maxTokens,
   };
@@ -91,8 +123,20 @@ async function callOpenAiCompatible(
     }
 
     const json: any = await resp.json();
-    const content: string =
-      json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.delta?.content ?? "";
+    let content: string = "";
+
+    const messageContent = json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.delta?.content;
+
+    if (typeof messageContent === "string") {
+      content = messageContent;
+    } else if (Array.isArray(messageContent)) {
+      const textParts = messageContent
+        .filter((p: any) => p && p.type === "text" && typeof p.text === "string")
+        .map((p: any) => p.text);
+      content = textParts.join("\n\n");
+    } else if (typeof messageContent === "object" && messageContent !== null && typeof messageContent.text === "string") {
+      content = messageContent.text;
+    }
 
     return {
       content,

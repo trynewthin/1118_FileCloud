@@ -1,7 +1,9 @@
 import { db } from "../../core/db/index.ts";
-import type { ChatMessageInput, ChatResult, ChatCallOptions } from "../../core/ai/client.ts";
+import type { ChatMessageInput, ChatResult, ChatCallOptions, ChatAttachment } from "../../core/ai/client.ts";
 import { callChatModel } from "../../core/ai/client.ts";
 import { getSetting } from "../settings/service.ts";
+import { buildVariableContext } from "./orchestrator.ts";
+import { buildImageAttachmentsFromUploadIds } from "./attachments.ts";
 
 // 供应商实体
 export interface AiProvider {
@@ -453,6 +455,202 @@ export const deleteAiChatPrompt = (id: number): boolean => {
   const stmt = db.prepare("DELETE FROM ai_chat_prompts WHERE id = ?");
   const result = stmt.run(id);
   return result.changes > 0;
+};
+
+// 工具配置实体
+export interface AiToolConfig {
+  id: number;
+  tool_key: string;
+  display_name: string;
+  description: string | null;
+  type: string;
+  scope: string | null;
+  is_enabled: boolean;
+  default_config: any | null;
+  override_config: any | null;
+  ui_schema: any | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const mapRowToToolConfig = (row: any): AiToolConfig => {
+  let defaultConfig: any = null;
+  let overrideConfig: any = null;
+  let uiSchema: any = null;
+
+  if (row.default_config_json) {
+    try {
+      defaultConfig = JSON.parse(row.default_config_json);
+    } catch {
+      defaultConfig = null;
+    }
+  }
+
+  if (row.override_config_json) {
+    try {
+      overrideConfig = JSON.parse(row.override_config_json);
+    } catch {
+      overrideConfig = null;
+    }
+  }
+
+  if (row.ui_schema_json) {
+    try {
+      uiSchema = JSON.parse(row.ui_schema_json);
+    } catch {
+      uiSchema = null;
+    }
+  }
+
+  return {
+    id: row.id,
+    tool_key: row.tool_key,
+    display_name: row.display_name,
+    description: row.description ?? null,
+    type: row.type,
+    scope: row.scope ?? null,
+    is_enabled: Boolean(row.is_enabled),
+    default_config: defaultConfig,
+    override_config: overrideConfig,
+    ui_schema: uiSchema,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+};
+
+export const listAiToolConfigs = (): AiToolConfig[] => {
+  const rows = db
+    .prepare(
+      "SELECT id, tool_key, display_name, description, type, scope, is_enabled, default_config_json, override_config_json, ui_schema_json, created_at, updated_at FROM ai_tool_configs ORDER BY id ASC",
+    )
+    .all() as any[];
+
+  return rows.map(mapRowToToolConfig);
+};
+
+export const getAiToolConfigByKey = (toolKey: string): AiToolConfig | null => {
+  const row = db
+    .prepare(
+      "SELECT id, tool_key, display_name, description, type, scope, is_enabled, default_config_json, override_config_json, ui_schema_json, created_at, updated_at FROM ai_tool_configs WHERE tool_key = ?",
+    )
+    .get(toolKey) as any | undefined;
+
+  if (!row) return null;
+  return mapRowToToolConfig(row);
+};
+
+export interface UpsertAiToolConfigInput {
+  displayName?: string;
+  description?: string | null;
+  type?: string;
+  scope?: string | null;
+  isEnabled?: boolean;
+  defaultConfig?: any;
+  overrideConfig?: any;
+  uiSchema?: any;
+}
+
+export const upsertAiToolConfig = (
+  toolKey: string,
+  input: UpsertAiToolConfigInput,
+): AiToolConfig => {
+  const existing = getAiToolConfigByKey(toolKey);
+  const now = new Date().toISOString();
+
+  if (!existing) {
+    const stmt = db.prepare(
+      "INSERT INTO ai_tool_configs(tool_key, display_name, description, type, scope, is_enabled, default_config_json, override_config_json, ui_schema_json, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+
+    const displayName =
+      typeof input.displayName === "string" && input.displayName.trim().length > 0
+        ? input.displayName.trim()
+        : toolKey;
+    const description =
+      input.description === undefined ? null : input.description;
+    const type =
+      typeof input.type === "string" && input.type.trim().length > 0
+        ? input.type.trim()
+        : "pre";
+    const scope =
+      input.scope === undefined ? null : input.scope;
+    const isEnabled =
+      input.isEnabled === undefined ? 1 : input.isEnabled ? 1 : 0;
+
+    const defaultConfigJson =
+      input.defaultConfig === undefined
+        ? null
+        : JSON.stringify(input.defaultConfig ?? null);
+    const overrideConfigJson =
+      input.overrideConfig === undefined
+        ? null
+        : JSON.stringify(input.overrideConfig ?? null);
+    const uiSchemaJson =
+      input.uiSchema === undefined
+        ? null
+        : JSON.stringify(input.uiSchema ?? null);
+
+    stmt.run(
+      toolKey,
+      displayName,
+      description,
+      type,
+      scope,
+      isEnabled,
+      defaultConfigJson,
+      overrideConfigJson,
+      uiSchemaJson,
+      now,
+      now,
+    );
+
+    return getAiToolConfigByKey(toolKey)!;
+  }
+
+  const nextDisplayName =
+    typeof input.displayName === "string" && input.displayName.trim().length > 0
+      ? input.displayName.trim()
+      : existing.display_name;
+  const nextDescription =
+    input.description === undefined ? existing.description : input.description;
+  const nextType =
+    typeof input.type === "string" && input.type.trim().length > 0
+      ? input.type.trim()
+      : existing.type;
+  const nextScope =
+    input.scope === undefined ? existing.scope : input.scope;
+  const nextIsEnabled =
+    input.isEnabled === undefined ? existing.is_enabled : input.isEnabled;
+
+  const nextDefaultConfigJson =
+    input.defaultConfig === undefined
+      ? JSON.stringify(existing.default_config ?? null)
+      : JSON.stringify(input.defaultConfig ?? null);
+  const nextOverrideConfigJson =
+    input.overrideConfig === undefined
+      ? JSON.stringify(existing.override_config ?? null)
+      : JSON.stringify(input.overrideConfig ?? null);
+  const nextUiSchemaJson =
+    input.uiSchema === undefined
+      ? JSON.stringify(existing.ui_schema ?? null)
+      : JSON.stringify(input.uiSchema ?? null);
+
+  db.prepare(
+    "UPDATE ai_tool_configs SET display_name = ?, description = ?, type = ?, scope = ?, is_enabled = ?, default_config_json = ?, override_config_json = ?, ui_schema_json = ?, updated_at = ? WHERE tool_key = ?",
+  ).run(
+    nextDisplayName,
+    nextDescription,
+    nextType,
+    nextScope,
+    nextIsEnabled ? 1 : 0,
+    nextDefaultConfigJson,
+    nextOverrideConfigJson,
+    nextUiSchemaJson,
+    now,
+    toolKey,
+  );
+
+  return getAiToolConfigByKey(toolKey)!;
 };
 
 // 会话实体
@@ -982,6 +1180,16 @@ export const appendUserMessageAndReply = async (
   });
 
   const effectiveHistory = history.slice(-maxContext);
+  const varContext = buildVariableContext(conv, null);
+
+  let userMessageAttachments: ChatAttachment[] | undefined;
+  const framesVar = varContext.conversationVars["videoFrames"];
+  if (framesVar && framesVar.kind === "image_upload_list" && Array.isArray(framesVar.value)) {
+    const attachments = buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
+    if (attachments.length > 0) {
+      userMessageAttachments = attachments;
+    }
+  }
 
   const messagesForAi: ChatMessageInput[] = [];
 
@@ -1009,7 +1217,12 @@ export const appendUserMessageAndReply = async (
       role = "user";
     }
 
-    messagesForAi.push({ role, content: msg.content });
+    const attachments =
+      msg.id === userMessage.id && userMessageAttachments
+        ? userMessageAttachments
+        : undefined;
+
+    messagesForAi.push({ role, content: msg.content, attachments });
   });
 
   const aiResult = await callChatByModelId(conv.model_id, messagesForAi, {});

@@ -22,6 +22,8 @@ import {
   deleteAiChatConversation,
   listAiChatMessagesByConversation,
   appendUserMessageAndReply,
+  listAiToolConfigs,
+  upsertAiToolConfig,
 } from "./service.ts";
 import { getSetting } from "../settings/service.ts";
 
@@ -276,6 +278,34 @@ router.delete(
     }
 
     return res.status(204).send();
+  },
+);
+
+// 工具配置（仅管理员）
+router.get(
+  "/tools",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (_req, res) => {
+    const items = listAiToolConfigs();
+    return res.json({ items });
+  },
+);
+
+router.put(
+  "/tools/:toolKey",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const rawKey = (req.params.toolKey ?? "").trim();
+    if (!rawKey) {
+      return res.status(400).json({ message: "工具标识不能为空" });
+    }
+
+    const body = (req.body ?? {}) as any;
+    const config = upsertAiToolConfig(rawKey, body);
+
+    return res.json({ config });
   },
 );
 
