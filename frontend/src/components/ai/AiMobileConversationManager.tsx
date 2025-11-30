@@ -3,7 +3,17 @@ import type { AiChatConversation } from "@/lib/api/aiChat";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, MessageSquare, Archive, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, MessageSquare, Archive, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/lib/design-system";
 
@@ -25,18 +35,36 @@ export function AiMobileConversationManager({
   onDelete,
 }: AiMobileConversationManagerProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
+  // 点击删除按钮，打开确认弹窗
+  const handleDeleteClick = (e: React.MouseEvent, id: number) => {
     e.stopPropagation(); // 阻止触发 onSelect
-    if (!onDelete || deletingId) return;
+    setConfirmDeleteId(id);
+  };
+
+  // 确认删除
+  const handleConfirmDelete = async () => {
+    if (!onDelete || !confirmDeleteId || deletingId) return;
     
-    setDeletingId(id);
+    setDeletingId(confirmDeleteId);
     try {
-      await onDelete(id);
+      await onDelete(confirmDeleteId);
     } finally {
       setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   };
+
+  // 取消删除
+  const handleCancelDelete = () => {
+    setConfirmDeleteId(null);
+  };
+
+  // 获取要删除的会话标题
+  const deleteTargetConversation = confirmDeleteId 
+    ? conversations.find(c => c.id === confirmDeleteId) 
+    : null;
   const hasConversations = conversations.length > 0;
 
   return (
@@ -106,17 +134,16 @@ export function AiMobileConversationManager({
                     </div>
                   </div>
 
-                  {/* Delete Button */}
+                  {/* Delete Button - 始终可见 */}
                   {onDelete && (
                     <button
                       type="button"
                       className={cn(
                         "shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors",
-                        "opacity-0 group-hover:opacity-100",
-                        "hover:bg-destructive/10 text-muted-foreground hover:text-destructive",
-                        deletingId === c.id && "opacity-100 animate-pulse"
+                        "text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10",
+                        deletingId === c.id && "text-destructive animate-pulse"
                       )}
-                      onClick={(e) => handleDelete(e, c.id)}
+                      onClick={(e) => handleDeleteClick(e, c.id)}
                       disabled={deletingId !== null}
                       title="删除会话"
                     >
@@ -134,6 +161,37 @@ export function AiMobileConversationManager({
           </div>
         </ScrollArea>
       )}
+
+      {/* 删除确认弹窗 */}
+      <AlertDialog open={confirmDeleteId !== null} onOpenChange={(open) => !open && handleCancelDelete()}>
+        <AlertDialogContent className={cn(DS.glass.strong, "border-white/10")}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除会话</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除会话 "{deleteTargetConversation?.title || `会话 #${confirmDeleteId}`}" 吗？
+              <br />
+              此操作不可撤销，所有聊天记录将被永久删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={handleCancelDelete}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">取消</span>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deletingId !== null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">删除</span>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </GlassCard>
   );
 }

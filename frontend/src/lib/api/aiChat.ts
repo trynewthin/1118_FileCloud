@@ -56,6 +56,16 @@ export interface UpdateAiConversationRequest {
 
 export interface AppendMessageRequest {
   content: string;
+  attachmentIds?: number[];
+}
+
+export interface UploadResult {
+  id: number;
+  originalName: string;
+}
+
+export interface UploadResponse {
+  uploads: UploadResult[];
 }
 
 export interface AppendMessageResponse {
@@ -101,4 +111,33 @@ export const appendUserMessage = async (
     `/ai/conversations/${conversationId}/messages`,
     body,
   );
+};
+
+// 上传图片附件
+export const uploadAiImages = async (files: File[]): Promise<UploadResponse> => {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("images", file);
+  }
+
+  // 使用 apiClient 的 post 方法，支持 FormData
+  return apiClient.post<UploadResponse>("/ai/uploads", formData);
+};
+
+// 执行工具操作
+export interface ExecuteToolRequest {
+  toolName: string;
+  args: Record<string, any>;
+  conversationId?: number;
+}
+
+export interface ExecuteToolResponse {
+  success: boolean;
+  message: string;
+}
+
+export const executeAiTool = async (
+  request: ExecuteToolRequest,
+): Promise<ExecuteToolResponse> => {
+  return apiClient.post<ExecuteToolResponse>("/ai/tools/execute", request);
 };

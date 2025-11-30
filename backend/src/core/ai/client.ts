@@ -1,12 +1,36 @@
 import type { IncomingHttpHeaders } from "http";
 
-export type ChatRole = "system" | "user" | "assistant";
+export type ChatRole = "system" | "user" | "assistant" | "tool";
+
+// 工具调用定义（OpenAI 风格）
+export interface ChatToolDefinition {
+  type: "function";
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, any>;  // JSON Schema
+  };
+}
+
+// 工具调用请求（模型返回）
+export interface ChatToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;  // JSON 字符串
+  };
+}
 
 // 单条对话消息输入结构
 export interface ChatMessageInput {
   role: ChatRole;
-  content: string;
+  content: string | null;
   attachments?: ChatAttachment[];
+  // 工具调用相关
+  tool_calls?: ChatToolCall[];      // assistant 角色的工具调用
+  tool_call_id?: string;            // tool 角色的响应
+  name?: string;                    // tool 角色的函数名
 }
 
 export interface ChatAttachment {
@@ -28,10 +52,14 @@ export interface ChatModelConfig {
 export interface ChatCallOptions {
   temperature?: number;
   maxTokens?: number;
+  tools?: ChatToolDefinition[];       // 可用工具列表
+  tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
 }
 
 export interface ChatResult {
   content: string;
+  tool_calls?: ChatToolCall[];        // 模型请求的工具调用
+  finish_reason?: string;             // stop / tool_calls / length 等
   raw: any;
 }
 
@@ -49,6 +77,52 @@ export async function callChatModel(
 
   throw new Error(`不支持的 AI 接口类型: ${apiType}`);
 }
+
+// 构建 OpenAI 格式的消息
+const buildOpenAiMessage = (m: ChatMessageInput): any => {
+  // tool 角色的消息
+  if (m.role === "tool") {
+    return {
+      role: "tool",
+      tool_call_id: m.tool_call_id,
+      content: m.content ?? "",
+    };
+  }
+
+  // assistant 角色带工具调用
+  if (m.role === "assistant" && m.tool_calls && m.tool_calls.length > 0) {
+    return {
+      role: "assistant",
+      content: m.content,
+      tool_calls: m.tool_calls,
+    };
+  }
+
+  // 普通消息（可能带图片附件）
+  if (!m.attachments || m.attachments.length === 0) {
+    return { role: m.role, content: m.content };
+  }
+
+  const parts: any[] = [];
+
+  if (m.content && m.content.trim().length > 0) {
+    parts.push({ type: "text", text: m.content });
+  }
+
+  for (const att of m.attachments) {
+    if (att.kind === "image" && att.dataBase64) {
+      const mime = att.mimeType || "image/png";
+      const dataUrl = `data:${mime};base64,${att.dataBase64}`;
+      parts.push({ type: "image_url", image_url: { url: dataUrl } });
+    }
+  }
+
+  if (parts.length === 0) {
+    return { role: m.role, content: m.content };
+  }
+
+  return { role: m.role, content: parts };
+};
 
 async function callOpenAiCompatible(
   config: ChatModelConfig,
@@ -72,38 +146,22 @@ async function callOpenAiCompatible(
     }
   }
 
-  const openAiMessages = messages.map((m) => {
-    if (!m.attachments || m.attachments.length === 0) {
-      return { role: m.role, content: m.content };
-    }
+  const openAiMessages = messages.map(buildOpenAiMessage);
 
-    const parts: any[] = [];
-
-    if (m.content && m.content.trim().length > 0) {
-      parts.push({ type: "text", text: m.content });
-    }
-
-    for (const att of m.attachments) {
-      if (att.kind === "image" && att.dataBase64) {
-        const mime = att.mimeType || "image/png";
-        const url = `data:${mime};base64,${att.dataBase64}`;
-        parts.push({ type: "image_url", image_url: { url } });
-      }
-    }
-
-    if (parts.length === 0) {
-      return { role: m.role, content: m.content };
-    }
-
-    return { role: m.role, content: parts };
-  });
-
-  const body = {
+  const body: Record<string, any> = {
     model: config.model,
     messages: openAiMessages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.maxTokens,
   };
+
+  // 添加工具定义
+  if (options.tools && options.tools.length > 0) {
+    body.tools = options.tools;
+    if (options.tool_choice) {
+      body.tool_choice = options.tool_choice;
+    }
+  }
 
   const controller = new AbortController();
   const timeoutMs = config.timeoutMs && config.timeoutMs > 0 ? config.timeoutMs : 60_000;
@@ -124,9 +182,15 @@ async function callOpenAiCompatible(
 
     const json: any = await resp.json();
     let content: string = "";
+    let tool_calls: ChatToolCall[] | undefined;
+    let finish_reason: string | undefined;
 
-    const messageContent = json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.delta?.content;
+    const choice = json?.choices?.[0];
+    const message = choice?.message;
+    finish_reason = choice?.finish_reason;
 
+    // 解析内容
+    const messageContent = message?.content ?? choice?.delta?.content;
     if (typeof messageContent === "string") {
       content = messageContent;
     } else if (Array.isArray(messageContent)) {
@@ -138,8 +202,22 @@ async function callOpenAiCompatible(
       content = messageContent.text;
     }
 
+    // 解析工具调用
+    if (message?.tool_calls && Array.isArray(message.tool_calls)) {
+      tool_calls = message.tool_calls.map((tc: any) => ({
+        id: tc.id,
+        type: tc.type || "function",
+        function: {
+          name: tc.function?.name ?? "",
+          arguments: tc.function?.arguments ?? "{}",
+        },
+      }));
+    }
+
     return {
       content,
+      tool_calls,
+      finish_reason,
       raw: json,
     };
   } finally {

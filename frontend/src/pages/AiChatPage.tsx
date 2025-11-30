@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useAiConfig } from "@/hooks/useAiConfig";
@@ -7,7 +7,15 @@ import { ChatMessageList } from "@/components/ai/ChatMessageList";
 import { ChatInputBar } from "@/components/ai/ChatInputBar";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Sparkles } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { DS } from "@/lib/design-system";
 
@@ -20,17 +28,32 @@ export function AiChatPage() {
     loadingMessages,
     sending,
     error,
+    localAttachments,
     selectConversation,
     createConversation,
     updateConversation,
     deleteConversation,
     sendMessage,
+    executeTool,
   } = useAiChat();
 
   const { models } = useAiConfig();
 
   const [creating, setCreating] = useState(false);
   const [conversationPanelOpen, setConversationPanelOpen] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // 滚动到底部
+  const scrollToBottom = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  };
+
+  // 消息变化时自动滚动到底部
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleCreateConversation = async () => {
     if (creating) return;
@@ -50,7 +73,50 @@ export function AiChatPage() {
     setConversationPanelOpen(true);
   };
 
+  // 发送消息：如果没有当前会话，先自动创建一个
+  const handleSendMessage = async (content: string, attachments?: File[]) => {
+    // 将 File 转换为 LocalAttachment（包含 file 用于上传）
+    const localAtts = attachments?.map((file, i) => ({
+      id: `${Date.now()}-${i}`,
+      previewUrl: URL.createObjectURL(file),
+      file,  // 保留原始文件用于上传
+    }));
+    if (!currentConversationId) {
+      // 没有当前会话，先创建一个新会话
+      const title = `新会话 ${new Date().toLocaleString()}`;
+      const newConv = await createConversation({ title });
+      if (newConv) {
+        // 创建成功后发送消息，传入新会话 ID
+        await sendMessage(content, newConv.id, localAtts);
+      }
+    } else {
+      await sendMessage(content, undefined, localAtts);
+    }
+  };
+
   const currentConversation = conversations.find((c) => c.id === currentConversationId) ?? null;
+
+  // 当前模型
+  const currentModel = models?.find((m) => m.id === currentConversation?.model_id) ?? null;
+
+  // 切换模型
+  const handleChangeModel = async (modelId: number) => {
+    if (!currentConversation) return;
+    await updateConversation(currentConversation.id, { modelId });
+  };
+
+  // 工具确认回调
+  const handleToolConfirm = async (action: { toolName: string; args: Record<string, any> }) => {
+    try {
+      await executeTool(action.toolName, action.args);
+    } catch {
+      // 错误已在 hook 中处理
+    }
+  };
+
+  const handleToolCancel = (_action: { toolName: string; args: Record<string, any> }) => {
+    // 取消操作，无需处理
+  };
 
   return (
     <PageContainer
@@ -62,11 +128,14 @@ export function AiChatPage() {
       <div className="flex h-full min-h-0 flex-col">
         {/* Main Chat Container - Transparent/Ghost */}
         <div className="relative flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 overflow-y-auto h-full scroll-smooth px-2 scrollbar-none">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto h-full scroll-smooth px-2 scrollbar-none">
             <div className="pt-24 pb-32"> {/* Spacer for header and bottom input bar */}
               <ChatMessageList
                 messages={messages}
                 loading={loadingMessages}
+                localAttachments={localAttachments}
+                onToolConfirm={handleToolConfirm}
+                onToolCancel={handleToolCancel}
               />
             </div>
           </div>
@@ -75,6 +144,44 @@ export function AiChatPage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 px-4 pt-3 z-20">
             <div className="pointer-events-auto space-y-2">
               <div className="flex items-center justify-center relative h-9">
+                {/* Left: Model Selector */}
+                {models && models.length > 0 && (
+                  <div className="absolute left-0 top-0 flex items-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <GlassButton
+                          type="button"
+                          size="icon"
+                          glassVariant="lite"
+                          className="h-9 w-9 rounded-full shadow-sm"
+                          title={`切换模型 (${currentModel?.display_name ?? "未设置"})`}
+                        >
+                          <Sparkles className="h-5 w-5 text-primary" />
+                        </GlassButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className={cn("w-56", DS.glass.strong, "border-white/10")}>
+                        <DropdownMenuLabel className="text-xs">
+                          当前模型：{currentModel ? currentModel.display_name : "未设置"}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        {models.map((m) => (
+                          <DropdownMenuItem
+                            key={m.id}
+                            disabled={!m.is_enabled}
+                            className="text-xs focus:bg-primary/10 focus:text-primary"
+                            onClick={() => handleChangeModel(m.id)}
+                          >
+                            <span className="truncate">
+                              {m.display_name}
+                              {!m.is_enabled ? "（已禁用）" : ""}
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
                 {/* Center: Title Capsule */}
                 <div className="min-w-0 max-w-[60%] flex justify-center">
                   <GlassCard 
@@ -134,13 +241,7 @@ export function AiChatPage() {
             <div className="pointer-events-auto">
               <ChatInputBar
                 sending={sending}
-                onSend={async (content) => sendMessage(content)}
-                models={models}
-                currentModelId={currentConversation?.model_id ?? null}
-                onChangeModel={async (modelId: number) => {
-                  if (!currentConversation) return;
-                  await updateConversation(currentConversation.id, { modelId });
-                }}
+                onSend={handleSendMessage}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { callChatModel } from "../../core/ai/client.ts";
 import { getSetting } from "../settings/service.ts";
 import { buildVariableContext } from "./orchestrator.ts";
 import { buildImageAttachmentsFromUploadIds } from "./attachments.ts";
+import { getAllToolDefinitions, executeTool } from "./tools.ts";
 
 // 供应商实体
 export interface AiProvider {
@@ -1135,6 +1136,7 @@ export interface AppendUserMessageAndReplyInput {
   conversationId: number;
   userId: number;
   content: string;
+  attachmentIds?: number[];  // 用户上传的图片 ID 列表
 }
 
 export interface AppendUserMessageAndReplyResult {
@@ -1169,6 +1171,9 @@ export const appendUserMessageAndReply = async (
     conversationId: conv.id,
     role: "user",
     content: input.content,
+    payload: input.attachmentIds && input.attachmentIds.length > 0
+      ? { attachmentIds: input.attachmentIds }
+      : undefined,
   });
 
   const maxContext =
@@ -1183,11 +1188,23 @@ export const appendUserMessageAndReply = async (
   const varContext = buildVariableContext(conv, null);
 
   let userMessageAttachments: ChatAttachment[] | undefined;
-  const framesVar = varContext.conversationVars["videoFrames"];
-  if (framesVar && framesVar.kind === "image_upload_list" && Array.isArray(framesVar.value)) {
-    const attachments = buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
+
+  // 优先使用用户直接上传的图片
+  if (input.attachmentIds && input.attachmentIds.length > 0) {
+    const attachments = buildImageAttachmentsFromUploadIds(input.attachmentIds);
     if (attachments.length > 0) {
       userMessageAttachments = attachments;
+    }
+  }
+
+  // 如果没有直接上传的图片，则检查会话变量中的视频帧
+  if (!userMessageAttachments) {
+    const framesVar = varContext.conversationVars["videoFrames"];
+    if (framesVar && framesVar.kind === "image_upload_list" && Array.isArray(framesVar.value)) {
+      const attachments = buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
+      if (attachments.length > 0) {
+        userMessageAttachments = attachments;
+      }
     }
   }
 
@@ -1225,16 +1242,102 @@ export const appendUserMessageAndReply = async (
     messagesForAi.push({ role, content: msg.content, attachments });
   });
 
-  const aiResult = await callChatByModelId(conv.model_id, messagesForAi, {});
+  // 获取可用工具
+  const toolDefinitions = getAllToolDefinitions();
+  const callOptions: ChatCallOptions = {};
+  
+  // 如果有注册的工具，就传递给模型
+  if (toolDefinitions.length > 0) {
+    callOptions.tools = toolDefinitions;
+    callOptions.tool_choice = "auto";
+  }
+
+  // 工具调用循环（最多 5 轮）
+  const MAX_TOOL_ROUNDS = 5;
+  let currentMessages = [...messagesForAi];
+  let finalContent = "";
+  let toolRound = 0;
+
+  while (toolRound < MAX_TOOL_ROUNDS) {
+    const aiResult = await callChatByModelId(conv.model_id, currentMessages, callOptions);
+
+    // 如果没有工具调用，直接返回
+    if (!aiResult.tool_calls || aiResult.tool_calls.length === 0) {
+      finalContent = aiResult.content;
+      break;
+    }
+
+    // 有工具调用，执行工具
+    toolRound++;
+
+    // 添加 assistant 的工具调用消息
+    currentMessages.push({
+      role: "assistant",
+      content: aiResult.content || null,
+      tool_calls: aiResult.tool_calls,
+    });
+
+    // 执行每个工具并添加结果
+    for (const toolCall of aiResult.tool_calls) {
+      const toolName = toolCall.function.name;
+      let toolArgs: Record<string, any> = {};
+      
+      try {
+        toolArgs = JSON.parse(toolCall.function.arguments);
+      } catch {
+        toolArgs = {};
+      }
+
+      const toolResult = await executeTool(toolName, toolArgs, {
+        userId: input.userId,
+        conversationId: conv.id,
+        conversationVars: varContext.conversationVars,
+      });
+
+      // 保存工具调用结果到数据库（用于前端渲染）
+      createAiChatMessage({
+        conversationId: conv.id,
+        role: "tool",
+        content: toolName,
+        toolName: toolName,
+        payload: {
+          result: toolResult.result,
+          pendingAction: toolResult.pendingAction,
+          args: toolArgs,
+          success: toolResult.success,
+          error: toolResult.error,
+        },
+      });
+
+      // 添加工具结果消息给模型
+      currentMessages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(toolResult.success ? toolResult.result : { error: toolResult.error }),
+      });
+
+      // 更新会话变量
+      if (toolResult.updatedVars) {
+        Object.assign(varContext.conversationVars, toolResult.updatedVars);
+      }
+    }
+  }
+
+  // 如果工具调用超过最大轮数，进行最后一次调用（不带工具）
+  if (toolRound >= MAX_TOOL_ROUNDS && !finalContent) {
+    const finalResult = await callChatByModelId(conv.model_id, currentMessages, {});
+    finalContent = finalResult.content;
+  }
 
   const assistantMessage = createAiChatMessage({
     conversationId: conv.id,
     role: "assistant",
-    content: aiResult.content,
+    content: finalContent,
     toolName: null,
     payload: {
       provider: "chat_model",
       modelKey: model.key,
+      toolRounds: toolRound > 0 ? toolRound : undefined,
     },
   });
 

@@ -4,8 +4,8 @@ import { Buffer } from "node:buffer";
 import type { AiChatUpload } from "./service.ts";
 import { getAiChatUploadById } from "./service.ts";
 
-const projectRoot = path.resolve(process.cwd(), "..");
-const uploadsRoot = path.join(projectRoot, "database");
+// AI 上传文件存储目录
+const AI_UPLOADS_DIR = path.join(process.cwd(), "data", "ai_uploads");
 
 export interface UploadBase64Result {
   mimeType: string;
@@ -13,8 +13,8 @@ export interface UploadBase64Result {
 }
 
 const resolveUploadPath = (upload: AiChatUpload): string => {
-  const absPath = path.join(uploadsRoot, upload.storage_rel_path);
-  const rel = path.relative(uploadsRoot, absPath);
+  const absPath = path.join(AI_UPLOADS_DIR, upload.storage_rel_path);
+  const rel = path.relative(AI_UPLOADS_DIR, absPath);
   if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error("上传文件路径不合法");
   }
