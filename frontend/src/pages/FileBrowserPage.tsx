@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
@@ -57,6 +57,11 @@ export function FileBrowserPage() {
 
   // 上传对话框状态
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+  // 滚动容器引用，用于记忆滚动位置
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // 滚动位置缓存 key
+  const SCROLL_CACHE_KEY = "file_browser_scroll_positions";
 
   // 文件操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
@@ -125,8 +130,53 @@ export function FileBrowserPage() {
     localStorage.setItem("file_browser_view_mode", mode);
   };
 
+  // 保存当前滚动位置到 sessionStorage
+  const saveScrollPosition = useCallback(() => {
+    if (scrollContainerRef.current && activeLibraryId) {
+      const posKey = `${activeLibraryId}-${currentParentId || 'root'}`;
+      try {
+        const cached = sessionStorage.getItem(SCROLL_CACHE_KEY);
+        const positions: Record<string, number> = cached ? JSON.parse(cached) : {};
+        positions[posKey] = scrollContainerRef.current.scrollTop;
+        sessionStorage.setItem(SCROLL_CACHE_KEY, JSON.stringify(positions));
+      } catch {
+        // sessionStorage 不可用时忽略
+      }
+    }
+  }, [activeLibraryId, currentParentId]);
+
+  // 从 sessionStorage 恢复滚动位置
+  const restoreScrollPosition = useCallback(() => {
+    if (scrollContainerRef.current && activeLibraryId) {
+      const posKey = `${activeLibraryId}-${currentParentId || 'root'}`;
+      try {
+        const cached = sessionStorage.getItem(SCROLL_CACHE_KEY);
+        if (cached) {
+          const positions: Record<string, number> = JSON.parse(cached);
+          const savedPosition = positions[posKey];
+          if (savedPosition !== undefined && savedPosition > 0) {
+            // 使用 requestAnimationFrame 确保 DOM 已更新
+            requestAnimationFrame(() => {
+              scrollContainerRef.current?.scrollTo(0, savedPosition);
+            });
+          }
+        }
+      } catch {
+        // sessionStorage 不可用时忽略
+      }
+    }
+  }, [activeLibraryId, currentParentId]);
+
+  // 当文件列表加载完成后恢复滚动位置
+  useEffect(() => {
+    if (!entriesLoading && entries.length > 0) {
+      restoreScrollPosition();
+    }
+  }, [entriesLoading, entries.length, restoreScrollPosition]);
+
   // 进入目录
   const handleEnterDirectory = (entry: { id: string; original_name: string }) => {
+    saveScrollPosition();
     setCurrentParentId(entry.id);
     setSearchParams({ 
       libraryId: activeLibraryId!.toString(), 
@@ -136,6 +186,7 @@ export function FileBrowserPage() {
 
   // 面包屑导航
   const handleBreadcrumbRootClick = () => {
+    saveScrollPosition();
     setCurrentParentId(null);
     setSearchParams({ libraryId: activeLibraryId!.toString() });
   };
@@ -144,6 +195,7 @@ export function FileBrowserPage() {
     // 如果点击的是当前项，不做任何事
     if (item.id === currentParentId) return;
     
+    saveScrollPosition();
     setCurrentParentId(item.id);
     setSearchParams({ 
       libraryId: activeLibraryId!.toString(), 
@@ -246,7 +298,11 @@ export function FileBrowserPage() {
         </div>
       </div>
 
-      <GlassCard variant="ghost" className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2 z-10">
+      <GlassCard 
+        ref={scrollContainerRef}
+        variant="ghost" 
+        className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2 z-10"
+      >
         {libsLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             加载文件库...
@@ -293,6 +349,7 @@ export function FileBrowserPage() {
                     if (entry.is_directory) {
                       handleEnterDirectory(entry);
                     } else {
+                      saveScrollPosition();
                       navigate(`/preview/${entry.id}`);
                     }
                   }}
@@ -300,6 +357,7 @@ export function FileBrowserPage() {
                     if (entry.is_directory) {
                       handleEnterDirectory(entry);
                     } else {
+                      saveScrollPosition();
                       navigate(`/preview/${entry.id}`);
                     }
                   }}
