@@ -25,6 +25,7 @@ interface FolderPickerDialogProps {
   mode: "system" | "library";
   libraryId?: number; // library 模式下需要
   initialPath?: string; // system 模式下的初始路径
+  initialParentId?: string | null; // library 模式下的初始父目录 ID
   onSubmit: (value: string) => void; // system -> path, library -> entryId
   title?: string;
   description?: string;
@@ -36,6 +37,7 @@ export function FolderPickerDialog({
   mode,
   libraryId,
   initialPath,
+  initialParentId,
   onSubmit,
   title,
   description,
@@ -46,6 +48,7 @@ export function FolderPickerDialog({
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,16 +96,58 @@ export function FolderPickerDialog({
     }
   }, [mode, currentPath, currentParentId, libraryId]);
 
+  // 初始化：当对话框打开时，设置初始目录
   useEffect(() => {
-    if (open) {
-      load();
-      setSelectedId(null);
-      // Reset state if needed
-      if (mode === "library" && !currentParentId) {
+    if (open && !initialized) {
+      if (mode === "library" && initialParentId) {
+        // 需要加载初始目录的祖先路径来构建面包屑
+        loadInitialBreadcrumbs(initialParentId);
+      } else {
+        setCurrentParentId(null);
         setBreadcrumbs([]);
+        load();
       }
+      setSelectedId(null);
+      setInitialized(true);
     }
-  }, [open, load]);
+    if (!open) {
+      setInitialized(false);
+    }
+  }, [open, initialized, mode, initialParentId]);
+
+  // 加载初始目录的祖先路径
+  const loadInitialBreadcrumbs = async (parentId: string) => {
+    if (!libraryId) return;
+    try {
+      // 获取祖先路径
+      const res = await apiClient.get<{ entry: any; ancestors?: { id: string; name: string }[] }>(
+        `/files/entries/${parentId}`
+      );
+      if (res.ancestors && res.ancestors.length > 0) {
+        // ancestors 是从根到当前的路径，需要加上当前目录本身
+        const crumbs = [...res.ancestors, { id: parentId, name: res.entry.original_name }];
+        setBreadcrumbs(crumbs);
+        setCurrentParentId(parentId);
+      } else {
+        // 当前目录就是根目录的直接子目录
+        setBreadcrumbs([{ id: parentId, name: res.entry.original_name }]);
+        setCurrentParentId(parentId);
+      }
+      load();
+    } catch {
+      // 加载失败，回退到根目录
+      setCurrentParentId(null);
+      setBreadcrumbs([]);
+      load();
+    }
+  };
+
+  // 当 currentParentId 或 currentPath 变化时重新加载
+  useEffect(() => {
+    if (open && initialized) {
+      load();
+    }
+  }, [currentParentId, currentPath]);
 
   const handleEnter = (item: FolderItem) => {
     if (mode === "system") {
