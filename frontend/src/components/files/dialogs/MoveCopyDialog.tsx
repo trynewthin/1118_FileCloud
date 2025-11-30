@@ -170,10 +170,10 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
 
   // 当 currentParentId 变化时重新加载（仅在已初始化后）
   useEffect(() => {
-    if (open && initialized && currentParentId !== null) {
+    if (open && initialized) {
       loadFolders();
     }
-  }, [currentParentId]);
+  }, [open, initialized, currentParentId, loadFolders]);
 
   // 搜索关键词变化时防抖搜索
   useEffect(() => {
