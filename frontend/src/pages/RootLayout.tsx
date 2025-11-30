@@ -7,6 +7,7 @@ import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
 import { DS } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
 import { AmbientGlow } from "@/components/common/AmbientGlow";
+import { useUiCompat } from "@/hooks/useUiCompat";
 
 const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 
@@ -18,6 +19,9 @@ export function RootLayout() {
     }
     return false;
   });
+
+  // UI 兼容模式：用于关闭背景动画等效果，解决部分设备闪烁问题
+  const { compatMode } = useUiCompat();
 
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => {
@@ -33,8 +37,18 @@ export function RootLayout() {
     <PageHeaderProvider>
       <div className={cn("flex h-screen w-screen overflow-hidden relative", DS.layout.pageBackground)}>
         {/* Global Ambient Glow */}
-        <AmbientGlow position="top-right" variant="primary" className="pointer-events-none fixed z-0" />
-        <AmbientGlow position="bottom-left" variant="cool" className="pointer-events-none fixed z-0" />
+        <AmbientGlow
+          position="top-right"
+          variant="primary"
+          compatMode={compatMode}
+          className="pointer-events-none fixed z-0"
+        />
+        <AmbientGlow
+          position="bottom-left"
+          variant="cool"
+          compatMode={compatMode}
+          className="pointer-events-none fixed z-0"
+        />
 
         <AppSidebar
           collapsed={sidebarCollapsed}

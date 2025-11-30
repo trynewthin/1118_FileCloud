@@ -6,11 +6,14 @@ interface AmbientGlowProps {
   // variant 目前主要保留接口兼容，实际颜色由 CSS 变量 (primary/accent) 决定
   variant?: "primary" | "cool" | "warm";
   position?: "top-left" | "top-right" | "center" | "bottom-left" | "bottom-right";
+  // 兼容模式：为 true 时关闭动画，仅保留静态光晕
+  compatMode?: boolean;
 }
 
 export function AmbientGlow({
   className,
   position = "top-right",
+  compatMode = false,
 }: AmbientGlowProps) {
   const positionClasses = {
     "top-left": "-top-[18%] -left-[8%]",
@@ -29,43 +32,65 @@ export function AmbientGlow({
         className,
       )}
     >
-      {/* 主光晕层：使用 Primary 色，缓慢呼吸 */}
-      <motion.div
-        animate={{
-          scale: [1, 1.05, 1],
-          opacity: [0.7, 0.45, 0.7],
-        }}
-        transition={{
-          duration: 9,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className={cn(
-          "absolute inset-0 rounded-full",
-          "bg-primary/30 blur-[140px]",
-          "dark:bg-primary/20 dark:blur-[160px]",
-        )}
-      />
+      {compatMode ? (
+        <>
+          {/* 兼容模式：静态光晕，无动画，减少闪烁风险 */}
+          <div
+            className={cn(
+              "absolute inset-0 rounded-full",
+              "bg-primary/25 blur-[130px]",
+              "dark:bg-primary/18 dark:blur-[150px]",
+            )}
+          />
+          <div
+            className={cn(
+              "absolute inset-10 rounded-full",
+              "bg-accent/30 blur-[110px]",
+              "dark:bg-accent/22 dark:blur-[130px]",
+            )}
+          />
+        </>
+      ) : (
+        <>
+          {/* 主光晕层：使用 Primary 色，缓慢呼吸 */}
+          <motion.div
+            animate={{
+              scale: [1, 1.05, 1],
+              opacity: [0.7, 0.45, 0.7],
+            }}
+            transition={{
+              duration: 9,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className={cn(
+              "absolute inset-0 rounded-full",
+              "bg-primary/30 blur-[140px]",
+              "dark:bg-primary/20 dark:blur-[160px]",
+            )}
+          />
 
-      {/* 辅助光晕层：使用 Accent 色，错位移动，增加层次感 */}
-      <motion.div
-        animate={{
-          scale: [1.05, 0.95, 1.05],
-          x: [-24, 24, -24],
-          y: [12, -12, 12],
-        }}
-        transition={{
-          duration: 12,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 1.2,
-        }}
-        className={cn(
-          "absolute inset-10 rounded-full",
-          "bg-accent/35 blur-[120px]",
-          "dark:bg-accent/25 dark:blur-[140px]",
-        )}
-      />
+          {/* 辅助光晕层：使用 Accent 色，错位移动，增加层次感 */}
+          <motion.div
+            animate={{
+              scale: [1.05, 0.95, 1.05],
+              x: [-24, 24, -24],
+              y: [12, -12, 12],
+            }}
+            transition={{
+              duration: 12,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1.2,
+            }}
+            className={cn(
+              "absolute inset-10 rounded-full",
+              "bg-accent/35 blur-[120px]",
+              "dark:bg-accent/25 dark:blur-[140px]",
+            )}
+          />
+        </>
+      )}
     </div>
   );
 }

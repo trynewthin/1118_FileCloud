@@ -18,6 +18,8 @@ export function ThemeSettings() {
         <div className="flex flex-wrap items-center gap-3">
           {themes.map((theme) => {
             const isActive = colorTheme === theme.id;
+            const isGradient = theme.previewColor.startsWith("linear-gradient");
+
             return (
               <button
                 key={theme.id}
@@ -30,10 +32,18 @@ export function ThemeSettings() {
                     ? "border-foreground scale-110"
                     : "border-transparent hover:border-muted-foreground/30"
                 )}
-                // 支持纯色和线性渐变两种预览色
-                style={{ background: theme.previewColor }}
                 title={theme.name}
               >
+                {/* 内部实际显示颜色的圆点，保证始终为圆形，避免方块感 */}
+                <span
+                  className="block w-full h-full rounded-full"
+                  style={
+                    isGradient
+                      ? { backgroundImage: theme.previewColor as string }
+                      : { background: theme.previewColor as string }
+                  }
+                />
+
                 {/* 选中标记 */}
                 {isActive && (
                   <div className="absolute inset-0 flex items-center justify-center">
