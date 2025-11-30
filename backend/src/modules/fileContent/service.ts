@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Request, Response } from "express";
 import { db } from "../../core/db/index.ts";
-import { getEntryById } from "../files/service.ts";
+import { getEntryById, buildRelativePathForEntry } from "../files/service.ts";
 import { checkEntryPasswordIfProtected } from "../files/security.ts";
 
 interface LibraryRow {
@@ -88,27 +88,9 @@ export const resolveFileForStreaming = (
 
   const rootPath = getLibraryRoot(entry.library_id);
 
-  // 这里使用 files.service 中构建的相对路径逻辑
-  const relativePathStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ?",
-  );
-  const row = relativePathStmt.get(entryId) as any | undefined;
-  if (!row) {
-    throw new Error("文件索引不存在");
-  }
-
-  const segments: string[] = [];
-  let current: any | undefined = row;
-
-  while (current) {
-    segments.unshift(current.original_name);
-    if (!current.parent_id) break;
-    const parentRow = relativePathStmt.get(current.parent_id) as any | undefined;
-    if (!parentRow) break;
-    current = parentRow;
-  }
-
-  const realPath = path.join(rootPath, ...segments);
+  // 使用 files.service 中的 buildRelativePathForEntry 构建物理路径（包含 index_suffix）
+  const relativePath = buildRelativePathForEntry(entry);
+  const realPath = path.join(rootPath, relativePath);
 
   if (!fs.existsSync(realPath)) {
     throw new Error("实际文件不存在");

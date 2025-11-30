@@ -16,17 +16,27 @@ const THUMBNAILS_DIR_NAME = "thumbnails";
 // 缩略图文件后缀（按文件类型区分）
 const THUMBNAIL_EXT_VIDEO = ".vedtb";  // 视频缩略图
 const THUMBNAIL_EXT_IMAGE = ".photb";  // 图片缩略图
+const THUMBNAIL_EXT_AUDIO = ".audtb";  // 音频封面
+const THUMBNAIL_EXT_PDF = ".pdftb";    // PDF 预览图
 
 // 支持生成缩略图的扩展名
 const VIDEO_EXTS = new Set([
-  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v",
+  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v", "ts", "mts", "m2ts",
 ]);
+
+const AUDIO_EXTS = new Set([
+  "mp3", "flac", "m4a", "aac", "ogg", "opus", "wma", "wav", "ape", "alac", "aiff", "dsf", "dff",
+]);
+
+const PDF_EXTS = new Set(["pdf"]);
 
 // 根据文件扩展名获取对应的缩略图后缀
 const getThumbnailExt = (ext: string | null): string => {
   if (!ext) return THUMBNAIL_EXT_IMAGE;
   const lower = ext.toLowerCase();
   if (VIDEO_EXTS.has(lower)) return THUMBNAIL_EXT_VIDEO;
+  if (AUDIO_EXTS.has(lower)) return THUMBNAIL_EXT_AUDIO;
+  if (PDF_EXTS.has(lower)) return THUMBNAIL_EXT_PDF;
   return THUMBNAIL_EXT_IMAGE;
 };
 

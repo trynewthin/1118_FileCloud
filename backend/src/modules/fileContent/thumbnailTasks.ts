@@ -23,17 +23,23 @@ export const THUMBNAIL_EXT_AUDIO = ".audtb";  // 音频封面（未来扩展）
 
 // 支持生成缩略图的扩展名（不带点，小写）
 const IMAGE_EXTS = new Set([
-  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "ico", "heic", "heif",
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "ico", "heic", "heif", "avif",
 ]);
 
 const VIDEO_EXTS = new Set([
-  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v",
+  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v", "ts", "mts", "m2ts",
 ]);
+
+const AUDIO_EXTS = new Set([
+  "mp3", "flac", "m4a", "aac", "ogg", "opus", "wma", "wav", "ape", "alac", "aiff", "dsf", "dff",
+]);
+
+const PDF_EXTS = new Set(["pdf"]);
 
 const isSupportedForThumbnail = (ext: string | null): boolean => {
   if (!ext) return false;
   const lower = ext.toLowerCase();
-  return IMAGE_EXTS.has(lower) || VIDEO_EXTS.has(lower);
+  return IMAGE_EXTS.has(lower) || VIDEO_EXTS.has(lower) || AUDIO_EXTS.has(lower) || PDF_EXTS.has(lower);
 };
 
 // 查询文件库根路径
@@ -61,7 +67,8 @@ const getThumbnailExt = (ext: string | null): string => {
   const lower = ext.toLowerCase();
   if (VIDEO_EXTS.has(lower)) return THUMBNAIL_EXT_VIDEO;
   if (IMAGE_EXTS.has(lower)) return THUMBNAIL_EXT_IMAGE;
-  // 预留其他类型
+  if (AUDIO_EXTS.has(lower)) return THUMBNAIL_EXT_AUDIO;
+  if (PDF_EXTS.has(lower)) return THUMBNAIL_EXT_PDF;
   return THUMBNAIL_EXT_IMAGE;
 };
 
@@ -92,6 +99,102 @@ const buildRealPathFromEntryRow = (
   }
 
   return path.join(libraryRoot, ...segments);
+};
+
+// 使用 ffmpeg 提取音频文件的嵌入封面
+const extractAudioCover = async (
+  inputPath: string,
+  finalOutputPath: string,
+): Promise<boolean> => {
+  const outputDir = path.dirname(finalOutputPath);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
+
+  return new Promise((resolve) => {
+    // 尝试提取嵌入的封面图片
+    const args = [
+      "-y",
+      "-i", inputPath,
+      "-an",                    // 禁用音频
+      "-vcodec", "mjpeg",       // 输出 JPEG
+      "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+      "-frames:v", "1",
+      tempOutputPath,
+    ];
+
+    const child = spawn("ffmpeg", args, { stdio: "ignore" });
+
+    child.on("error", () => resolve(false));
+    child.on("close", () => {
+      if (fs.existsSync(tempOutputPath)) {
+        try {
+          const stat = fs.statSync(tempOutputPath);
+          if (stat.size > 100) {
+            // 成功提取到封面
+            if (tempOutputPath !== finalOutputPath) {
+              fs.renameSync(tempOutputPath, finalOutputPath);
+            }
+            resolve(true);
+            return;
+          }
+        } catch {
+          // 忽略
+        }
+        // 文件太小，可能是空的，删除它
+        try { fs.unlinkSync(tempOutputPath); } catch { /* 忽略 */ }
+      }
+      resolve(false);
+    });
+  });
+};
+
+// 使用 ffmpeg 生成 PDF 首页预览图
+const generatePdfThumbnail = async (
+  inputPath: string,
+  finalOutputPath: string,
+): Promise<void> => {
+  const outputDir = path.dirname(finalOutputPath);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
+
+  return new Promise((resolve, reject) => {
+    // ffmpeg 可以读取 PDF 首页（需要系统安装了 poppler 或 ffmpeg 编译时启用了 PDF 支持）
+    const args = [
+      "-y",
+      "-i", inputPath,
+      "-frames:v", "1",
+      "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+      tempOutputPath,
+    ];
+
+    const child = spawn("ffmpeg", args, { stdio: "ignore" });
+
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => {
+      if (fs.existsSync(tempOutputPath)) {
+        try {
+          const stat = fs.statSync(tempOutputPath);
+          if (stat.size > 100) {
+            if (tempOutputPath !== finalOutputPath) {
+              fs.renameSync(tempOutputPath, finalOutputPath);
+            }
+            resolve();
+            return;
+          }
+        } catch {
+          // 忽略
+        }
+        try { fs.unlinkSync(tempOutputPath); } catch { /* 忽略 */ }
+      }
+      reject(new Error(`PDF 缩略图生成失败，退出码 ${code}`));
+    });
+  });
 };
 
 // 使用 ffmpeg 生成缩略图（对于视频，尝试截取第 5 秒以避免黑屏）
@@ -221,8 +324,28 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 
-  const isVideo = VIDEO_EXTS.has(entryRow.extension?.toLowerCase() || "");
-  await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, isVideo);
+  const extLower = entryRow.extension?.toLowerCase() || "";
+  
+  if (VIDEO_EXTS.has(extLower)) {
+    await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, true);
+  } else if (IMAGE_EXTS.has(extLower)) {
+    await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, false);
+  } else if (AUDIO_EXTS.has(extLower)) {
+    // 音频文件：尝试提取嵌入封面，失败则跳过（不报错）
+    const success = await extractAudioCover(fullPath, thumbnailPath);
+    if (!success) {
+      // 没有嵌入封面，跳过
+      return;
+    }
+  } else if (PDF_EXTS.has(extLower)) {
+    // PDF 文件：生成首页预览
+    try {
+      await generatePdfThumbnail(fullPath, thumbnailPath);
+    } catch {
+      // PDF 缩略图生成失败，跳过（可能 ffmpeg 不支持 PDF）
+      return;
+    }
+  }
 
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
@@ -287,6 +410,18 @@ export const generateThumbnailForEntry = async (entryId: string): Promise<void> 
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 
-  const isVideo = VIDEO_EXTS.has(entryRow.extension?.toLowerCase() || "");
-  await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, isVideo);
+  const extLower = entryRow.extension?.toLowerCase() || "";
+  
+  if (VIDEO_EXTS.has(extLower)) {
+    await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, true);
+  } else if (IMAGE_EXTS.has(extLower)) {
+    await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, false);
+  } else if (AUDIO_EXTS.has(extLower)) {
+    const success = await extractAudioCover(fullPath, thumbnailPath);
+    if (!success) {
+      throw new Error("音频文件没有嵌入封面");
+    }
+  } else if (PDF_EXTS.has(extLower)) {
+    await generatePdfThumbnail(fullPath, thumbnailPath);
+  }
 };

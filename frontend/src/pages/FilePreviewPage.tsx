@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Copy, Move, Trash2 } from "lucide-react";
+import { Copy, Move, Trash2, Download } from "lucide-react";
+import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { getEntry, type FileEntry } from "@/lib/api/files";
 import { VideoPreview } from "@/components/preview/adapters/VideoPreview";
+import { AudioPreview } from "@/components/preview/adapters/AudioPreview";
+import { ImagePreview } from "@/components/preview/adapters/ImagePreview";
+import { TextPreview } from "@/components/preview/adapters/TextPreview";
+import { PdfPreview } from "@/components/preview/adapters/PdfPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
@@ -76,26 +81,76 @@ export function FilePreviewPage() {
 
     const mime = entry.mime_type || "";
     const nameLower = entry.original_name.toLowerCase();
+    const ext = nameLower.substring(nameLower.lastIndexOf("."));
 
-    const isVideoByMime = mime.startsWith("video/");
-    const isVideoByExt = [".mp4", ".webm", ".mkv", ".mov", ".avi"].some((ext) =>
-      nameLower.endsWith(ext),
-    );
-
-    if (isVideoByMime || isVideoByExt) {
+    // 视频文件
+    const videoExts = [".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v", ".wmv"];
+    if (mime.startsWith("video/") || videoExts.includes(ext)) {
       return <VideoPreview entry={entry} />;
     }
 
-    // 后续可以加 ImagePreview, AudioPreview, PdfPreview 等
+    // 音频文件
+    const audioExts = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"];
+    if (mime.startsWith("audio/") || audioExts.includes(ext)) {
+      return <AudioPreview entry={entry} />;
+    }
+
+    // 图片文件
+    const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".ico", ".tiff", ".tif", ".heic", ".heif", ".avif"];
+    if (mime.startsWith("image/") || imageExts.includes(ext)) {
+      return <ImagePreview entry={entry} />;
+    }
+
+    // PDF 文件
+    if (mime === "application/pdf" || ext === ".pdf") {
+      return <PdfPreview entry={entry} />;
+    }
+
+    // 文本文件
+    const textExts = [
+      ".txt", ".md", ".markdown", ".json", ".xml", ".yaml", ".yml",
+      ".log", ".ini", ".conf", ".cfg", ".env",
+      ".js", ".ts", ".jsx", ".tsx", ".vue", ".svelte",
+      ".css", ".scss", ".less", ".sass",
+      ".html", ".htm", ".svg",
+      ".py", ".rb", ".php", ".java", ".c", ".cpp", ".h", ".hpp",
+      ".go", ".rs", ".swift", ".kt", ".scala",
+      ".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd",
+      ".sql", ".graphql", ".prisma",
+      ".toml", ".csv", ".tsv",
+    ];
+    const textMimePatterns = ["text/", "application/json", "application/xml", "application/javascript"];
+    const isTextByMime = textMimePatterns.some(p => mime.startsWith(p));
+    if (isTextByMime || textExts.includes(ext)) {
+      return <TextPreview entry={entry} />;
+    }
 
     return <DefaultPreview entry={entry} />;
   };
 
   const pageTitle = entry ? entry.original_name : "文件预览";
 
+  // 下载文件
+  const handleDownload = () => {
+    if (!entry) return;
+    const token = getAuthToken();
+    const downloadUrl = buildApiUrl(
+      `/files/entries/${entry.id}/download/${encodeURIComponent(entry.original_name)}${token ? `?token=${encodeURIComponent(token)}` : ""}`
+    );
+    window.open(downloadUrl, "_blank");
+  };
+
   // 操作按钮
   const actionButtons = entry ? (
     <div className="flex items-center gap-2">
+      <GlassButton
+        glassVariant="ghost"
+        size="icon"
+        onClick={handleDownload}
+        title="下载"
+      >
+        <Download className="h-4 w-4" />
+      </GlassButton>
       <GlassButton
         glassVariant="ghost"
         size="icon"

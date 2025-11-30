@@ -199,3 +199,62 @@ export const resolveRealPathForEntry = (entry: FileEntry, libraryRootPath: strin
   const relative = buildRelativePathForEntry(entry);
   return path.join(libraryRootPath, relative);
 };
+
+// 搜索文件夹（按名称模糊匹配）
+export interface FolderSearchResult {
+  id: string;
+  name: string;
+  path: string; // 完整路径，用于显示
+}
+
+export const searchFolders = (params: {
+  libraryId: number;
+  keyword: string;
+  excludeId?: string; // 排除指定条目（避免移动到自身）
+  limit?: number;
+}): FolderSearchResult[] => {
+  const { libraryId, keyword, excludeId, limit = 20 } = params;
+  
+  if (!keyword || keyword.trim().length === 0) {
+    return [];
+  }
+
+  const searchPattern = `%${keyword.trim()}%`;
+  
+  // 查询匹配的文件夹
+  let sql = `
+    SELECT id, original_name 
+    FROM file_entries 
+    WHERE library_id = ? 
+      AND is_directory = 1 
+      AND is_deleted = 0 
+      AND original_name LIKE ?
+  `;
+  const sqlParams: any[] = [libraryId, searchPattern];
+  
+  if (excludeId) {
+    sql += " AND id != ?";
+    sqlParams.push(excludeId);
+  }
+  
+  sql += " ORDER BY original_name ASC LIMIT ?";
+  sqlParams.push(limit);
+
+  const rows = db.prepare(sql).all(...sqlParams) as { id: string; original_name: string }[];
+
+  // 为每个结果构建完整路径
+  return rows.map((row) => {
+    const entry = getEntryById(row.id);
+    if (!entry) return null;
+    
+    const ancestors = getEntryAncestors(entry);
+    const pathParts = ancestors.map((a) => a.name);
+    pathParts.push(entry.original_name);
+    
+    return {
+      id: row.id,
+      name: row.original_name,
+      path: "/" + pathParts.join("/"),
+    };
+  }).filter((item): item is FolderSearchResult => item !== null);
+};
