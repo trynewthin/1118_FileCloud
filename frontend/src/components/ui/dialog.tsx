@@ -154,6 +154,7 @@ function DialogFooter({
       <div className="flex items-center gap-2">
         {leftButtonIcon && (
           <GlassButton
+            type="button"
             size="icon"
             glassVariant={leftButtonGlassVariant}
             onClick={onLeftButtonClick}
@@ -167,6 +168,7 @@ function DialogFooter({
         {children}
         {rightButtonIcon && (
           <GlassButton
+            type="button"
             size="icon"
             glassVariant={rightButtonGlassVariant}
             onClick={onRightButtonClick}

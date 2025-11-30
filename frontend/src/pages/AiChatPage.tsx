@@ -7,7 +7,7 @@ import { ChatMessageList } from "@/components/ai/ChatMessageList";
 import { ChatInputBar } from "@/components/ai/ChatInputBar";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/lib/design-system";
 
@@ -20,7 +20,6 @@ export function AiChatPage() {
     loadingMessages,
     sending,
     error,
-    reloadConversations,
     selectConversation,
     createConversation,
     updateConversation,
@@ -68,8 +67,6 @@ export function AiChatPage() {
               <ChatMessageList
                 messages={messages}
                 loading={loadingMessages}
-                onReloadConversations={reloadConversations}
-                reloadingConversations={loadingConversations}
               />
             </div>
           </div>
@@ -78,20 +75,6 @@ export function AiChatPage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 px-4 pt-3 z-20">
             <div className="pointer-events-auto space-y-2">
               <div className="flex items-center justify-center relative h-9">
-                {/* Left: Reload Button */}
-                <div className="absolute left-0 top-0 flex items-center">
-                  <GlassButton
-                    glassVariant="lite"
-                    size="icon"
-                    className="h-9 w-9 rounded-full shadow-sm"
-                    onClick={() => reloadConversations()}
-                    disabled={loadingConversations}
-                    title="刷新会话"
-                  >
-                    <RefreshCw className={cn("h-4 w-4", loadingConversations && "animate-spin")} />
-                  </GlassButton>
-                </div>
-
                 {/* Center: Title Capsule */}
                 <div className="min-w-0 max-w-[60%] flex justify-center">
                   <GlassCard 

@@ -6,8 +6,6 @@ import { DS } from "@/lib/design-system";
 interface ChatMessageListProps {
   messages: AiChatMessage[];
   loading: boolean;
-  onReloadConversations?: () => void;
-  reloadingConversations?: boolean;
 }
 
 export function ChatMessageList({

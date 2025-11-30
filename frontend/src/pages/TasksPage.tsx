@@ -2,11 +2,9 @@ import { useTasks } from "@/hooks/useTasks";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TaskItem } from "@/components/tasks/TaskItem";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw } from "lucide-react";
-import { GlassButton } from "@/components/common/GlassButton";
 
 export function TasksPage() {
-  const { items, loading, error, reload, status, setStatus } = useTasks({
+  const { items, loading, error, status, setStatus } = useTasks({
     auto: true,
     status: "ALL",
   });
@@ -15,20 +13,6 @@ export function TasksPage() {
     <PageContainer
       title="任务中心"
       showBack
-      action={
-        <div className="flex gap-2">
-          <GlassButton
-            glassVariant="lite"
-            size="sm"
-            onClick={() => reload()}
-            disabled={loading}
-            className="gap-2 px-3"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            <span>刷新</span>
-          </GlassButton>
-        </div>
-      }
     >
       <Tabs
         defaultValue="ALL"

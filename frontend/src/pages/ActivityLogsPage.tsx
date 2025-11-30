@@ -1,8 +1,7 @@
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
-import { RefreshCw, User, Activity } from "lucide-react";
+import { User, Activity } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,20 +12,12 @@ import {
 } from "@/components/ui/table";
 
 export function ActivityLogsPage() {
-  const { items, loading, error, reload } = useActivityLogs({ auto: true });
+  const { items, loading, error } = useActivityLogs();
 
   return (
     <PageContainer
       title="操作日志"
       showBack
-      action={
-        <div className="flex gap-2">
-          <GlassButton variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-             刷新
-          </GlassButton>
-        </div>
-      }
     >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 

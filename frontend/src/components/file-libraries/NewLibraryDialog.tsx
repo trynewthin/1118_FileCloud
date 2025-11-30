@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, FolderSearch, XIcon, Check } from "lucide-react";
+import { Plus, Folder, XIcon, Check } from "lucide-react";
 import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialog";
 
 interface NewLibraryDialogProps {
@@ -23,7 +23,7 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   const [open, setOpen] = useState(false);
   const [rootPath, setRootPath] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const { create, loading } = useFileLibraries();
+  const { create, loading } = useFileLibraries({ autoRefresh: false });
   const [error, setError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -31,7 +31,10 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
     if (e) {
       e.preventDefault();
     }
-    if (!rootPath) return;
+    if (!rootPath) {
+      setError("请选择文件库根路径");
+      return;
+    }
     
     setError("");
     try {
@@ -65,21 +68,21 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
             </DialogHeader>
             <div className="grid gap-5 py-6">
               <div className="grid gap-2">
-                <Label htmlFor="rootPath">
+                <Label>
                   根路径 <span className="text-destructive">*</span>
                 </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="rootPath"
-                    value={rootPath}
-                    onChange={(e) => setRootPath(e.target.value)}
-                    placeholder="例如: D:\Photos"
-                    className="flex-1 bg-background/50 border-white/10 focus:bg-background/80"
-                  />
-                  <GlassButton type="button" glassVariant="ghost" size="icon" onClick={() => setPickerOpen(true)} title="选择服务器目录">
-                    <FolderSearch className="h-4 w-4" />
-                  </GlassButton>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border border-input bg-background/50 hover:bg-accent/50 transition-colors text-left"
+                >
+                  <Folder className="h-5 w-5 text-muted-foreground shrink-0" />
+                  {rootPath ? (
+                    <span className="text-sm font-mono truncate">{rootPath}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">点击选择服务器目录...</span>
+                  )}
+                </button>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="displayName">
@@ -89,7 +92,7 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="可选，默认为未命名"
+                  placeholder="可选，默认使用目录名"
                   className="bg-background/50 border-white/10 focus:bg-background/80"
                 />
               </div>

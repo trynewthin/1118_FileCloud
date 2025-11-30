@@ -23,6 +23,13 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -41,73 +48,152 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/**
+ * FileCloud 主题 - Ocean Blue
+ * 
+ * 设计理念：
+ * - 浅色模式：极淡的冷灰色，显得干净
+ * - 深色模式：深沉的矿石灰 (Slate/Mineral Gray)
+ * - 主色调：深邃的宝石蓝 (Sapphire Blue)，稳重且高级
+ * - 整体风格：玻璃拟态、通透、高级感
+ */
+
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  
+  /* 背景：极淡的冷灰色，几乎接近纯白，显得干净 */
+  --background: oklch(0.985 0.002 240);
+  --foreground: oklch(0.20 0.01 240);
+  
+  /* 卡片：纯白，利用阴影和边框区分层级 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.20 0.01 240);
+  
+  /* 弹出层 */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.20 0.01 240);
+  
+  /* 主色调：深邃的宝石蓝 (Sapphire Blue)，稳重且高级 */
+  --primary: oklch(0.50 0.18 255);
+  --primary-foreground: oklch(0.98 0 0);
+  
+  /* 次要色：中性浅灰，不带色相，作为衬托 */
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.20 0.01 240);
+  
+  /* 静音色：中性灰 */
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  
+  /* 强调色：极淡的品牌色背景，用于 hover 状态 */
+  --accent: oklch(0.96 0.01 255);
+  --accent-foreground: oklch(0.20 0.01 240);
+  
+  /* 危险色：标准的红 */
+  --destructive: oklch(0.60 0.18 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  
+  /* 成功色：翡翠绿 */
+  --success: oklch(0.65 0.18 150);
+  --success-foreground: oklch(0.98 0 0);
+  
+  /* 警告色：暖橙 */
+  --warning: oklch(0.80 0.15 70);
+  --warning-foreground: oklch(0.20 0.02 70);
+  
+  /* 信息色：蔚蓝 */
+  --info: oklch(0.65 0.15 240);
+  --info-foreground: oklch(0.98 0 0);
+  
+  /* 边框：浅中性灰 */
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.50 0.18 255);
+  
+  /* 图表颜色：多彩配色，便于区分数据 */
+  --chart-1: oklch(0.50 0.18 255);
+  --chart-2: oklch(0.65 0.18 150);
+  --chart-3: oklch(0.75 0.15 50);
+  --chart-4: oklch(0.60 0.20 300);
+  --chart-5: oklch(0.65 0.18 25);
+  
+  /* 侧边栏：略微深一点的浅灰，与主内容区形成微妙对比 */
+  --sidebar: oklch(0.98 0.002 240);
+  --sidebar-foreground: oklch(0.30 0.01 240);
+  --sidebar-primary: oklch(0.50 0.18 255);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.95 0.01 255);
+  --sidebar-accent-foreground: oklch(0.20 0.01 240);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.50 0.18 255);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* 背景：深沉的矿石灰 (Slate/Mineral Gray) */
+  --background: oklch(0.15 0.01 240);
+  --foreground: oklch(0.98 0 0);
+  
+  /* 卡片：比背景稍亮 */
+  --card: oklch(0.18 0.01 240);
+  --card-foreground: oklch(0.98 0 0);
+  
+  /* 弹出层 */
+  --popover: oklch(0.18 0.01 240);
+  --popover-foreground: oklch(0.98 0 0);
+  
+  /* 主色调：提亮一点的蓝紫色 */
+  --primary: oklch(0.65 0.18 255);
+  --primary-foreground: oklch(0.15 0.01 240);
+  
+  /* 次要色：深灰 */
+  --secondary: oklch(0.25 0.01 240);
+  --secondary-foreground: oklch(0.98 0 0);
+  
+  /* 静音色 */
+  --muted: oklch(0.25 0.01 240);
+  --muted-foreground: oklch(0.65 0 0);
+  
+  /* 强调色：深蓝灰背景 */
+  --accent: oklch(0.25 0.02 255);
+  --accent-foreground: oklch(0.98 0 0);
+  
+  /* 危险色 */
+  --destructive: oklch(0.65 0.20 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  
+  /* 成功色 */
+  --success: oklch(0.70 0.15 150);
+  --success-foreground: oklch(0.15 0.01 240);
+  
+  /* 警告色 */
+  --warning: oklch(0.80 0.15 70);
+  --warning-foreground: oklch(0.15 0.01 240);
+  
+  /* 信息色 */
+  --info: oklch(0.70 0.15 240);
+  --info-foreground: oklch(0.15 0.01 240);
+  
+  /* 边框 */
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.65 0.18 255);
+  
+  /* 图表颜色 */
+  --chart-1: oklch(0.65 0.18 255);
+  --chart-2: oklch(0.70 0.15 150);
+  --chart-3: oklch(0.75 0.15 50);
+  --chart-4: oklch(0.65 0.20 300);
+  --chart-5: oklch(0.70 0.18 25);
+  
+  /* 侧边栏：比主背景略深增加沉浸感 */
+  --sidebar: oklch(0.13 0.01 240);
+  --sidebar-foreground: oklch(0.90 0 0);
+  --sidebar-primary: oklch(0.65 0.18 255);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.25 0.02 255);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.65 0.18 255);
 }
 
 @layer base {

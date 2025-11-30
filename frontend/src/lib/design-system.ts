@@ -3,13 +3,15 @@ import { cn } from "@/lib/utils";
 /**
  * FileCloud Design System
  * 统一管理 UI 的核心视觉风格：圆角、阴影、玻璃拟态、卡片层级等
+ * 
+ * 颜色配置已移至 theme-colors.ts，通过 CSS 变量在 index.css 中定义
  */
 
 export const DS = {
   // 1. 布局与容器
   layout: {
-    // 页面主背景：浅灰色底，深色模式下为深灰，避免纯黑白的刺眼
-    pageBackground: "bg-zinc-50/50 dark:bg-zinc-950",
+    // 页面主背景：使用主题变量
+    pageBackground: "bg-background",
     // 主内容区的内边距策略
     mainContent: "px-4 md:px-8 pt-20 pb-6",
     // PageContainer 内部内容区域：负责撑满高度并预留统一底部留白

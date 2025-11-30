@@ -7,7 +7,7 @@ import { DS } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
 
 export function FileLibrariesPage() {
-  const { items, loading, error, refresh, remove, reload } = useFileLibraries();
+  const { items, loading, error, remove, reload } = useFileLibraries();
 
   return (
     <PageContainer
@@ -43,7 +43,6 @@ export function FileLibrariesPage() {
             <LibraryCard
               key={lib.id}
               library={lib}
-              onRefresh={refresh}
               onDelete={remove}
               loading={loading}
             />

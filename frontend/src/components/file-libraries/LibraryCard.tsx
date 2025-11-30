@@ -1,4 +1,4 @@
-import { HardDrive, RefreshCw, Trash2 } from "lucide-react";
+import { HardDrive, Trash2 } from "lucide-react";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -6,14 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DS } from "@/lib/design-system";
 
+// 格式化字节数为可读字符串
+function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes === 0) return "未设置";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let unitIndex = 0;
+  let size = bytes;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return `${size.toFixed(unitIndex > 0 ? 2 : 0)} ${units[unitIndex]}`;
+}
+
 interface LibraryCardProps {
   library: FileLibrary;
-  onRefresh: (id: number) => void;
   onDelete: (id: number) => void;
   loading?: boolean;
 }
 
-export function LibraryCard({ library, onRefresh, onDelete, loading }: LibraryCardProps) {
+export function LibraryCard({ library, onDelete, loading }: LibraryCardProps) {
   return (
     <GlassCard variant="strong" className="flex flex-col justify-between p-5 gap-4 transition-all duration-300 hover:border-primary/20">
       <div className="space-y-3">
@@ -40,12 +52,8 @@ export function LibraryCard({ library, onRefresh, onDelete, loading }: LibraryCa
       <div className="space-y-4">
         <div className="grid gap-2 text-sm px-1">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground text-xs">已用空间</span>
-            <span className="font-medium font-mono">{library.current_size_bytes ? (library.current_size_bytes / 1024 / 1024).toFixed(2) + " MB" : "0 B"}</span>
-          </div>
-          <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
-            <div className="h-full bg-primary/50 rounded-full" style={{ width: '10%' }} /> 
-            {/* TODO: 如果有配额限制，这里可以显示真实进度条 */}
+            <span className="text-muted-foreground text-xs">容量限制</span>
+            <span className="font-medium font-mono">{formatBytes(library.capacity_limit_bytes)}</span>
           </div>
           <div className="flex justify-between items-center">
              <span className="text-muted-foreground text-xs">最后扫描</span>
@@ -56,16 +64,6 @@ export function LibraryCard({ library, onRefresh, onDelete, loading }: LibraryCa
         <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
           <GlassButton
             variant="ghost"
-            glassVariant="lite"
-            size="sm"
-            onClick={() => onRefresh(library.id)}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-            刷新
-          </GlassButton>
-          <GlassButton
-            variant="ghost" // destructive 变体在 glass button 中需要特殊处理，这里先用 ghost + text-destructive
             glassVariant="ghost"
             size="sm"
             onClick={() => onDelete(library.id)}

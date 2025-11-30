@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, XIcon } from "lucide-react";
 import { AiProviderList } from "@/components/ai/AiProviderList";
 import { AiProviderFormDialog } from "@/components/ai/AiProviderFormDialog";
 import { AiModelList } from "@/components/ai/AiModelList";
@@ -19,16 +19,13 @@ import type { AiProvider, AiChatModel, AiChatPrompt } from "@/lib/api/aiConfig";
 import { GlassButton } from "@/components/common/GlassButton";
 import { SettingsLinkCard } from "@/components/common/SettingsLinkCard";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { XIcon } from "lucide-react";
 
 export function AiSettingsPage() {
   const {
     providers,
     models,
     prompts,
-    loading,
     error,
-    reload,
     createProvider,
     updateProvider,
     deleteProvider,
@@ -133,19 +130,6 @@ export function AiSettingsPage() {
             <TabsTrigger value="models">模型</TabsTrigger>
             <TabsTrigger value="prompts">提示词</TabsTrigger>
           </TabsList>
-        }
-        action={
-          <GlassButton
-            glassVariant="lite"
-            size="sm"
-            onClick={() => reload()
-            }
-            disabled={loading}
-            className="gap-2 px-3"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            <span>刷新</span>
-          </GlassButton>
         }
       >
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}

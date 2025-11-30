@@ -9,19 +9,28 @@ interface ActivityLogsState {
 }
 
 interface UseActivityLogsOptions {
+  /** 是否自动加载，默认 true */
   auto?: boolean;
+  /** 是否启用自动轮询，默认 true */
+  autoRefresh?: boolean;
+  /** 轮询间隔（毫秒），默认 5000 */
+  refreshInterval?: number;
 }
 
 // 管理操作日志列表的 hook
 export const useActivityLogs = (options?: UseActivityLogsOptions) => {
+  const { auto = true, autoRefresh = true, refreshInterval = 5000 } = options ?? {};
+  
   const [state, setState] = useState<ActivityLogsState>({
     items: [],
-    loading: !!options?.auto,
+    loading: auto,
     error: null,
   });
 
-  const load = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+    }
     try {
       const res = await listActivityLogs();
       setState({ items: res.items, loading: false, error: null });
@@ -31,11 +40,23 @@ export const useActivityLogs = (options?: UseActivityLogsOptions) => {
     }
   }, []);
 
+  // 初始加载
   useEffect(() => {
-    if (options?.auto) {
+    if (auto) {
       load();
     }
-  }, [options?.auto, load]);
+  }, [auto, load]);
+
+  // 自动轮询
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const timer = setInterval(() => {
+      load(true);
+    }, refreshInterval);
+
+    return () => clearInterval(timer);
+  }, [autoRefresh, refreshInterval, load]);
 
   return {
     ...state,
