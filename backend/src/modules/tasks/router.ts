@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
-import { createTask, getTaskById, listTasks } from "./service.ts";
+import { createTask, getTaskById, getTaskWithChildren, listTasks } from "./service.ts";
 
 const router = express.Router();
 
@@ -11,10 +11,11 @@ router.get(
   authenticate,
   requirePermission(PermissionLevel.User),
   (req, res) => {
-    const { limit, offset, status } = req.query as {
+    const { limit, offset, status, includeChildren } = req.query as {
       limit?: string;
       offset?: string;
       status?: string;
+      includeChildren?: string;
     };
 
     const parsedLimit = limit ? Number(limit) : undefined;
@@ -31,13 +32,14 @@ router.get(
       limit: parsedLimit,
       offset: parsedOffset,
       status: normalizedStatus,
+      includeChildren: includeChildren === "true",
     });
 
     return res.json({ items: tasks });
   },
 );
 
-// 查询单个任务详情（用户可见）
+// 查询单个任务详情（用户可见，包含子任务）
 router.get(
   "/:id",
   authenticate,
@@ -48,7 +50,7 @@ router.get(
       return res.status(400).json({ message: "任务 ID 不合法" });
     }
 
-    const task = getTaskById(id);
+    const task = getTaskWithChildren(id);
     if (!task) {
       return res.status(404).json({ message: "任务不存在" });
     }

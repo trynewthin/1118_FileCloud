@@ -24,7 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Check } from "lucide-react";
 
 interface BreadcrumbItem {
   id: string;
@@ -205,12 +204,12 @@ export function FileBrowserPage() {
   };
 
   // 手动触发重新索引（确认逻辑）
-  const handleReindexConfirm = async () => {
+  const handleReindexConfirm = async (forceReindex: boolean) => {
     setReindexDialogOpen(false);
     if (!activeLibraryId) return;
 
     try {
-      await indexLibrary();
+      await indexLibrary({ forceReindex });
       // 索引任务将在后台执行，用户可在任务中心查看进度
     } catch (err: any) {
       console.error("索引触发失败", err);
@@ -361,22 +360,29 @@ export function FileBrowserPage() {
       <AlertDialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认重建索引？</AlertDialogTitle>
+            <AlertDialogTitle>重建索引</AlertDialogTitle>
             <AlertDialogDescription>
-              这将对当前文件库执行全量扫描，可能会消耗一定的系统资源。任务将在后台执行，您可以在任务中心查看进度。
+              选择索引模式：增量索引只处理变动的文件，强制索引会清空现有索引并完全重建。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <GlassButton
-              size="icon"
-              glassVariant="lite"
-              onClick={handleReindexConfirm}
-              className="bg-primary/10 text-primary hover:bg-primary/20"
-            >
-              <Check className="h-4 w-4" />
-              <span className="sr-only">确认执行</span>
-            </GlassButton>
+            <div className="flex gap-2 sm:ml-auto">
+              <GlassButton
+                glassVariant="lite"
+                onClick={() => handleReindexConfirm(false)}
+                className="bg-primary/10 text-primary hover:bg-primary/20"
+              >
+                增量索引
+              </GlassButton>
+              <GlassButton
+                glassVariant="lite"
+                onClick={() => handleReindexConfirm(true)}
+                className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+              >
+                强制索引
+              </GlassButton>
+            </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

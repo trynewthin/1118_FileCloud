@@ -39,9 +39,26 @@ export const useTasks = (options?: UseTasksOptions) => {
   );
 
   useEffect(() => {
-    if (options?.auto) {
-      load();
-    }
+    if (!options?.auto) return;
+
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const tick = async () => {
+      if (cancelled) return;
+      await load();
+      if (cancelled) return;
+      timer = window.setTimeout(tick, 3000);
+    };
+
+    void tick();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
   }, [options?.auto, load]);
 
   const changeStatus = useCallback(

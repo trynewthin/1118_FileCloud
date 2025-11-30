@@ -6,28 +6,27 @@ import { registerTaskHandler } from "../../core/tasks/executor.ts";
 import type { TaskRecord } from "../tasks/service.ts";
 import { updateTaskStatus } from "../tasks/service.ts";
 
-// 缩略图相关任务类型常量
+// 缩略图相关任务类型常量（保留用于独立任务，但索引任务会直接调用生成函数）
 export const TASK_TYPE_FILE_GENERATE_THUMBNAIL = "FILE_GENERATE_THUMBNAIL";
 
+// 配置常量
 const INTERNAL_META_DIR = ".filecloud_meta";
 const THUMBNAILS_DIR_NAME = "thumbnails";
 
+// 缩略图文件后缀（按文件类型区分）
+export const THUMBNAIL_EXT_VIDEO = ".vedtb";  // 视频缩略图
+export const THUMBNAIL_EXT_IMAGE = ".photb";  // 图片缩略图
+// 预留其他类型
+export const THUMBNAIL_EXT_PDF = ".pdftb";    // PDF 预览图（未来扩展）
+export const THUMBNAIL_EXT_AUDIO = ".audtb";  // 音频封面（未来扩展）
+
 // 支持生成缩略图的扩展名（不带点，小写）
 const IMAGE_EXTS = new Set([
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "gif",
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "ico", "heic", "heif",
 ]);
 
 const VIDEO_EXTS = new Set([
-  "mp4",
-  "webm",
-  "ogv",
-  "mov",
-  "mkv",
-  "avi",
+  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v",
 ]);
 
 const isSupportedForThumbnail = (ext: string | null): boolean => {
@@ -55,9 +54,20 @@ const getLibraryRoot = (libraryId: number): string => {
   return row.root_path;
 };
 
-// 根据 entryId 构建缩略图路径
-const getThumbnailPath = (libraryRoot: string, entryId: string): string => {
-  return path.join(libraryRoot, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}.jpg`);
+// 根据文件扩展名获取对应的缩略图后缀
+const getThumbnailExt = (ext: string | null): string => {
+  if (!ext) return THUMBNAIL_EXT_IMAGE;
+  const lower = ext.toLowerCase();
+  if (VIDEO_EXTS.has(lower)) return THUMBNAIL_EXT_VIDEO;
+  if (IMAGE_EXTS.has(lower)) return THUMBNAIL_EXT_IMAGE;
+  // 预留其他类型
+  return THUMBNAIL_EXT_IMAGE;
+};
+
+// 根据 entryId 和扩展名构建缩略图路径
+const getThumbnailPath = (libraryRoot: string, entryId: string, ext: string | null): string => {
+  const thumbExt = getThumbnailExt(ext);
+  return path.join(libraryRoot, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`);
 };
 
 // 根据 entry 构建实际文件路径
@@ -81,66 +91,72 @@ const buildRealPathFromEntryRow = (
 };
 
 // 使用 ffmpeg 生成缩略图（对于视频，尝试截取第 5 秒以避免黑屏）
+// 先生成 .jpg 临时文件，成功后重命名为目标后缀
 const generateThumbnailWithFfmpeg = async (
   inputPath: string,
-  outputPath: string,
+  finalOutputPath: string,
   isVideo: boolean,
 ): Promise<void> => {
-  const outputDir = path.dirname(outputPath);
+  const outputDir = path.dirname(finalOutputPath);
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  return new Promise((resolve, reject) => {
-    const args = [
-      "-y", // 覆盖输出
-    ];
+  // 临时文件使用 .jpg 后缀，让 ffmpeg 自动识别格式
+  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
 
-    // 如果是视频，尝试跳过前 5 秒；如果是图片，则无需 seek
-    if (isVideo) {
-      args.push("-ss", "00:00:05");
-    }
+  const runFfmpeg = (seekTime: string | null): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const args = ["-y"]; // 覆盖输出
 
-    args.push(
-      "-i",
-      inputPath,
-      "-frames:v",
-      "1",
-      "-vf",
-      "scale=320:-1:force_original_aspect_ratio=decrease",
-      outputPath,
-    );
-
-    const child = spawn("ffmpeg", args, { stdio: "ignore" });
-
-    child.on("error", (err) => {
-      reject(err);
-    });
-
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        // 如果 seek 失败（例如视频短于 5 秒），可能会导致无输出或错误
-        // 这里可以做一个简单的回退策略：如果不成功且是视频，尝试 seek 0
-        if (isVideo && !fs.existsSync(outputPath)) {
-          // Fallback to 00:00:00
-          const fallbackArgs = [
-            "-y", "-i", inputPath, "-frames:v", "1",
-            "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
-            outputPath
-          ];
-          const fallbackChild = spawn("ffmpeg", fallbackArgs, { stdio: "ignore" });
-          fallbackChild.on("close", (fbCode) => {
-            if (fbCode === 0) resolve();
-            else reject(new Error(`ffmpeg fallback failed with code ${fbCode}`));
-          });
-        } else {
-          reject(new Error(`ffmpeg 退出码 ${code}`));
-        }
+      if (seekTime) {
+        args.push("-ss", seekTime);
       }
+
+      args.push(
+        "-i", inputPath,
+        "-frames:v", "1",
+        "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+        tempOutputPath,
+      );
+
+      const child = spawn("ffmpeg", args, { stdio: "ignore" });
+
+      child.on("error", (err) => reject(err));
+      child.on("close", (code) => {
+        // 如果已经成功生成了非空的缩略图文件，则视为成功，忽略非 0 退出码
+        if (fs.existsSync(tempOutputPath)) {
+          try {
+            const stat = fs.statSync(tempOutputPath);
+            if (stat.size > 0) {
+              resolve();
+              return;
+            }
+          } catch {
+            // stat 失败则继续按退出码处理
+          }
+        }
+
+        reject(new Error(`ffmpeg 退出码 ${code}`));
+      });
     });
-  });
+  };
+
+  // 视频先尝试 seek 到 5 秒，失败则从头开始
+  if (isVideo) {
+    try {
+      await runFfmpeg("00:00:05");
+    } catch {
+      await runFfmpeg(null);
+    }
+  } else {
+    await runFfmpeg(null);
+  }
+
+  // 生成成功后，重命名为目标后缀
+  if (tempOutputPath !== finalOutputPath) {
+    fs.renameSync(tempOutputPath, finalOutputPath);
+  }
 };
 
 // 缩略图生成任务处理
@@ -183,7 +199,7 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   }
 
   const libraryRoot = getLibraryRoot(entryRow.library_id);
-  const thumbnailPath = getThumbnailPath(libraryRoot, entryId);
+  const thumbnailPath = getThumbnailPath(libraryRoot, entryId, entryRow.extension);
 
   // 已存在缩略图则跳过
   if (fs.existsSync(thumbnailPath)) {
@@ -209,4 +225,62 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
 // 注册缩略图任务处理器
 export const registerThumbnailTaskHandlers = () => {
   registerTaskHandler(TASK_TYPE_FILE_GENERATE_THUMBNAIL, handleGenerateThumbnailTask);
+};
+
+// ============================================================================
+// 供索引任务直接调用的缩略图生成函数（不创建独立任务）
+// ============================================================================
+
+export const generateThumbnailForEntry = async (entryId: string): Promise<void> => {
+  const entryStmt = db.prepare(
+    "SELECT id, library_id, parent_id, is_directory, original_name, extension, is_deleted FROM file_entries WHERE id = ?",
+  );
+
+  const entryRow = entryStmt.get(entryId) as
+    | {
+        id: string;
+        library_id: number;
+        parent_id: string | null;
+        is_directory: number;
+        original_name: string;
+        extension: string | null;
+        is_deleted: number;
+      }
+    | undefined;
+
+  if (!entryRow) {
+    throw new Error("文件条目不存在");
+  }
+
+  if (entryRow.is_directory || entryRow.is_deleted) {
+    throw new Error("目录或已删除条目不支持生成缩略图");
+  }
+
+  if (!isSupportedForThumbnail(entryRow.extension)) {
+    throw new Error("不支持的文件类型");
+  }
+
+  const libraryRoot = getLibraryRoot(entryRow.library_id);
+  const thumbnailPath = getThumbnailPath(libraryRoot, entryId, entryRow.extension);
+
+  // 已存在缩略图则跳过
+  if (fs.existsSync(thumbnailPath)) {
+    const stat = fs.statSync(thumbnailPath);
+    if (stat.size > 1024) {
+      return; // 缩略图已存在且有效
+    }
+  }
+
+  const pathStmt = db.prepare(
+    "SELECT id, library_id, parent_id, is_directory, original_name FROM file_entries WHERE id = ?",
+  );
+
+  const fullPath = buildRealPathFromEntryRow(libraryRoot, entryRow, pathStmt);
+
+  if (!fs.existsSync(fullPath)) {
+    throw new Error("原始文件不存在，无法生成缩略图");
+  }
+
+  const isVideo = VIDEO_EXTS.has(entryRow.extension?.toLowerCase() || "");
+  await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, isVideo);
 };

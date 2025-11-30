@@ -683,6 +683,7 @@ router.post(
 );
 
 // 触发指定文件库的全量索引任务（管理员权限）
+// 支持 forceReindex 参数：强制重建所有索引（先标记所有现有索引为已删除，再重新扫描）
 router.post(
   "/library/:libraryId/index",
   authenticate,
@@ -693,6 +694,8 @@ router.post(
       return res.status(400).json({ message: "文件库 ID 不合法" });
     }
 
+    const { forceReindex } = req.body as { forceReindex?: boolean };
+
     const check = ensureLibraryEnabled(libraryId);
     if (!check.ok) {
       return res.status(404).json({ message: check.message });
@@ -702,7 +705,7 @@ router.post(
 
     const task = createTask({
       type: TASK_TYPE_FILE_INDEX_LIBRARY,
-      payload: { libraryId },
+      payload: { libraryId, forceReindex: forceReindex === true },
       createdByUserId: userId,
     });
 

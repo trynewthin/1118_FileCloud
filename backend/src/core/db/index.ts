@@ -46,10 +46,12 @@ const initDatabase = () => {
       ";",
       "CREATE TABLE IF NOT EXISTS tasks (",
       "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  parent_task_id INTEGER,",
       "  type TEXT NOT NULL,",
       "  payload TEXT NOT NULL,",
       "  status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','SUCCESS','FAILED')),",
       "  progress INTEGER NOT NULL DEFAULT 0,",
+      "  detail_progress TEXT,",
       "  error_message TEXT,",
       "  created_by_user_id INTEGER,",
       "  started_at TEXT,",
@@ -59,6 +61,8 @@ const initDatabase = () => {
       ")",
       ";",
       "CREATE INDEX IF NOT EXISTS idx_tasks_status_created_at ON tasks(status, created_at DESC)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)",
       ";",
       "CREATE TABLE IF NOT EXISTS file_entries (",
       "  id TEXT PRIMARY KEY,",
@@ -209,6 +213,33 @@ const initDatabase = () => {
       ";",
     ].join("\n"),
   );
+
+  // 数据库迁移：为现有表添加新列
+  runMigrations();
+};
+
+// 数据库迁移函数
+const runMigrations = () => {
+  // 检查 tasks 表是否有 parent_task_id 列，如果没有则添加
+  const tasksColumns = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+  const columnNames = new Set(tasksColumns.map((c) => c.name));
+
+  if (!columnNames.has("parent_task_id")) {
+    db.exec("ALTER TABLE tasks ADD COLUMN parent_task_id INTEGER");
+    console.log("[DB Migration] Added parent_task_id column to tasks table");
+  }
+
+  if (!columnNames.has("detail_progress")) {
+    db.exec("ALTER TABLE tasks ADD COLUMN detail_progress TEXT");
+    console.log("[DB Migration] Added detail_progress column to tasks table");
+  }
+
+  // 创建 parent_task_id 索引（如果不存在）
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)");
+  } catch {
+    // 索引可能已存在，忽略错误
+  }
 };
 
 export { db, initDatabase };

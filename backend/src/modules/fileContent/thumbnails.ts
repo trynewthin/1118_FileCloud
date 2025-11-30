@@ -13,6 +13,23 @@ interface LibraryRow {
 const INTERNAL_META_DIR = ".filecloud_meta";
 const THUMBNAILS_DIR_NAME = "thumbnails";
 
+// 缩略图文件后缀（按文件类型区分）
+const THUMBNAIL_EXT_VIDEO = ".vedtb";  // 视频缩略图
+const THUMBNAIL_EXT_IMAGE = ".photb";  // 图片缩略图
+
+// 支持生成缩略图的扩展名
+const VIDEO_EXTS = new Set([
+  "mp4", "webm", "ogv", "mov", "mkv", "avi", "wmv", "flv", "m4v",
+]);
+
+// 根据文件扩展名获取对应的缩略图后缀
+const getThumbnailExt = (ext: string | null): string => {
+  if (!ext) return THUMBNAIL_EXT_IMAGE;
+  const lower = ext.toLowerCase();
+  if (VIDEO_EXTS.has(lower)) return THUMBNAIL_EXT_VIDEO;
+  return THUMBNAIL_EXT_IMAGE;
+};
+
 // 查询文件库根路径
 const getLibraryRoot = (libraryId: number): string => {
   const row = db
@@ -52,11 +69,12 @@ export const getThumbnailPathForEntry = (
   }
 
   const rootPath = getLibraryRoot(entry.library_id);
+  const thumbExt = getThumbnailExt(entry.extension);
   const thumbnailPath = path.join(
     rootPath,
     INTERNAL_META_DIR,
     THUMBNAILS_DIR_NAME,
-    `${entryId}.jpg`,
+    `${entryId}${thumbExt}`,
   );
 
   if (!fs.existsSync(thumbnailPath)) {

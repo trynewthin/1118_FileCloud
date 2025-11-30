@@ -151,8 +151,11 @@ export const copyEntry = async (
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/copy`, params);
 };
 
-export const indexLibrary = async (libraryId: number): Promise<FileTaskResponse> => {
-  return apiClient.post<FileTaskResponse>(`/files/library/${libraryId}/index`);
+export const indexLibrary = async (
+  libraryId: number,
+  options?: { forceReindex?: boolean },
+): Promise<FileTaskResponse> => {
+  return apiClient.post<FileTaskResponse>(`/files/library/${libraryId}/index`, options);
 };
 
 export const indexLibraryPath = async (

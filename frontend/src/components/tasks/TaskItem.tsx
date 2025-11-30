@@ -31,6 +31,22 @@ export function TaskItem({ task }: TaskItemProps) {
     }
   };
 
+  // 格式化详细进度显示
+  const getDetailProgressText = () => {
+    if (!task.detail_progress) return null;
+    const { current, total, label } = task.detail_progress;
+    
+    if (total > 0) {
+      return `${label || ""} ${current}/${total}`.trim();
+    }
+    if (current > 0) {
+      return `${label || ""} ${current}`.trim();
+    }
+    return label || null;
+  };
+
+  const detailText = getDetailProgressText();
+
   return (
     <GlassCard variant="lite" className="p-4 border-white/10">
       <div className="flex items-start gap-4">
@@ -49,6 +65,13 @@ export function TaskItem({ task }: TaskItemProps) {
             <span>{getStatusText()}</span>
             {task.status === "RUNNING" && <span>{task.progress}%</span>}
           </div>
+
+          {/* 详细进度信息 */}
+          {detailText && (
+            <p className="text-xs text-muted-foreground/80">
+              {detailText}
+            </p>
+          )}
 
           {task.status === "RUNNING" && (
             <div className="mt-2">

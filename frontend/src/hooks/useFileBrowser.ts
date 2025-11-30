@@ -40,7 +40,7 @@ interface FileBrowserOperations {
   restore: (id: string) => Promise<FileTaskResponse>;
   destroy: (id: string) => Promise<FileTaskResponse>;
   upload: (files: FileList, parentId: string | null) => Promise<UploadResponse>;
-  indexLibrary: () => Promise<FileTaskResponse | null>;
+  indexLibrary: (options?: { forceReindex?: boolean }) => Promise<FileTaskResponse | null>;
   indexPath: (relativePath: string) => Promise<FileTaskResponse | null>;
 }
 
@@ -206,8 +206,8 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
         }
         return wrapTask(() => uploadFiles({ libraryId, parentId, files })) as Promise<UploadResponse>;
       },
-      indexLibrary: () =>
-        libraryId ? wrapTask(() => apiIndexLibrary(libraryId)) : Promise.resolve(null),
+      indexLibrary: (options?: { forceReindex?: boolean }) =>
+        libraryId ? wrapTask(() => apiIndexLibrary(libraryId, options)) : Promise.resolve(null),
       indexPath: (relativePath: string) =>
         libraryId
           ? wrapTask(() => apiIndexLibraryPath(libraryId, relativePath))
