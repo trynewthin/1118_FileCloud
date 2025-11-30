@@ -579,8 +579,8 @@ router.get(
       return res.status(401).json({ message: "未登录" });
     }
 
-    const uploadId = parseInt(req.params.id, 10);
-    if (isNaN(uploadId)) {
+    const uploadId = parseInt(req.params.id ?? "", 10);
+    if (isNaN(uploadId) || uploadId <= 0) {
       return res.status(400).json({ message: "无效的上传 ID" });
     }
 
