@@ -10,14 +10,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Folder, XIcon, Check } from "lucide-react";
+import { Plus, Folder, XIcon, Check, AlertTriangle } from "lucide-react";
 import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialog";
 
 interface NewLibraryDialogProps {
   onSuccess?: () => void;
 }
+
+/**
+ * 检查路径是否为盘符根目录
+ * 匹配 C:\、D:\ 等格式
+ */
+const isDriveRoot = (path: string): boolean => {
+  // Windows 盘符根目录：C:\、D:\ 等
+  return /^[A-Za-z]:\\?$/.test(path.trim());
+};
 
 export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   const [open, setOpen] = useState(false);
@@ -26,6 +45,8 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   const { create, loading } = useFileLibraries({ autoRefresh: false });
   const [error, setError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null); // 待确认的盘符根路径
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent | null) => {
     if (e) {
@@ -116,10 +137,53 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
         onOpenChange={setPickerOpen}
         mode="system"
         initialPath={rootPath}
-        onSubmit={(val) => setRootPath(val)}
+        onSubmit={(val) => {
+          // 检查是否为盘符根目录，需要二次确认
+          if (isDriveRoot(val)) {
+            setPendingPath(val);
+            setConfirmOpen(true);
+          } else {
+            setRootPath(val);
+          }
+        }}
         title="选择服务器目录"
         description="请选择服务器上的真实目录作为文件库根路径。"
       />
+
+      {/* 盘符根目录二次确认对话框 */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              确认选择根目录？
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              您选择的是盘符根目录 <span className="font-mono font-semibold">{pendingPath}</span>，
+              这将索引整个磁盘的所有文件，可能包含系统文件和大量数据。
+              <br /><br />
+              建议选择一个具体的子目录作为文件库根路径。确定要继续吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingPath(null)}>
+              <span className="sr-only">取消</span>
+              <XIcon className="h-4 w-4" />
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingPath) {
+                  setRootPath(pendingPath);
+                  setPendingPath(null);
+                }
+              }}
+            >
+              <span className="sr-only">确认</span>
+              <Check className="h-4 w-4" />
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
