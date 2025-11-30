@@ -33,8 +33,8 @@ export function RootLayout() {
     <PageHeaderProvider>
       <div className={cn("flex h-screen w-screen overflow-hidden relative", DS.layout.pageBackground)}>
         {/* Global Ambient Glow */}
-        <AmbientGlow position="top-right" variant="primary" className="opacity-50 pointer-events-none fixed z-0" />
-        <AmbientGlow position="bottom-left" variant="cool" className="opacity-30 pointer-events-none fixed z-0" />
+        <AmbientGlow position="top-right" variant="primary" className="pointer-events-none fixed z-0" />
+        <AmbientGlow position="bottom-left" variant="cool" className="pointer-events-none fixed z-0" />
 
         <AppSidebar
           collapsed={sidebarCollapsed}

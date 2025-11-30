@@ -8,6 +8,7 @@ import { App } from "./App";
 (() => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
 
+  // 深浅模式
   const stored = window.localStorage.getItem("theme");
   const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -17,6 +18,12 @@ import { App } from "./App";
     document.documentElement.classList.add("dark");
   } else {
     document.documentElement.classList.remove("dark");
+  }
+
+  // 颜色主题
+  const colorTheme = window.localStorage.getItem("filecloud-color-theme");
+  if (colorTheme) {
+    document.documentElement.setAttribute("data-color-theme", colorTheme);
   }
 })();
 
