@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
+import { buildPhysicalName } from "./indexSuffix.ts";
 
 export interface FileEntry {
   id: string;
@@ -8,6 +9,7 @@ export interface FileEntry {
   parent_id: string | null;
   is_directory: boolean;
   original_name: string;
+  index_suffix: string | null;  // 6 位索引后缀，用于物理文件名绑定
   extension: string | null;
   size_bytes: number;
   mime_type: string | null;
@@ -28,6 +30,7 @@ const mapRowToFileEntry = (row: any): FileEntry => {
     parent_id: row.parent_id ?? null,
     is_directory: Boolean(row.is_directory),
     original_name: row.original_name,
+    index_suffix: row.index_suffix ?? null,
     extension: row.extension ?? null,
     size_bytes: row.size_bytes ?? 0,
     mime_type: row.mime_type ?? null,
@@ -47,7 +50,7 @@ export const listEntriesByParent = (params: {
 
   const rows = db
     .prepare(
-      "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0 ORDER BY is_directory DESC, original_name ASC",
+      "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0 ORDER BY is_directory DESC, original_name ASC",
     )
     .all(params.libraryId, parentId) as any[];
 
@@ -73,7 +76,7 @@ export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => 
 
   const rows = db
     .prepare(
-      "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC, original_name ASC",
+      "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC, original_name ASC",
     )
     .all(libraryId) as any[];
 
@@ -101,7 +104,7 @@ export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => 
 export const getEntryById = (id: string): FileEntry | null => {
   const row = db
     .prepare(
-      "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ? AND is_deleted = 0",
+      "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ? AND is_deleted = 0",
     )
     .get(id) as any | undefined;
 
@@ -113,7 +116,7 @@ export const getEntryById = (id: string): FileEntry | null => {
 export const getEntryByIdIncludingDeleted = (id: string): FileEntry | null => {
   const row = db
     .prepare(
-      "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ?",
+      "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ?",
     )
     .get(id) as any | undefined;
 
@@ -121,7 +124,21 @@ export const getEntryByIdIncludingDeleted = (id: string): FileEntry | null => {
   return mapRowToFileEntry(row);
 };
 
-// 基于父子关系构建相对于文件库根目录的路径
+/**
+ * 获取条目的物理文件名（带后缀）
+ * 如果有 index_suffix，返回 original_name + [suffix]；否则返回 original_name
+ */
+export const getPhysicalName = (entry: FileEntry): string => {
+  if (entry.index_suffix) {
+    return buildPhysicalName(entry.original_name, entry.index_suffix);
+  }
+  return entry.original_name;
+};
+
+/**
+ * 基于父子关系构建相对于文件库根目录的物理路径
+ * 使用物理文件名（带后缀）构建路径
+ */
 export const buildRelativePathForEntry = (entry: FileEntry): string => {
   const segments: string[] = [];
 
@@ -129,7 +146,8 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
 
   // 向上追溯父节点，直到虚拟根（parent_id 为空）
   while (current) {
-    segments.unshift(current.original_name);
+    // 使用物理文件名（带后缀）
+    segments.unshift(getPhysicalName(current));
 
     if (!current.parent_id) {
       break;
@@ -137,7 +155,7 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
 
     const parentRow = db
       .prepare(
-        "SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ?",
+        "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE id = ?",
       )
       .get(current.parent_id) as any | undefined;
 

@@ -6,6 +6,7 @@ export interface FileEntry {
   parent_id: string | null;
   is_directory: boolean;
   original_name: string;
+  index_suffix: string | null;  // 6 位索引后缀（前端不直接使用，仅保持类型一致）
   extension: string | null;
   size_bytes: number;
   mime_type: string | null;

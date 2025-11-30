@@ -70,6 +70,7 @@ const initDatabase = () => {
       "  parent_id TEXT,",
       "  is_directory INTEGER NOT NULL,",
       "  original_name TEXT NOT NULL,",
+      "  index_suffix TEXT,",
       "  extension TEXT,",
       "  size_bytes INTEGER NOT NULL DEFAULT 0,",
       "  mime_type TEXT,",
@@ -222,14 +223,14 @@ const initDatabase = () => {
 const runMigrations = () => {
   // 检查 tasks 表是否有 parent_task_id 列，如果没有则添加
   const tasksColumns = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
-  const columnNames = new Set(tasksColumns.map((c) => c.name));
+  const tasksColumnNames = new Set(tasksColumns.map((c) => c.name));
 
-  if (!columnNames.has("parent_task_id")) {
+  if (!tasksColumnNames.has("parent_task_id")) {
     db.exec("ALTER TABLE tasks ADD COLUMN parent_task_id INTEGER");
     console.log("[DB Migration] Added parent_task_id column to tasks table");
   }
 
-  if (!columnNames.has("detail_progress")) {
+  if (!tasksColumnNames.has("detail_progress")) {
     db.exec("ALTER TABLE tasks ADD COLUMN detail_progress TEXT");
     console.log("[DB Migration] Added detail_progress column to tasks table");
   }
@@ -237,6 +238,22 @@ const runMigrations = () => {
   // 创建 parent_task_id 索引（如果不存在）
   try {
     db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)");
+  } catch {
+    // 索引可能已存在，忽略错误
+  }
+
+  // 检查 file_entries 表是否有 index_suffix 列，如果没有则添加
+  const fileEntriesColumns = db.prepare("PRAGMA table_info(file_entries)").all() as { name: string }[];
+  const fileEntriesColumnNames = new Set(fileEntriesColumns.map((c) => c.name));
+
+  if (!fileEntriesColumnNames.has("index_suffix")) {
+    db.exec("ALTER TABLE file_entries ADD COLUMN index_suffix TEXT");
+    console.log("[DB Migration] Added index_suffix column to file_entries table");
+  }
+
+  // 创建 index_suffix 索引（用于按后缀快速查找）
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_file_entries_library_suffix ON file_entries(library_id, index_suffix)");
   } catch {
     // 索引可能已存在，忽略错误
   }

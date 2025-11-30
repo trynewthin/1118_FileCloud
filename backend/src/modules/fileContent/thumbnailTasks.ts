@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
+import { buildPhysicalName } from "../files/indexSuffix.ts";
 import { registerTaskHandler } from "../../core/tasks/executor.ts";
 import type { TaskRecord } from "../tasks/service.ts";
 import { updateTaskStatus } from "../tasks/service.ts";
@@ -70,7 +71,7 @@ const getThumbnailPath = (libraryRoot: string, entryId: string, ext: string | nu
   return path.join(libraryRoot, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`);
 };
 
-// 根据 entry 构建实际文件路径
+// 根据 entry 构建实际文件路径（使用物理文件名：original_name + [index_suffix]）
 const buildRealPathFromEntryRow = (
   libraryRoot: string,
   entryRow: any,
@@ -80,7 +81,10 @@ const buildRealPathFromEntryRow = (
   let current: any | undefined = entryRow;
 
   while (current) {
-    segments.unshift(current.original_name);
+    const originalName: string = current.original_name;
+    const suffix: string | null = current.index_suffix ?? null;
+    const physicalName = suffix ? buildPhysicalName(originalName, suffix) : originalName;
+    segments.unshift(physicalName);
     if (!current.parent_id) break;
     const parentRow = stmt.get(current.parent_id) as any | undefined;
     if (!parentRow) break;
@@ -169,7 +173,7 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   }
 
   const entryStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name, extension, is_deleted FROM file_entries WHERE id = ?",
+    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, is_deleted FROM file_entries WHERE id = ?",
   );
 
   const entryRow = entryStmt.get(entryId) as
@@ -179,6 +183,7 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
         parent_id: string | null;
         is_directory: number;
         original_name: string;
+        index_suffix: string | null;
         extension: string | null;
         is_deleted: number;
       }
@@ -207,7 +212,7 @@ const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   }
 
   const pathStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name FROM file_entries WHERE id = ?",
+    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix FROM file_entries WHERE id = ?",
   );
 
   const fullPath = buildRealPathFromEntryRow(libraryRoot, entryRow, pathStmt);
@@ -233,7 +238,7 @@ export const registerThumbnailTaskHandlers = () => {
 
 export const generateThumbnailForEntry = async (entryId: string): Promise<void> => {
   const entryStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name, extension, is_deleted FROM file_entries WHERE id = ?",
+    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, is_deleted FROM file_entries WHERE id = ?",
   );
 
   const entryRow = entryStmt.get(entryId) as
@@ -243,6 +248,7 @@ export const generateThumbnailForEntry = async (entryId: string): Promise<void> 
         parent_id: string | null;
         is_directory: number;
         original_name: string;
+        index_suffix: string | null;
         extension: string | null;
         is_deleted: number;
       }
@@ -272,7 +278,7 @@ export const generateThumbnailForEntry = async (entryId: string): Promise<void> 
   }
 
   const pathStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name FROM file_entries WHERE id = ?",
+    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix FROM file_entries WHERE id = ?",
   );
 
   const fullPath = buildRealPathFromEntryRow(libraryRoot, entryRow, pathStmt);
