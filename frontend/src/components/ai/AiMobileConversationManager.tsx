@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import type { AiChatConversation } from "@/lib/api/aiChat";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -49,6 +50,9 @@ export function AiMobileConversationManager({
     setDeletingId(confirmDeleteId);
     try {
       await onDelete(confirmDeleteId);
+      toast.success("会话已删除");
+    } catch (err: any) {
+      toast.error(err?.message || "删除失败");
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);

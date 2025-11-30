@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ export function DeleteDialog({ entry, open, onOpenChange, onSubmit }: DeleteDial
     setError("");
     try {
       await onSubmit(entry, password || undefined);
+      toast.success("已移入回收站");
       onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "删除失败");

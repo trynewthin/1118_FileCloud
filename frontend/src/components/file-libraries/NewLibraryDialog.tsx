@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { GlassButton } from "@/components/common/GlassButton";
 import {
@@ -63,7 +64,7 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
       setOpen(false);
       setRootPath("");
       setDisplayName("");
-      alert("文件库创建成功，正在后台建立索引，稍后即可查看文件内容。");
+      toast.success("文件库创建成功，正在后台建立索引");
       onSuccess?.();
     } catch (err: any) {
       setError(err?.message || "创建失败");

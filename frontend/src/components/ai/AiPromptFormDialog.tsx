@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { AiChatPrompt, CreateAiChatPromptRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export function AiPromptFormDialog({
     setSubmitting(true);
     try {
       await onSubmit({ title: title.trim(), content, isDefault });
+      toast.success(editingPrompt ? "提示词已更新" : "提示词已创建");
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -67,6 +69,7 @@ export function AiPromptFormDialog({
     setDeleting(true);
     try {
       await onDelete(editingPrompt.id);
+      toast.success("提示词已删除");
       onOpenChange(false);
     } finally {
       setDeleting(false);

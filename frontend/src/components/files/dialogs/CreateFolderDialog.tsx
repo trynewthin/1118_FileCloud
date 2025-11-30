@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -57,9 +58,12 @@ export function CreateFolderDialog({
       // 先关闭对话框，不等待任务完成
       onOpenChange(false);
       // 后台执行创建操作，不阻塞 UI
-      onSubmit(trimmedName).catch((err) => {
-        console.error("创建文件夹失败", err);
-      });
+      onSubmit(trimmedName)
+        .then(() => toast.success("文件夹创建成功"))
+        .catch((err) => {
+          console.error("创建文件夹失败", err);
+          toast.error(err?.message || "创建文件夹失败");
+        });
     } catch (err: any) {
       setError(err?.message || "创建失败");
       setLoading(false);

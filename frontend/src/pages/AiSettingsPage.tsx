@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAiConfig } from "@/hooks/useAiConfig";
 import { useSettings } from "@/hooks/useSettings";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Plus, XIcon } from "lucide-react";
+import { GlassCard } from "@/components/common/GlassCard";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 import { AiProviderList } from "@/components/ai/AiProviderList";
 import { AiProviderFormDialog } from "@/components/ai/AiProviderFormDialog";
 import { AiModelList } from "@/components/ai/AiModelList";
@@ -38,6 +41,13 @@ export function AiSettingsPage() {
   } = useAiConfig();
 
   const { items: settings, update: updateSetting } = useSettings();
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const [activeTab, setActiveTab] = useState("providers");
 
@@ -132,8 +142,6 @@ export function AiSettingsPage() {
           </TabsList>
         }
       >
-      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
-
       <div className="flex-1 min-h-0 flex flex-col space-y-4">
         <TabsContent value="providers" className="space-y-4">
           <div className="flex justify-end">
@@ -156,9 +164,9 @@ export function AiSettingsPage() {
             onClick={() => setConversationDialogOpen(true)}
           />
 
-          <div className="space-y-2">
+          <GlassCard variant="ghost" className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">模型管理</div>
+              <div className={cn("text-sm", DS.text.heading)}>模型管理</div>
               <GlassButton
                 glassVariant="lite"
                 size="sm"
@@ -174,7 +182,7 @@ export function AiSettingsPage() {
               providers={providers}
               onEdit={handleEditModel}
             />
-          </div>
+          </GlassCard>
         </TabsContent>
 
         <TabsContent value="prompts" className="space-y-4">
@@ -221,8 +229,8 @@ export function AiSettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-md border bg-muted/40 p-4 space-y-3">
-              <div className="text-sm font-medium">会话命名配置</div>
+            <GlassCard variant="lite" className="p-4 space-y-3">
+              <div className={cn("text-sm", DS.text.heading)}>会话命名配置</div>
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)] items-start">
                 <div className="space-y-1">
                   <Label htmlFor="naming-context">命名上下文条数</Label>
@@ -247,11 +255,11 @@ export function AiSettingsPage() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button size="sm" variant="outline" onClick={handleSaveNamingConfig}>
-                  保存命名配置
-                </Button>
+                <GlassButton size="sm" glassVariant="lite" className="gap-2 px-3" onClick={handleSaveNamingConfig}>
+                  保存配置
+                </GlassButton>
               </div>
-            </div>
+            </GlassCard>
           </div>
           <DialogFooter
             rightButtonIcon={<XIcon className="h-4 w-4" />}

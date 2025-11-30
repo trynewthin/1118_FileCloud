@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +15,13 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const { loginWithSecret } = useAuth();
   const navigate = useNavigate();
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +59,6 @@ export function LoginPage() {
               />
             </div>
           </div>
-          {error && <div className="text-sm text-red-500 text-center font-medium">{error}</div>}
           <Button type="submit" className="w-full h-10 shadow-lg hover:shadow-primary/20">
             登录
           </Button>

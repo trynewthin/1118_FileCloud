@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
     setError("");
     try {
       await onSubmit(entry, trimmed, password || undefined);
+      toast.success("重命名成功");
       onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "重命名失败");

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useAiConfig } from "@/hooks/useAiConfig";
@@ -54,6 +55,13 @@ export function AiChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleCreateConversation = async () => {
     if (creating) return;
@@ -123,8 +131,6 @@ export function AiChatPage() {
       title="AI 助手"
       className="h-full flex flex-col"
     >
-      {error && <div className="mb-4 text-sm text-red-500 font-medium bg-red-50 dark:bg-red-900/20 p-2 rounded-md">{error}</div>}
-
       <div className="flex h-full min-h-0 flex-col">
         {/* Main Chat Container - Transparent/Ghost */}
         <div className="relative flex-1 min-h-0 flex flex-col">
@@ -187,11 +193,11 @@ export function AiChatPage() {
                   <GlassCard 
                     variant="lite" 
                     className={cn(
-                      "inline-flex items-center px-6 py-2 max-w-full shadow-sm backdrop-blur-md border-white/10",
+                      "inline-flex items-center px-6 py-2 max-w-full shadow-sm border-primary/20",
                       DS.radius.full
                     )}
                   >
-                    <span className="truncate text-sm font-medium text-foreground/90">
+                    <span className={cn("truncate text-sm text-primary", DS.text.heading)}>
                       {currentConversation
                         ? currentConversation.title || `会话 #${currentConversation.id}`
                         : "新会话"}
@@ -204,12 +210,15 @@ export function AiChatPage() {
                   <GlassButton
                     glassVariant="lite"
                     size="icon"
-                    className="h-9 w-9 rounded-full shadow-sm"
+                    className={cn(
+                      "h-9 w-9 rounded-full shadow-sm",
+                      conversationPanelOpen && "border-primary/30 bg-primary/10"
+                    )}
                     onClick={() => setConversationPanelOpen((open) => !open)}
                     disabled={loadingConversations}
                     title="切换会话"
                   >
-                    <MessageCircle className="h-5 w-5" />
+                    <MessageCircle className={cn("h-5 w-5", conversationPanelOpen ? "text-primary" : "text-muted-foreground")} />
                   </GlassButton>
                 </div>
               </div>

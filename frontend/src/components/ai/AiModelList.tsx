@@ -1,7 +1,10 @@
 import type { AiChatModel, AiProvider } from "@/lib/api/aiConfig";
-import { Card } from "@/components/ui/card";
+import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
-import { Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 
 interface AiModelListProps {
   models: AiChatModel[];
@@ -17,36 +20,49 @@ export function AiModelList({ models, providers, onEdit }: AiModelListProps) {
   };
 
   if (models.length === 0) {
-    return <div className="text-sm text-muted-foreground">暂无模型，请先创建。</div>;
+    return (
+      <GlassCard variant="ghost" className="flex items-center justify-center py-8 border-dashed">
+        <span className={DS.text.caption}>暂无模型，请先创建</span>
+      </GlassCard>
+    );
   }
 
   return (
     <div className="space-y-2">
       {models.map((m) => (
-        <Card key={m.id} className="px-3 py-2">
+        <GlassCard key={m.id} variant="lite" className="px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0 space-y-1 text-sm">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-medium truncate">{m.display_name}</span>
-                {!m.is_enabled && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">已禁用</span>
-                )}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className={cn(
+                "p-2 rounded-lg shrink-0",
+                m.is_enabled ? "bg-primary/10 text-primary" : "bg-muted/50 text-muted-foreground",
+                DS.glass.lite
+              )}>
+                <Bot className="h-4 w-4" />
               </div>
-              <div className="text-xs text-muted-foreground truncate">模型：{m.model_name}</div>
-              <div className="text-xs text-muted-foreground truncate">供应商：{providerName(m.provider_id)}</div>
+              <div className="flex-1 min-w-0 space-y-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn("truncate", DS.text.heading)}>{m.display_name}</span>
+                  {!m.is_enabled && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">已禁用</Badge>
+                  )}
+                </div>
+                <div className={cn("truncate", DS.text.caption)}>
+                  {m.model_name} · {providerName(m.provider_id)}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 ml-3 shrink-0">
-              <GlassButton
-                size="icon"
-                glassVariant="lite"
-                aria-label="编辑模型"
-                onClick={() => onEdit(m)}
-              >
-                <Pencil className="h-4 w-4" />
-              </GlassButton>
-            </div>
+            <GlassButton
+              size="icon"
+              glassVariant="ghost"
+              className="h-8 w-8"
+              aria-label="编辑模型"
+              onClick={() => onEdit(m)}
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </GlassButton>
           </div>
-        </Card>
+        </GlassCard>
       ))}
     </div>
   );

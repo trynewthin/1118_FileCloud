@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import { Copy, Move, Trash2, Download } from "lucide-react";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
@@ -32,6 +33,13 @@ export function FilePreviewPage() {
   const { remove, move, copy } = useFileBrowser({ 
     libraryId: entry?.library_id ?? null 
   });
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   useEffect(() => {
     if (!id) return;
@@ -187,8 +195,8 @@ export function FilePreviewPage() {
             加载中...
           </div>
         ) : error ? (
-          <div className="flex-1 flex items-center justify-center text-red-500">
-            {error}
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            加载失败
           </div>
         ) : (
           <GlassCard

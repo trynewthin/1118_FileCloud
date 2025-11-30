@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
@@ -92,6 +93,13 @@ export function FileBrowserPage() {
     createFolder,
     getCachedPassword,
   } = useFileBrowser({ libraryId: activeLibraryId });
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (entriesError) {
+      toast.error(entriesError);
+    }
+  }, [entriesError]);
 
   const breadcrumbItems = useMemo(() => {
     return ancestors.map(a => ({ id: a.id, name: a.name }));
@@ -322,8 +330,8 @@ export function FileBrowserPage() {
             加载文件列表...
           </div>
         ) : entriesError ? (
-          <div className="flex h-full items-center justify-center text-red-500">
-            {entriesError}
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            加载失败
           </div>
         ) : entries.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">

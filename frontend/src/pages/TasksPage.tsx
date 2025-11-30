@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { useTasks } from "@/hooks/useTasks";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TaskItem } from "@/components/tasks/TaskItem";
@@ -8,6 +10,13 @@ export function TasksPage() {
     auto: true,
     status: "ALL",
   });
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   return (
     <PageContainer
@@ -27,8 +36,6 @@ export function TasksPage() {
           <TabsTrigger value="FAILED">失败</TabsTrigger>
         </TabsList>
       </Tabs>
-
-      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
         {loading && items.length === 0 ? (

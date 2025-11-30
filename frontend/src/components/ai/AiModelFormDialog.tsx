@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { AiChatModel, AiProvider, CreateAiChatModelRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -89,6 +90,7 @@ export function AiModelFormDialog({
         allowOverrideContextLimit,
         isEnabled,
       });
+      toast.success(editingModel ? "模型已更新" : "模型已创建");
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -100,6 +102,7 @@ export function AiModelFormDialog({
     setDeleting(true);
     try {
       await onDelete(editingModel.id);
+      toast.success("模型已删除");
       onOpenChange(false);
     } finally {
       setDeleting(false);

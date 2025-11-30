@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { LibraryCard } from "@/components/file-libraries/LibraryCard";
@@ -9,13 +11,18 @@ import { cn } from "@/lib/utils";
 export function FileLibrariesPage() {
   const { items, loading, error, remove, reload } = useFileLibraries();
 
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
   return (
     <PageContainer
       title="文件库管理"
       action={<NewLibraryDialog onSuccess={reload} />}
     >
-      {error && <div className="mb-4 text-sm text-red-500 font-medium bg-red-50 dark:bg-red-900/20 p-2 rounded-md">{error}</div>}
-
       {loading && items.length === 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
            {[1, 2, 3].map((i) => (

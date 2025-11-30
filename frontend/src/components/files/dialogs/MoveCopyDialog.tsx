@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { Folder, ChevronRight, Home, XIcon, Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -236,6 +237,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
       }
 
       await onSubmit(entry, targetId, newName || undefined, undefined);
+      toast.success(mode === "move" ? "移动成功" : "复制成功");
       onOpenChange(false);
     } catch (err: any) {
       setError(err.message || "操作失败");

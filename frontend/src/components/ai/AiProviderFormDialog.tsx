@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { AiProvider, CreateAiProviderRequest } from "@/lib/api/aiConfig";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ export function AiProviderFormDialog({
         extraHeadersJson: extraHeadersJson || null,
         timeoutMs: timeoutMs ? Number(timeoutMs) : null,
       });
+      toast.success(editingProvider ? "供应商已更新" : "供应商已创建");
       onOpenChange(false);
     } finally {
       setSubmitting(false);
@@ -82,6 +84,7 @@ export function AiProviderFormDialog({
     setDeleting(true);
     try {
       await onDelete(editingProvider.id);
+      toast.success("供应商已删除");
       onOpenChange(false);
     } finally {
       setDeleting(false);

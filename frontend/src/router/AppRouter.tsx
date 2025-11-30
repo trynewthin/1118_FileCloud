@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { apiGetInitStatus } from "@/lib/api/init";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,10 +38,17 @@ function InitGate() {
     checkInit();
   }, []);
 
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-red-600">
-        Error: {error}
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        加载失败，请刷新页面重试
       </div>
     );
   }

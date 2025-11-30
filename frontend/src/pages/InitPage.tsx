@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Server } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,13 @@ export function InitPage() {
   const [error, setError] = useState("");
   const { initAdminWithSecret } = useAuth();
   const navigate = useNavigate();
+
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +53,6 @@ export function InitPage() {
               />
             </div>
           </div>
-          {error && <div className="text-sm text-red-500">{error}</div>}
           <Button type="submit" className="w-full">
             初始化系统
           </Button>

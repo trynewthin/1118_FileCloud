@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
       const dt = new DataTransfer();
       fileList.forEach((f) => dt.items.add(f));
       await onSubmit(dt.files, (p) => setProgress(p));
+      toast.success("上传成功");
       onOpenChange(false);
       setFileList([]);
       setProgress(null);

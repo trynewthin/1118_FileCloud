@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
+import { toast } from "sonner";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
 import {
   createFileLibrary,
@@ -87,6 +88,7 @@ export const useFileLibraries = (options?: UseFileLibrariesOptions) => {
   const remove = useCallback(
     async (id: number) => {
       await deleteFileLibrary(id);
+      toast.success("文件库已删除");
       await load();
     },
     [load],

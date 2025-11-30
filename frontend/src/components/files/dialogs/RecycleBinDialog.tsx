@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Trash2, RotateCcw, XCircle, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,13 @@ export function RecycleBinDialog({
   const [error, setError] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
 
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
   useEffect(() => {
     const load = async () => {
       if (!open || !libraryId) {
@@ -60,12 +68,14 @@ export function RecycleBinDialog({
     setWorkingId(id);
     try {
       await onRestore(id);
+      toast.success("已还原");
       if (libraryId) {
         const res = await listTrashEntries(libraryId);
         setItems(res.items);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "还原失败");
     } finally {
       setWorkingId(null);
     }
@@ -76,12 +86,14 @@ export function RecycleBinDialog({
     setWorkingId(id);
     try {
       await onDestroy(id);
+      toast.success("已彻底删除");
       if (libraryId) {
         const res = await listTrashEntries(libraryId);
         setItems(res.items);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "删除失败");
     } finally {
       setWorkingId(null);
     }
@@ -106,8 +118,8 @@ export function RecycleBinDialog({
               加载回收站...
             </div>
           ) : error ? (
-            <div className="flex h-full items-center justify-center text-red-500 text-sm">
-              {error}
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+              加载失败
             </div>
           ) : items.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">

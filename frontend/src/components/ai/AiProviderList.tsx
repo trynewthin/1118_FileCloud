@@ -1,7 +1,9 @@
 import type { AiProvider } from "@/lib/api/aiConfig";
-import { Card } from "@/components/ui/card";
+import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
-import { Pencil } from "lucide-react";
+import { Pencil, Server } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DS } from "@/lib/design-system";
 
 interface AiProviderListProps {
   providers: AiProvider[];
@@ -10,29 +12,38 @@ interface AiProviderListProps {
 
 export function AiProviderList({ providers, onEdit }: AiProviderListProps) {
   if (providers.length === 0) {
-    return <div className="text-sm text-muted-foreground">暂无供应商，请先创建。</div>;
+    return (
+      <GlassCard variant="ghost" className="flex items-center justify-center py-8 border-dashed">
+        <span className={DS.text.caption}>暂无供应商，请先创建</span>
+      </GlassCard>
+    );
   }
 
   return (
     <div className="space-y-2">
       {providers.map((p) => (
-        <Card key={p.id} className="px-3 py-2">
+        <GlassCard key={p.id} variant="lite" className="px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 text-sm min-w-0">
-              <div className="font-medium truncate">{p.name}</div>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className={cn("p-2 rounded-lg bg-primary/10 text-primary shrink-0", DS.glass.lite)}>
+                <Server className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={cn("truncate", DS.text.heading)}>{p.name}</div>
+                <div className={cn("truncate", DS.text.caption)}>{p.base_url}</div>
+              </div>
             </div>
-            <div className="flex items-center ml-3 shrink-0">
-              <GlassButton
-                size="icon"
-                glassVariant="lite"
-                aria-label="编辑供应商"
-                onClick={() => onEdit(p)}
-              >
-                <Pencil className="h-4 w-4" />
-              </GlassButton>
-            </div>
+            <GlassButton
+              size="icon"
+              glassVariant="ghost"
+              className="h-8 w-8"
+              aria-label="编辑供应商"
+              onClick={() => onEdit(p)}
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </GlassButton>
           </div>
-        </Card>
+        </GlassCard>
       ))}
     </div>
   );

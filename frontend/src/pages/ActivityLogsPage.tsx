@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -14,13 +16,18 @@ import {
 export function ActivityLogsPage() {
   const { items, loading, error } = useActivityLogs();
 
+  // 错误时显示 toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
   return (
     <PageContainer
       title="操作日志"
       showBack
     >
-      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
-
       <GlassCard variant="lite" className="p-0 border-white/10 overflow-hidden">
         <Table>
           <TableHeader>
