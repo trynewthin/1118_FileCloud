@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
 import type { TrashEntry } from "@/lib/api/files";
 import { listTrashEntries } from "@/lib/api/files";
@@ -114,16 +114,18 @@ export function RecycleBinDialog({
               回收站为空
             </div>
           ) : (
-            <ScrollArea className="h-full">
-              <div className="divide-y text-sm">
+            <div className="h-full overflow-y-auto px-2 py-2 text-sm">
+              <div className="space-y-2">
                 {items.map((item) => (
-                  <div
+                  <GlassCard
                     key={item.id}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-background/60"
+                    variant="ghost"
+                    className="w-full px-3 py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={cn("truncate font-medium", item.is_directory && "text-blue-600")}
+                        <span
+                          className={cn("truncate font-medium", item.is_directory && "text-blue-600")}
                           title={item.relative_path}
                         >
                           {item.relative_path}
@@ -139,7 +141,7 @@ export function RecycleBinDialog({
                         {!item.is_directory && <span>大小：{formatSize(item.size_bytes)}</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap justify-end gap-2 mt-2 sm:mt-0">
                       <Button
                         variant="outline"
                         size="sm"
@@ -158,10 +160,10 @@ export function RecycleBinDialog({
                         <XCircle className="h-3 w-3 mr-1" /> 彻底删除
                       </Button>
                     </div>
-                  </div>
+                  </GlassCard>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
 
