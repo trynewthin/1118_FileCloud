@@ -12,9 +12,9 @@ import {
   Trash2,
   Database,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 
 // 工具调用结果类型
@@ -161,6 +161,61 @@ function TimeInfoRenderer({ result }: { result: ToolCallResult }) {
   );
 }
 
+// 搜索结果渲染
+function SearchResultsRenderer({ result }: { result: ToolCallResult }) {
+  const results = result.results || [];
+  const [expanded, setExpanded] = useState(results.length <= 10);
+  
+  const displayResults = expanded ? results : results.slice(0, 5);
+  const hasMore = results.length > 5 && !expanded;
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+        <Search className="h-3.5 w-3.5" />
+        <span>{result.message}</span>
+      </div>
+      {results.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-2">未找到匹配的文件或目录</div>
+      ) : (
+        <div className="space-y-1 max-h-[300px] overflow-y-auto">
+          {displayResults.map((item: { id: string; name: string; path: string; isDirectory: boolean; size: number; extension: string | null }) => (
+            <div 
+              key={item.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors group"
+            >
+              {item.isDirectory ? (
+                <Folder className="h-4 w-4 text-primary shrink-0" />
+              ) : (
+                <File className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate">{item.name}</div>
+                <div className="text-xs text-muted-foreground truncate">{item.path}</div>
+              </div>
+              {!item.isDirectory && (
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {formatSize(item.size)}
+                </span>
+              )}
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+            </div>
+          ))}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-full text-center text-xs text-primary hover:underline py-1"
+            >
+              显示全部 {results.length} 项
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 待确认操作渲染
 function PendingActionRenderer({ 
   result, 
@@ -266,6 +321,8 @@ export function ToolCallRenderer({
         return <DirectoryListingRenderer result={result} />;
       case "file_info":
         return <FileInfoRenderer result={result} />;
+      case "search_results":
+        return <SearchResultsRenderer result={result} />;
       case "time_info":
         return <TimeInfoRenderer result={result} />;
       case "pending_action":
@@ -291,8 +348,8 @@ export function ToolCallRenderer({
   };
   
   return (
-    <GlassCard variant="ghost" className="p-3 my-2">
+    <div className="py-1">
       {renderContent()}
-    </GlassCard>
+    </div>
   );
 }

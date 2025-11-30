@@ -1,5 +1,5 @@
 import type { ChatToolDefinition } from "../../core/ai/client.ts";
-import { listEntriesByParent, getEntryById } from "../files/service.ts";
+import { listEntriesByParent, getEntryById, searchEntries } from "../files/service.ts";
 import { db } from "../../core/db/index.ts";
 
 export type AiToolType = "pre" | "post";
@@ -106,6 +106,7 @@ export const executeTool = async (
 export const BUILTIN_AI_TOOLS: AiToolDefinition[] = [
   { key: "list_directory", type: "post" },
   { key: "get_file_info", type: "post" },
+  { key: "search_files", type: "post" },
   { key: "rename_file", type: "post" },
   { key: "move_file", type: "post" },
   { key: "delete_file", type: "post" },
@@ -241,7 +242,75 @@ registerTool("get_file_info", {
   },
 });
 
-// 3. 重命名文件（需要确认）
+// 3. 搜索文件和目录（不需要确认）
+registerTool("search_files", {
+  definition: {
+    type: "function",
+    function: {
+      name: "search_files",
+      description: "在指定文件库中搜索文件或目录。根据关键词匹配文件名。",
+      parameters: {
+        type: "object",
+        properties: {
+          library_id: {
+            type: "number",
+            description: "文件库 ID",
+          },
+          keyword: {
+            type: "string",
+            description: "搜索关键词，将匹配文件名中包含该关键词的文件或目录",
+          },
+          type: {
+            type: "string",
+            enum: ["all", "file", "directory"],
+            description: "搜索类型：all（全部）、file（仅文件）、directory（仅目录）。默认为 all",
+          },
+        },
+        required: ["library_id", "keyword"],
+      },
+    },
+  },
+  executor: async (args, _context) => {
+    const libraryId = args.library_id;
+    const keyword = args.keyword;
+    const type = args.type || "all";
+
+    if (!libraryId) {
+      return { success: false, error: "请提供文件库 ID" };
+    }
+    if (!keyword || typeof keyword !== "string" || !keyword.trim()) {
+      return { success: false, error: "请提供搜索关键词" };
+    }
+
+    const results = searchEntries({
+      libraryId,
+      keyword,
+      type: type as "all" | "file" | "directory",
+      limit: 30,
+    });
+
+    return {
+      success: true,
+      result: {
+        type: "search_results",
+        libraryId,
+        keyword,
+        searchType: type,
+        results: results.map(r => ({
+          id: r.id,
+          name: r.name,
+          path: r.path,
+          isDirectory: r.isDirectory,
+          size: r.size,
+          extension: r.extension,
+        })),
+        message: `搜索 "${keyword}" 找到 ${results.length} 个结果`,
+      },
+    };
+  },
+});
+
+// 4. 重命名文件（需要确认）
 registerTool("rename_file", {
   definition: {
     type: "function",

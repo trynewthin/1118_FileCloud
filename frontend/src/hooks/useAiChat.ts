@@ -264,7 +264,7 @@ export const useAiChat = () => {
           }
         }
 
-        const res = await appendUserMessage(convId, { 
+        await appendUserMessage(convId, { 
           content: content || "", 
           attachmentIds,
         });
@@ -273,16 +273,12 @@ export const useAiChat = () => {
         localAttachmentsRef.current.delete(tempUserId);
         setLocalAttachments(new Map(localAttachmentsRef.current));
         
-        setState((prev) => {
-          const filtered = prev.messages.filter(
-            (m) => m.id !== tempUserId && m.id !== tempAssistantId,
-          );
-          return {
-            ...prev,
-            sending: false,
-            messages: [...filtered, res.userMessage, res.assistantMessage],
-          };
-        });
+        setState((prev) => ({
+          ...prev,
+          sending: false,
+        }));
+        // 重新加载消息列表，以获取工具调用消息
+        await reloadMessages(convId);
         // 重新加载会话列表，以便获取后端自动命名后的标题
         void reloadConversations();
       } catch (err: any) {

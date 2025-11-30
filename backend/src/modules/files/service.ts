@@ -258,3 +258,63 @@ export const searchFolders = (params: {
     };
   }).filter((item): item is FolderSearchResult => item !== null);
 };
+
+// 搜索结果类型
+export interface FileSearchResult {
+  id: string;
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  extension: string | null;
+}
+
+// 搜索文件和目录
+export const searchEntries = (params: {
+  libraryId: number;
+  keyword: string;
+  type?: "all" | "file" | "directory";
+  limit?: number;
+}): FileSearchResult[] => {
+  const { libraryId, keyword, type = "all", limit = 50 } = params;
+  
+  if (!keyword || !keyword.trim()) {
+    return [];
+  }
+
+  const searchPattern = `%${keyword.trim()}%`;
+  
+  let sql = `
+    SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes
+    FROM file_entries 
+    WHERE library_id = ? AND is_deleted = 0 AND original_name LIKE ?
+  `;
+  
+  if (type === "file") {
+    sql += " AND is_directory = 0";
+  } else if (type === "directory") {
+    sql += " AND is_directory = 1";
+  }
+  
+  sql += " ORDER BY is_directory DESC, original_name ASC LIMIT ?";
+  
+  const rows = db.prepare(sql).all(libraryId, searchPattern, limit) as any[];
+  
+  return rows.map((row) => {
+    const entry = getEntryById(row.id);
+    if (!entry) return null;
+    
+    const ancestors = getEntryAncestors(entry);
+    const pathParts = ancestors.map((a) => a.name);
+    pathParts.push(entry.original_name);
+    
+    return {
+      id: row.id,
+      name: row.original_name,
+      path: "/" + pathParts.join("/"),
+      isDirectory: Boolean(row.is_directory),
+      size: row.size_bytes ?? 0,
+      extension: row.extension ?? null,
+    };
+  }).filter((item): item is FileSearchResult => item !== null);
+};
