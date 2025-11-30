@@ -17,7 +17,6 @@ import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -25,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Check } from "lucide-react";
 
 interface BreadcrumbItem {
   id: string;
@@ -368,7 +368,15 @@ export function FileBrowserPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReindexConfirm}>确认执行</AlertDialogAction>
+            <GlassButton
+              size="icon"
+              glassVariant="lite"
+              onClick={handleReindexConfirm}
+              className="bg-primary/10 text-primary hover:bg-primary/20"
+            >
+              <Check className="h-4 w-4" />
+              <span className="sr-only">确认执行</span>
+            </GlassButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
