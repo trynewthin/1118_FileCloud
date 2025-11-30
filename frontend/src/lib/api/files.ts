@@ -114,10 +114,19 @@ export const destroyEntry = async (id: string): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/destroy`);
 };
 
+// 上传进度回调类型
+export type UploadProgressCallback = (progress: {
+  loaded: number;
+  total: number;
+  percent: number;
+}) => void;
+
+// 带进度的文件上传
 export const uploadFiles = async (params: {
   libraryId: number;
   parentId?: string | null;
   files: FileList;
+  onProgress?: UploadProgressCallback;
 }): Promise<UploadResponse> => {
   const form = new FormData();
   Array.from(params.files).forEach((file) => {
@@ -128,6 +137,62 @@ export const uploadFiles = async (params: {
   if (params.parentId) searchParams.set("parentId", params.parentId);
   const qs = searchParams.toString();
   const path = `/files/library/${params.libraryId}/upload${qs ? `?${qs}` : ""}`;
+
+  // 如果有进度回调，使用 XMLHttpRequest 以获取上传进度
+  if (params.onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const url = buildApiUrl(path);
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && params.onProgress) {
+          params.onProgress({
+            loaded: e.loaded,
+            total: e.total,
+            percent: Math.round((e.loaded / e.total) * 100),
+          });
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data);
+          } catch {
+            reject(new Error("响应解析失败"));
+          }
+        } else {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            reject(new Error(data.message || `上传失败 (${xhr.status})`));
+          } catch {
+            reject(new Error(`上传失败 (${xhr.status})`));
+          }
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("网络错误"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("上传已取消"));
+      });
+
+      xhr.open("POST", url);
+      
+      // 添加认证 token
+      const token = getAuthToken();
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+
+      xhr.send(form);
+    });
+  }
+
+  // 无进度回调时使用原有方式
   return apiClient.post<UploadResponse>(path, form);
 };
 
@@ -165,5 +230,17 @@ export const indexLibraryPath = async (
 ): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/library/${libraryId}/index-path`, {
     relativePath,
+  });
+};
+
+// 新建文件夹
+export const createFolder = async (params: {
+  libraryId: number;
+  parentId?: string | null;
+  name: string;
+}): Promise<{ message: string; entry: { id: string; name: string } }> => {
+  return apiClient.post(`/files/library/${params.libraryId}/mkdir`, {
+    parentId: params.parentId,
+    name: params.name,
   });
 };

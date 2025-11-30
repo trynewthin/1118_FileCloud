@@ -20,7 +20,7 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
         "m-4 h-[calc(100vh-2rem)] border",
         DS.radius.xl,
         DS.glass.strong,
-        collapsed ? "w-[72px]" : "w-72",
+        collapsed ? "w-[72px]" : "w-64",
       )}
     >
       {/* Header Area */}

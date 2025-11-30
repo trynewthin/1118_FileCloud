@@ -52,6 +52,22 @@ const getTrashPathForEntry = (entry: FileEntry, libraryRootPath: string): string
   return path.join(libraryRootPath, INTERNAL_META_DIR, TRASH_DIR_NAME, relative);
 };
 
+// 递归获取所有子条目 ID（包括嵌套的子目录）
+const getAllDescendantIds = (parentId: string): string[] => {
+  const children = db
+    .prepare("SELECT id, is_directory FROM file_entries WHERE parent_id = ? AND is_deleted = 0")
+    .all(parentId) as { id: string; is_directory: number }[];
+
+  const ids: string[] = [];
+  for (const child of children) {
+    ids.push(child.id);
+    if (child.is_directory) {
+      ids.push(...getAllDescendantIds(child.id));
+    }
+  }
+  return ids;
+};
+
 // 将指定条目移动到回收站（软删除）
 export const moveEntryToTrash = (entryId: string): void => {
   const entry = getEntryById(entryId);
@@ -63,20 +79,63 @@ export const moveEntryToTrash = (entryId: string): void => {
   const activePath = getActivePathForEntry(entry, rootPath);
   const trashPath = getTrashPathForEntry(entry, rootPath);
 
+  // 先获取所有子条目 ID（在移动文件之前，因为移动后可能影响查询）
+  let descendantIds: string[] = [];
+  if (entry.is_directory) {
+    descendantIds = getAllDescendantIds(entry.id);
+  }
+
   const trashDir = path.dirname(trashPath);
   if (!fs.existsSync(trashDir)) {
     fs.mkdirSync(trashDir, { recursive: true });
   }
 
+  // 如果目标路径已存在，先删除（可能是之前删除失败留下的残留）
+  if (fs.existsSync(trashPath)) {
+    fs.rmSync(trashPath, { recursive: true, force: true });
+  }
+
   if (fs.existsSync(activePath)) {
-    fs.renameSync(activePath, trashPath);
+    // 使用 cpSync + rmSync 代替 renameSync，避免跨设备移动问题
+    if (entry.is_directory) {
+      fs.cpSync(activePath, trashPath, { recursive: true });
+      fs.rmSync(activePath, { recursive: true, force: true });
+    } else {
+      fs.renameSync(activePath, trashPath);
+    }
   }
 
   const now = new Date().toISOString();
 
+  // 如果是目录，需要同时标记所有子条目为已删除
+  if (descendantIds.length > 0) {
+    // 批量更新所有子条目
+    const placeholders = descendantIds.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE file_entries SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id IN (${placeholders})`,
+    ).run(now, now, ...descendantIds);
+  }
+
+  // 更新当前条目
   db.prepare(
     "UPDATE file_entries SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?",
   ).run(now, now, entry.id);
+};
+
+// 递归获取所有已删除的子条目 ID
+const getAllDeletedDescendantIds = (parentId: string): string[] => {
+  const children = db
+    .prepare("SELECT id, is_directory FROM file_entries WHERE parent_id = ? AND is_deleted = 1")
+    .all(parentId) as { id: string; is_directory: number }[];
+
+  const ids: string[] = [];
+  for (const child of children) {
+    ids.push(child.id);
+    if (child.is_directory) {
+      ids.push(...getAllDeletedDescendantIds(child.id));
+    }
+  }
+  return ids;
 };
 
 // 从回收站还原指定条目
@@ -94,17 +153,43 @@ export const restoreEntryFromTrash = (entryId: string): void => {
   const activePath = getActivePathForEntry(entry, rootPath);
   const trashPath = getTrashPathForEntry(entry, rootPath);
 
+  // 先获取所有已删除的子条目 ID
+  let descendantIds: string[] = [];
+  if (entry.is_directory) {
+    descendantIds = getAllDeletedDescendantIds(entry.id);
+  }
+
   const activeDir = path.dirname(activePath);
   if (!fs.existsSync(activeDir)) {
     fs.mkdirSync(activeDir, { recursive: true });
   }
 
+  // 如果目标路径已存在，先删除
+  if (fs.existsSync(activePath)) {
+    fs.rmSync(activePath, { recursive: true, force: true });
+  }
+
   if (fs.existsSync(trashPath)) {
-    fs.renameSync(trashPath, activePath);
+    // 使用 cpSync + rmSync 代替 renameSync，避免跨设备移动问题
+    if (entry.is_directory) {
+      fs.cpSync(trashPath, activePath, { recursive: true });
+      fs.rmSync(trashPath, { recursive: true, force: true });
+    } else {
+      fs.renameSync(trashPath, activePath);
+    }
   }
 
   const now = new Date().toISOString();
 
+  // 如果是目录，需要同时还原所有子条目
+  if (descendantIds.length > 0) {
+    const placeholders = descendantIds.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE file_entries SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id IN (${placeholders})`,
+    ).run(now, ...descendantIds);
+  }
+
+  // 更新当前条目
   db.prepare(
     "UPDATE file_entries SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
   ).run(now, entry.id);

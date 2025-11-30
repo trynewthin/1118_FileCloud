@@ -12,6 +12,7 @@ import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
+import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
 import { downloadEntry } from "@/lib/api/files";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
@@ -58,6 +59,9 @@ export function FileBrowserPage() {
   // 上传对话框状态
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
+  // 新建文件夹对话框状态
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+
   // 滚动容器引用，用于记忆滚动位置
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // 滚动位置缓存 key
@@ -85,6 +89,7 @@ export function FileBrowserPage() {
     restore,
     destroy,
     upload,
+    createFolder,
     getCachedPassword,
   } = useFileBrowser({ libraryId: activeLibraryId });
 
@@ -287,6 +292,7 @@ export function FileBrowserPage() {
           onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
           onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
           onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
+          onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
         />
         
         <div className="px-1">
@@ -374,8 +380,17 @@ export function FileBrowserPage() {
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
         targetPathLabel={currentPathLabel}
-        onSubmit={async (files) => {
-          await upload(files, currentParentId);
+        onSubmit={async (files, onProgress) => {
+          await upload(files, currentParentId, onProgress);
+        }}
+      />
+
+      {/* 新建文件夹对话框 */}
+      <CreateFolderDialog
+        open={createFolderDialogOpen}
+        onOpenChange={setCreateFolderDialogOpen}
+        onSubmit={async (name) => {
+          await createFolder(name, currentParentId);
         }}
       />
 

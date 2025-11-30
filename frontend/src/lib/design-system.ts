@@ -15,7 +15,7 @@ export const DS = {
     // 主内容区的内边距策略
     mainContent: "px-4 md:px-8 pt-20 pb-6",
     // PageContainer 内部内容区域：负责撑满高度并预留统一底部留白
-    pageBody: "relative z-10 flex-1 min-h-0 h-full flex flex-col pb-4 md:pb-6",
+    pageBody: "relative z-10 flex-1 min-h-0 h-full flex flex-col pb-4 md:pb-6 px-2 md:px-3",
   },
 
   // 2. 圆角系统 (Radius)

@@ -1,13 +1,26 @@
 import { Progress } from "@/components/ui/progress";
 import type { TaskRecord } from "@/lib/api/tasks";
-import { CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import { deleteTask } from "@/lib/api/tasks";
+import { CheckCircle2, XCircle, Clock, Loader2, Trash2, Square } from "lucide-react";
 import { GlassCard } from "@/components/common/GlassCard";
+import { GlassButton } from "@/components/common/GlassButton";
 
 interface TaskItemProps {
   task: TaskRecord;
+  onDeleted?: () => void; // 删除后的回调，用于刷新列表
 }
 
-export function TaskItem({ task }: TaskItemProps) {
+export function TaskItem({ task, onDeleted }: TaskItemProps) {
+  // 处理删除/取消任务
+  const handleDelete = async () => {
+    try {
+      await deleteTask(task.id);
+      onDeleted?.();
+    } catch (err) {
+      console.error("删除任务失败", err);
+    }
+  };
+
   const getStatusIcon = () => {
     switch (task.status) {
       case "SUCCESS":
@@ -85,6 +98,21 @@ export function TaskItem({ task }: TaskItemProps) {
              </p>
           )}
         </div>
+
+        {/* 删除/取消按钮 */}
+        <GlassButton
+          glassVariant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={handleDelete}
+          title={task.status === "RUNNING" ? "取消任务" : "删除任务"}
+        >
+          {task.status === "RUNNING" ? (
+            <Square className="h-4 w-4" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </GlassButton>
       </div>
     </GlassCard>
   );

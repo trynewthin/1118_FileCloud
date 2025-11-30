@@ -267,3 +267,33 @@ export const updateTaskDetailProgress = (
 
   return getTaskById(id);
 };
+
+/**
+ * 删除/取消任务
+ * - PENDING 状态：直接删除
+ * - RUNNING 状态：标记为 FAILED 并设置错误信息为"已取消"
+ * - SUCCESS/FAILED 状态：直接删除记录
+ */
+export const deleteTask = (id: number): { ok: boolean; message?: string } => {
+  const task = getTaskById(id);
+  if (!task) {
+    return { ok: false, message: "任务不存在" };
+  }
+
+  // 如果任务正在运行，标记为失败（取消）
+  if (task.status === "RUNNING") {
+    const now = new Date().toISOString();
+    db.prepare(
+      "UPDATE tasks SET status = 'FAILED', error_message = '用户取消', finished_at = ?, updated_at = ? WHERE id = ?"
+    ).run(now, now, id);
+    return { ok: true };
+  }
+
+  // 其他状态直接删除
+  // 先删除子任务
+  db.prepare("DELETE FROM tasks WHERE parent_task_id = ?").run(id);
+  // 再删除主任务
+  db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+
+  return { ok: true };
+};

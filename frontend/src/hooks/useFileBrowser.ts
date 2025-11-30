@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FileEntry, FileTaskResponse, UploadResponse } from "@/lib/api/files";
+import type { FileEntry, FileTaskResponse, UploadResponse, UploadProgressCallback } from "@/lib/api/files";
 import { getTask } from "@/lib/api/tasks";
 import {
   copyEntry as apiCopyEntry,
+  createFolder as apiCreateFolder,
   deleteEntry as apiDeleteEntry,
   destroyEntry as apiDestroyEntry,
   getEntry,
@@ -39,7 +40,8 @@ interface FileBrowserOperations {
   remove: (id: string, password?: string) => Promise<FileTaskResponse>;
   restore: (id: string) => Promise<FileTaskResponse>;
   destroy: (id: string) => Promise<FileTaskResponse>;
-  upload: (files: FileList, parentId: string | null) => Promise<UploadResponse>;
+  upload: (files: FileList, parentId: string | null, onProgress?: UploadProgressCallback) => Promise<UploadResponse>;
+  createFolder: (name: string, parentId: string | null) => Promise<{ message: string; entry: { id: string; name: string } }>;
   indexLibrary: (options?: { forceReindex?: boolean }) => Promise<FileTaskResponse | null>;
   indexPath: (relativePath: string) => Promise<FileTaskResponse | null>;
 }
@@ -200,11 +202,20 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
       remove: (id, password) => wrapTask(() => apiDeleteEntry(id, password)),
       restore: (id) => wrapTask(() => apiRestoreEntry(id)),
       destroy: (id) => wrapTask(() => apiDestroyEntry(id)),
-      upload: (files, parentId) => {
+      upload: (files, parentId, onProgress) => {
         if (!libraryId) {
           return Promise.reject(new Error("library not selected"));
         }
-        return wrapTask(() => uploadFiles({ libraryId, parentId, files })) as Promise<UploadResponse>;
+        return wrapTask(() => uploadFiles({ libraryId, parentId, files, onProgress })) as Promise<UploadResponse>;
+      },
+      createFolder: async (name, parentId) => {
+        if (!libraryId) {
+          return Promise.reject(new Error("library not selected"));
+        }
+        const result = await apiCreateFolder({ libraryId, parentId, name });
+        // 创建成功后刷新列表
+        await load();
+        return result;
       },
       indexLibrary: (options?: { forceReindex?: boolean }) =>
         libraryId ? wrapTask(() => apiIndexLibrary(libraryId, options)) : Promise.resolve(null),
@@ -213,7 +224,7 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
           ? wrapTask(() => apiIndexLibraryPath(libraryId, relativePath))
           : Promise.resolve(null),
     }),
-    [wrapTask, libraryId],
+    [wrapTask, libraryId, load],
   );
 
   return {

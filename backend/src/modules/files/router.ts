@@ -32,6 +32,80 @@ const ensureLibraryEnabled = (libraryId: number) => {
   return { ok: true as const, library: row };
 };
 
+// 新建文件夹（管理员权限）
+router.post(
+  "/library/:libraryId/mkdir",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const libraryId = Number(req.params.libraryId);
+    if (!Number.isInteger(libraryId) || libraryId <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const check = ensureLibraryEnabled(libraryId);
+    if (!check.ok) {
+      return res.status(404).json({ message: check.message });
+    }
+
+    const { parentId, name } = req.body as { parentId?: string | null; name?: string };
+
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return res.status(400).json({ message: "文件夹名称不能为空" });
+    }
+
+    // 校验文件夹名称不能包含非法字符
+    if (/[\\/:*?"<>|]/.test(name)) {
+      return res.status(400).json({ message: "文件夹名称包含非法字符" });
+    }
+
+    let targetDir = check.library.root_path;
+
+    if (parentId) {
+      const parentEntry = getEntryById(parentId);
+      if (!parentEntry) {
+        return res.status(404).json({ message: "父目录不存在" });
+      }
+      if (!parentEntry.is_directory) {
+        return res.status(400).json({ message: "父条目不是目录" });
+      }
+      if (parentEntry.library_id !== libraryId) {
+        return res.status(400).json({ message: "父目录不属于当前文件库" });
+      }
+
+      targetDir = resolveRealPathForEntry(parentEntry, check.library.root_path);
+    }
+
+    const trimmedName = name.trim();
+    const newFolderPath = path.join(targetDir, trimmedName);
+
+    // 检查是否已存在
+    if (fs.existsSync(newFolderPath)) {
+      return res.status(400).json({ message: "同名文件或文件夹已存在" });
+    }
+
+    try {
+      fs.mkdirSync(newFolderPath, { recursive: true });
+    } catch (err) {
+      console.error("创建文件夹失败", err);
+      return res.status(500).json({ message: "创建文件夹失败" });
+    }
+
+    // 直接创建索引条目，不触发索引任务（避免触发缩略图生成等副作用）
+    const now = new Date().toISOString();
+    const folderId = crypto.randomUUID();
+    
+    db.prepare(
+      "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 1, ?, NULL, NULL, 0, NULL, 0, ?, ?)",
+    ).run(folderId, libraryId, parentId ?? null, trimmedName, now, now);
+
+    return res.status(201).json({ 
+      message: "文件夹创建成功", 
+      entry: { id: folderId, name: trimmedName } 
+    });
+  },
+);
+
 router.post(
   "/library/:libraryId/upload",
   authenticate,

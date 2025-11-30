@@ -58,44 +58,8 @@ export function FileGridItem({
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
-      <div className="flex flex-1 flex-col items-center gap-3 w-full">
-        {/* 统一的缩略图框架：固定比例 + 边框 */}
-        <div className="w-full max-h-32 aspect-[4/3] rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
-          {hasThumbnail && !thumbnailError ? (
-            <img
-              src={thumbnailUrl}
-              alt={entry.original_name}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
-              onError={() => setThumbnailError(true)}
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex items-center justify-center text-primary">
-              {isDir ? (
-                <Folder className="h-10 w-10" />
-              ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
-                <ImageIcon className="h-10 w-10" />
-              ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
-                <Film className="h-10 w-10" />
-              ) : (
-                <File className="h-10 w-10" />
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="w-full space-y-1 mt-2">
-          <p className="truncate text-sm font-medium leading-none" title={entry.original_name}>
-            {entry.original_name}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {isDir ? "文件夹" : formatSize(entry.size_bytes)}
-          </p>
-        </div>
-      </div>
-
-      {/* 右下角的操作菜单：在移动端也始终可见，不依赖 hover */}
-      <div className="absolute bottom-2 right-2 transition-opacity">
+      {/* 顶部右上角的操作菜单：悬浮在卡片之上，不再覆盖预览区域 */}
+      <div className="absolute top-2 right-2 z-20">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <GlassButton
@@ -127,7 +91,7 @@ export function FileGridItem({
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
               复制
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-red-600"
               onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
             >
@@ -135,6 +99,42 @@ export function FileGridItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+
+      <div className="flex flex-1 flex-col items-center gap-3 w-full">
+        {/* 统一的缩略图框架：固定比例 + 边框 */}
+        <div className="w-full max-h-32 aspect-4/3 rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
+          {hasThumbnail && !thumbnailError ? (
+            <img
+              src={thumbnailUrl}
+              alt={entry.original_name}
+              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              onError={() => setThumbnailError(true)}
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex items-center justify-center text-primary">
+              {isDir ? (
+                <Folder className="h-10 w-10" />
+              ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
+                <ImageIcon className="h-10 w-10" />
+              ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
+                <Film className="h-10 w-10" />
+              ) : (
+                <File className="h-10 w-10" />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="w-full mt-2 space-y-1 text-left">
+          <p className="truncate text-sm font-medium leading-none" title={entry.original_name}>
+            {entry.original_name}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {isDir ? "文件夹" : formatSize(entry.size_bytes)}
+          </p>
+        </div>
       </div>
     </GlassCard>
   );

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
 import { DS } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
@@ -38,10 +39,21 @@ export function AppHeader() {
         {/* Action Placeholder (Spacer) */}
         <div className="hidden md:block flex-1" />
 
-        {/* User Profile */}
+        {/* 右侧操作区：页面级 actions、主题切换、用户菜单 */}
         <div className="flex items-center gap-2 pr-1">
           {config.actions && <div className="flex items-center gap-1 mr-2">{config.actions}</div>}
-          
+
+          {/* 主题切换按钮：放在用户按钮左侧，尺寸与用户头像内圈统一为 8x8 */}
+          <AnimatedThemeToggler
+            className={cn(
+              "flex items-center justify-center h-8 w-8 transition-all [&>svg]:h-4 [&>svg]:w-4",
+              DS.radius.full,
+              // 与用户按钮的内圈风格保持一致：primary 语义色
+              "bg-primary/5 text-primary hover:bg-primary/10 border border-primary/10 shadow-sm"
+            )}
+            aria-label="切换主题"
+          />
+
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

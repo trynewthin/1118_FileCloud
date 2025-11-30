@@ -4,7 +4,7 @@ import { TaskItem } from "@/components/tasks/TaskItem";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function TasksPage() {
-  const { items, loading, error, status, setStatus } = useTasks({
+  const { items, loading, error, status, setStatus, reload } = useTasks({
     auto: true,
     status: "ALL",
   });
@@ -30,13 +30,13 @@ export function TasksPage() {
 
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-      <div className="space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
         {loading && items.length === 0 ? (
           <div className="text-center text-muted-foreground py-10">加载中...</div>
         ) : items.length === 0 ? (
           <div className="text-center text-muted-foreground py-10">暂无任务记录</div>
         ) : (
-          items.map((task) => <TaskItem key={task.id} task={task} />)
+          items.map((task) => <TaskItem key={task.id} task={task} onDeleted={reload} />)
         )}
       </div>
     </PageContainer>

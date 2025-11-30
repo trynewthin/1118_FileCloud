@@ -22,6 +22,7 @@ interface FileToolbarProps {
   onReindex?: () => void;
   onOpenTrash?: () => void;
   onUpload?: () => void;
+  onCreateFolder?: () => void;
 }
 
 export function FileToolbar({
@@ -34,6 +35,7 @@ export function FileToolbar({
   onReindex,
   onOpenTrash,
   onUpload,
+  onCreateFolder,
 }: FileToolbarProps) {
   return (
     <GlassCard className="p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -71,7 +73,13 @@ export function FileToolbar({
       {/* Right Section: Operations & View Toggle */}
       <div className="flex flex-wrap items-center gap-2 justify-between md:justify-end min-w-0">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled className="bg-background/50 border-transparent shadow-sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!onCreateFolder}
+            onClick={onCreateFolder}
+            className="bg-background/50 border-transparent shadow-sm"
+          >
             <FolderPlus className="h-4 w-4 mr-1.5" />
             新建
           </Button>

@@ -56,3 +56,8 @@ export const createTask = async (params: {
 }): Promise<{ task: TaskRecord }> => {
   return apiClient.post<{ task: TaskRecord }>("/tasks", params);
 };
+
+// 删除/取消任务
+export const deleteTask = async (id: number): Promise<void> => {
+  await apiClient.delete(`/tasks/${id}`);
+};

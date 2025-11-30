@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
-import { createTask, getTaskById, getTaskWithChildren, listTasks } from "./service.ts";
+import { createTask, getTaskById, getTaskWithChildren, listTasks, deleteTask } from "./service.ts";
 
 const router = express.Router();
 
@@ -83,6 +83,26 @@ router.post(
     });
 
     return res.status(201).json({ task });
+  },
+);
+
+// 删除/取消任务（管理员权限）
+router.delete(
+  "/:id",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "任务 ID 不合法" });
+    }
+
+    const result = deleteTask(id);
+    if (!result.ok) {
+      return res.status(404).json({ message: result.message });
+    }
+
+    return res.status(204).send();
   },
 );
 
