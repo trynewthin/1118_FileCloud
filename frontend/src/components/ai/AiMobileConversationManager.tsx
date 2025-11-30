@@ -1,8 +1,9 @@
+import { useState } from "react";
 import type { AiChatConversation } from "@/lib/api/aiChat";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, MessageSquare, Archive } from "lucide-react";
+import { Plus, MessageSquare, Archive, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/lib/design-system";
 
@@ -12,6 +13,7 @@ interface AiMobileConversationManagerProps {
   loading: boolean;
   onSelect: (id: number) => void;
   onNewConversation: () => void;
+  onDelete?: (id: number) => Promise<void>;
 }
 
 export function AiMobileConversationManager({
@@ -20,7 +22,21 @@ export function AiMobileConversationManager({
   loading,
   onSelect,
   onNewConversation,
+  onDelete,
 }: AiMobileConversationManagerProps) {
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // 阻止触发 onSelect
+    if (!onDelete || deletingId) return;
+    
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const hasConversations = conversations.length > 0;
 
   return (
@@ -90,8 +106,26 @@ export function AiMobileConversationManager({
                     </div>
                   </div>
 
+                  {/* Delete Button */}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      className={cn(
+                        "shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors",
+                        "opacity-0 group-hover:opacity-100",
+                        "hover:bg-destructive/10 text-muted-foreground hover:text-destructive",
+                        deletingId === c.id && "opacity-100 animate-pulse"
+                      )}
+                      onClick={(e) => handleDelete(e, c.id)}
+                      disabled={deletingId !== null}
+                      title="删除会话"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+
                   {/* Active Indicator */}
-                  {active && (
+                  {active && !onDelete && (
                     <div className="absolute right-2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
                   )}
                 </div>

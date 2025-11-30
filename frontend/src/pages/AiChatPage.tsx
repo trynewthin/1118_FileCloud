@@ -24,6 +24,7 @@ export function AiChatPage() {
     selectConversation,
     createConversation,
     updateConversation,
+    deleteConversation,
     sendMessage,
   } = useAiChat();
 
@@ -124,15 +125,23 @@ export function AiChatPage() {
               </div>
 
               {conversationPanelOpen && (
-                <div className="mt-2 mr-2 flex justify-end">
-                  <AiMobileConversationManager
-                    conversations={conversations}
-                    currentId={currentConversationId}
-                    loading={loadingConversations}
-                    onSelect={handleSelectConversationFromPanel}
-                    onNewConversation={handleCreateConversation}
+                <>
+                  {/* 点击遮罩关闭面板 */}
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setConversationPanelOpen(false)}
                   />
-                </div>
+                  <div className="mt-2 mr-2 flex justify-end relative z-20">
+                    <AiMobileConversationManager
+                      conversations={conversations}
+                      currentId={currentConversationId}
+                      loading={loadingConversations}
+                      onSelect={handleSelectConversationFromPanel}
+                      onNewConversation={handleCreateConversation}
+                      onDelete={deleteConversation}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
