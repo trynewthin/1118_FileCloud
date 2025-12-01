@@ -286,6 +286,7 @@ export const TagsPage = () => {
                 <FileGridItem
                   key={`file-${file.id}`}
                   entry={file}
+                  onClick={() => handleFileAction("click", file)}
                   onAction={handleFileAction}
                 />
               ))}

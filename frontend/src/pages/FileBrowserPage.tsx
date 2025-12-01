@@ -38,10 +38,14 @@ export function FileBrowserPage() {
   
   const { items: libraries, loading: libsLoading } = useFileLibraries();
   
-  // 当前选中的文件库 ID
-  const [activeLibraryId, setActiveLibraryId] = useState<number | null>(
-    libraryIdParam ? parseInt(libraryIdParam) : null
-  );
+  // 当前选中的文件库 ID（优先从 URL 读取，其次从 localStorage 读取）
+  const [activeLibraryId, setActiveLibraryId] = useState<number | null>(() => {
+    if (libraryIdParam) {
+      return parseInt(libraryIdParam);
+    }
+    const cached = localStorage.getItem("file_browser_active_library");
+    return cached ? parseInt(cached) : null;
+  });
 
   // 视图模式持久化
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
@@ -133,11 +137,16 @@ export function FileBrowserPage() {
   }, [parentIdParam]); // 这里不能依赖 currentParentId，否则会死循环，只依赖 URL 变化
 
   // 当库列表加载完成后，如果没有选中库且有可用库，默认选中第一个
+  // 如果缓存的库 ID 不存在于当前库列表中，也重置为第一个
   useEffect(() => {
-    if (!libsLoading && libraries.length > 0 && activeLibraryId === null) {
-      const firstId = libraries[0].id;
-      setActiveLibraryId(firstId);
-      setSearchParams({ libraryId: firstId.toString() });
+    if (!libsLoading && libraries.length > 0) {
+      const libraryExists = activeLibraryId && libraries.some(l => l.id === activeLibraryId);
+      if (!libraryExists) {
+        const firstId = libraries[0].id;
+        setActiveLibraryId(firstId);
+        localStorage.setItem("file_browser_active_library", firstId.toString());
+        setSearchParams({ libraryId: firstId.toString() });
+      }
     }
   }, [libsLoading, libraries, activeLibraryId, setSearchParams]);
 
@@ -145,6 +154,7 @@ export function FileBrowserPage() {
   const handleLibraryChange = (idStr: string) => {
     const id = parseInt(idStr);
     setActiveLibraryId(id);
+    localStorage.setItem("file_browser_active_library", idStr);
     setSearchParams({ libraryId: idStr }); // 清除 parentId
     setCurrentParentId(null);
   };
