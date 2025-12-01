@@ -32,7 +32,7 @@ export function AppHeader() {
         DS.glass.strong
       )}>
         {/* Title Section */}
-        <div className={cn("flex-1 md:flex-none pl-4 truncate", DS.text.heading)}>
+        <div className={cn("flex-1 md:flex-none pl-4 truncate min-w-0 max-w-[50vw] md:max-w-[300px]", DS.text.heading)}>
           {title}
         </div>
         
