@@ -10,6 +10,7 @@ import {
   getPhysicalName,
 } from "./service.ts";
 import { generateIndexSuffix, buildPhysicalName } from "./indexSuffix.ts";
+import { recordFileEvent, upsertFtsIndex, deleteFtsIndex } from "./ftsService.ts";
 
 // 内部配置目录与回收站目录名称
 const INTERNAL_META_DIR = ".filecloud_meta";
@@ -120,6 +121,24 @@ export const moveEntryToTrash = (entryId: string): void => {
   db.prepare(
     "UPDATE file_entries SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?",
   ).run(now, now, entry.id);
+
+  // 记录事件并更新 FTS 索引
+  recordFileEvent({
+    libraryId: entry.library_id,
+    fileId: entry.id,
+    eventType: "deleted",
+  });
+  deleteFtsIndex(entry.id);
+  
+  // 子条目也需要从 FTS 中删除
+  for (const childId of descendantIds) {
+    recordFileEvent({
+      libraryId: entry.library_id,
+      fileId: childId,
+      eventType: "deleted",
+    });
+    deleteFtsIndex(childId);
+  }
 };
 
 // 递归获取所有已删除的子条目 ID
@@ -193,6 +212,30 @@ export const restoreEntryFromTrash = (entryId: string): void => {
   db.prepare(
     "UPDATE file_entries SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
   ).run(now, entry.id);
+
+  // 还原后重新添加到 FTS 索引
+  const restoredEntry = getEntryById(entry.id);
+  if (restoredEntry) {
+    recordFileEvent({
+      libraryId: restoredEntry.library_id,
+      fileId: restoredEntry.id,
+      eventType: "created",
+    });
+    upsertFtsIndex(restoredEntry);
+  }
+  
+  // 子条目也需要重新添加到 FTS
+  for (const childId of descendantIds) {
+    const childEntry = getEntryById(childId);
+    if (childEntry) {
+      recordFileEvent({
+        libraryId: childEntry.library_id,
+        fileId: childEntry.id,
+        eventType: "created",
+      });
+      upsertFtsIndex(childEntry);
+    }
+  }
 };
 
 // 彻底删除：移除回收站中的物理文件/目录，保留数据库中的删除记录
@@ -270,6 +313,18 @@ export const renameEntry = (entryId: string, newName: string): void => {
   db.prepare(
     "UPDATE file_entries SET original_name = ?, extension = ?, updated_at = ? WHERE id = ?",
   ).run(trimmed, extension, now, entry.id);
+
+  // 更新 FTS 索引（名称变了，需要重新索引）
+  const renamedEntry = getEntryById(entry.id);
+  if (renamedEntry) {
+    recordFileEvent({
+      libraryId: renamedEntry.library_id,
+      fileId: renamedEntry.id,
+      eventType: "renamed",
+      payload: { oldName: entry.original_name, newName: trimmed },
+    });
+    upsertFtsIndex(renamedEntry);
+  }
 };
 
 /**
@@ -320,10 +375,23 @@ export const moveEntry = (entryId: string, targetParentId: string | null): void 
   }
 
   const now = new Date().toISOString();
+  const oldParentId = entry.parent_id;
 
   db.prepare(
     "UPDATE file_entries SET parent_id = ?, updated_at = ? WHERE id = ?",
   ).run(targetParentId, now, entry.id);
+
+  // 更新 FTS 索引（路径变了，需要重新索引）
+  const movedEntry = getEntryById(entry.id);
+  if (movedEntry) {
+    recordFileEvent({
+      libraryId: movedEntry.library_id,
+      fileId: movedEntry.id,
+      eventType: "moved",
+      payload: { oldParentId, newParentId: targetParentId },
+    });
+    upsertFtsIndex(movedEntry);
+  }
 };
 
 /**
@@ -391,6 +459,18 @@ export const copyEntry = (
   db.prepare(
     "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?, ?, ?, NULL, 0, ?, ?)",
   ).run(newId, entry.library_id, targetParentId, originalName, newSuffix, extension, stat.size, now, now);
+
+  // 为新复制的文件添加 FTS 索引
+  const copiedEntry = getEntryById(newId);
+  if (copiedEntry) {
+    recordFileEvent({
+      libraryId: copiedEntry.library_id,
+      fileId: copiedEntry.id,
+      eventType: "created",
+      payload: { sourceId: entry.id },
+    });
+    upsertFtsIndex(copiedEntry);
+  }
 
   return newId;
 };

@@ -212,6 +212,34 @@ const initDatabase = () => {
       ";",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_tool_configs_tool_key ON ai_tool_configs(tool_key)",
       ";",
+      // ============================================================================
+      // FTS5 全文搜索索引表
+      // ============================================================================
+      "CREATE VIRTUAL TABLE IF NOT EXISTS file_index_fts USING fts5(",
+      "  file_id,",           // 对应 file_entries.id
+      "  library_id,",        // 文件库 ID（用于过滤）
+      "  name,",              // 原始文件名（主要搜索字段）
+      "  path,",              // 完整路径（用于路径搜索）
+      "  extension",          // 扩展名
+      ")",
+      ";",
+      // ============================================================================
+      // 文件事件表（用于增量索引和审计）
+      // ============================================================================
+      "CREATE TABLE IF NOT EXISTS file_events (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  library_id INTEGER NOT NULL,",
+      "  file_id TEXT NOT NULL,",
+      "  event_type TEXT NOT NULL CHECK(event_type IN ('created','updated','moved','renamed','deleted')),",
+      "  payload_json TEXT,",           // 额外信息（如旧路径、新路径等）
+      "  processed INTEGER NOT NULL DEFAULT 0,", // 是否已被增量索引处理
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_events_unprocessed ON file_events(processed, created_at)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_events_library ON file_events(library_id, created_at DESC)",
+      ";",
     ].join("\n"),
   );
 

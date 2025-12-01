@@ -1,4 +1,4 @@
-import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2, RotateCw, CheckSquare, X, Move, Copy, Trash } from "lucide-react";
+import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2, RotateCw, CheckSquare, X, Move, Copy, Trash, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
@@ -23,6 +23,7 @@ interface FileToolbarProps {
   onOpenTrash?: () => void;
   onUpload?: () => void;
   onCreateFolder?: () => void;
+  onSearch?: () => void;
   // 批量模式相关
   batchMode?: boolean;
   onBatchModeChange?: (enabled: boolean) => void;
@@ -43,6 +44,7 @@ export function FileToolbar({
   onOpenTrash,
   onUpload,
   onCreateFolder,
+  onSearch,
   batchMode = false,
   onBatchModeChange,
   selectedCount = 0,
@@ -125,6 +127,12 @@ export function FileToolbar({
         </Select>
         
         <div className="h-6 w-px bg-border/50 mx-1" />
+
+        {onSearch && (
+          <Button variant="ghost" size="icon-sm" onClick={onSearch} title="搜索" className="text-muted-foreground hover:text-foreground">
+            <Search className="h-4 w-4" />
+          </Button>
+        )}
 
         <Button variant="ghost" size="icon-sm" onClick={onRefresh} title="刷新" className="text-muted-foreground hover:text-foreground">
           <RefreshCw className="h-4 w-4" />

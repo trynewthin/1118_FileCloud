@@ -6,6 +6,7 @@ import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
 import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors, listDeletedEntriesByLibrary, searchFolders } from "./service.ts";
+import { searchByFts, getFtsIndexStats } from "./ftsService.ts";
 import { createTask } from "../tasks/service.ts";
 import { TASK_TYPE_FILE_INDEX_LIBRARY, TASK_TYPE_FILE_INDEX_SINGLE } from "./indexTasks.ts";
 import { TASK_TYPE_FILE_DELETE_ENTRY, TASK_TYPE_FILE_RESTORE_ENTRY, TASK_TYPE_FILE_DESTROY_ENTRY, TASK_TYPE_FILE_RENAME_ENTRY, TASK_TYPE_FILE_MOVE_ENTRY, TASK_TYPE_FILE_COPY_ENTRY } from "./fileOpsTasks.ts";
@@ -266,6 +267,63 @@ router.get(
     });
 
     return res.json({ items });
+  },
+);
+
+// 全文搜索文件和目录（使用 FTS5，普通登录用户可用）
+router.get(
+  "/library/:libraryId/search",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  (req, res) => {
+    const libraryId = Number(req.params.libraryId);
+    if (!Number.isInteger(libraryId) || libraryId <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const check = ensureLibraryEnabled(libraryId);
+    if (!check.ok) {
+      return res.status(404).json({ message: check.message });
+    }
+
+    const { q, pathPrefix, extension, type, limit } = req.query as {
+      q?: string;
+      pathPrefix?: string;
+      extension?: string;
+      type?: "all" | "file" | "directory";
+      limit?: string;
+    };
+
+    if (!q || q.trim().length === 0) {
+      return res.json({ items: [] });
+    }
+
+    const items = searchByFts({
+      libraryId,
+      keyword: q,
+      pathPrefix,
+      extension,
+      type: type || "all",
+      limit: limit ? Math.min(parseInt(limit, 10), 100) : 50,
+    });
+
+    return res.json({ items });
+  },
+);
+
+// 获取 FTS 索引统计信息（管理员可用）
+router.get(
+  "/library/:libraryId/search/stats",
+  authenticate,
+  requirePermission(PermissionLevel.Admin),
+  (req, res) => {
+    const libraryId = Number(req.params.libraryId);
+    if (!Number.isInteger(libraryId) || libraryId <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const stats = getFtsIndexStats(libraryId);
+    return res.json(stats);
   },
 );
 

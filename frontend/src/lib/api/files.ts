@@ -244,3 +244,55 @@ export const createFolder = async (params: {
     name: params.name,
   });
 };
+
+// ============================================================================
+// FTS5 全文搜索
+// ============================================================================
+
+export interface FileSearchResult {
+  id: string;
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  extension: string | null;
+  rank?: number;
+}
+
+export interface SearchResponse {
+  items: FileSearchResult[];
+}
+
+/**
+ * 全文搜索文件和目录
+ * 使用 FTS5 索引，支持中文分词和前缀匹配
+ */
+export const searchFiles = async (params: {
+  libraryId: number;
+  keyword: string;
+  pathPrefix?: string;
+  extension?: string;
+  type?: "all" | "file" | "directory";
+  limit?: number;
+}): Promise<SearchResponse> => {
+  const searchParams = new URLSearchParams();
+  searchParams.set("q", params.keyword);
+  if (params.pathPrefix) searchParams.set("pathPrefix", params.pathPrefix);
+  if (params.extension) searchParams.set("extension", params.extension);
+  if (params.type) searchParams.set("type", params.type);
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  
+  const qs = searchParams.toString();
+  const path = `/files/library/${params.libraryId}/search?${qs}`;
+  return apiClient.get<SearchResponse>(path);
+};
+
+/**
+ * 获取 FTS 索引统计信息
+ */
+export const getSearchStats = async (libraryId: number): Promise<{
+  total: number;
+  byLibrary: Record<number, number>;
+}> => {
+  return apiClient.get(`/files/library/${libraryId}/search/stats`);
+};

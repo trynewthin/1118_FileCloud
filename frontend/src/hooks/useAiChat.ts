@@ -73,6 +73,12 @@ export const useAiChat = () => {
         // 验证保存的会话 ID 是否仍然存在
         if (nextCurrent && !res.items.some((c) => c.id === nextCurrent)) {
           nextCurrent = null;
+          // 本地保存的会话 ID 已失效，清理 localStorage，避免下次再读到无效 ID
+          try {
+            localStorage.removeItem("ai_current_conversation_id");
+          } catch {
+            // 忽略 localStorage 错误
+          }
         }
         // 如果没有当前会话，选择第一个
         if (!nextCurrent && res.items.length > 0) {
@@ -110,6 +116,23 @@ export const useAiChat = () => {
         loadingMessages: false,
       }));
     } catch (err: any) {
+      const status = typeof err?.status === "number" ? err.status : undefined;
+      // 如果会话不存在（可能是数据库重建或会话被删除后本地仍保留旧 ID），静默清理状态
+      if (status === 404) {
+        try {
+          localStorage.removeItem("ai_current_conversation_id");
+        } catch {
+          // 忽略 localStorage 错误
+        }
+        setState((prev) => ({
+          ...prev,
+          loadingMessages: false,
+          currentConversationId: null,
+          messages: [],
+        }));
+        return;
+      }
+
       const message = typeof err?.message === "string" ? err.message : "加载消息失败";
       setState((prev) => ({ ...prev, loadingMessages: false, error: message }));
     }

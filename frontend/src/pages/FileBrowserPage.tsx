@@ -14,6 +14,7 @@ import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
+import { SearchDialog } from "@/components/files/dialogs/SearchDialog";
 import { downloadEntry } from "@/lib/api/files";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
@@ -62,6 +63,9 @@ export function FileBrowserPage() {
 
   // 新建文件夹对话框状态
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+
+  // 搜索对话框状态
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
   // 滚动容器引用，用于记忆滚动位置
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -386,6 +390,7 @@ export function FileBrowserPage() {
           onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
           onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
           onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
+          onSearch={activeLibraryId ? () => setSearchDialogOpen(true) : undefined}
           batchMode={batchMode}
           onBatchModeChange={handleBatchModeChange}
           selectedCount={selectedIds.size}
@@ -605,6 +610,15 @@ export function FileBrowserPage() {
             await handleBatchMoveCopySubmit(targetParentId);
           }}
           batchCount={selectedEntries.length}
+        />
+      )}
+
+      {/* 搜索对话框 */}
+      {activeLibraryId && (
+        <SearchDialog
+          open={searchDialogOpen}
+          onOpenChange={setSearchDialogOpen}
+          libraryId={activeLibraryId}
         />
       )}
     </PageContainer>

@@ -1,5 +1,6 @@
 import type { ChatToolDefinition } from "../../core/ai/client.ts";
-import { listEntriesByParent, getEntryById, searchEntries } from "../files/service.ts";
+import { listEntriesByParent, getEntryById } from "../files/service.ts";
+import { searchByFts } from "../files/ftsService.ts";
 import { db } from "../../core/db/index.ts";
 
 export type AiToolType = "pre" | "post";
@@ -242,13 +243,13 @@ registerTool("get_file_info", {
   },
 });
 
-// 3. 搜索文件和目录（不需要确认）
+// 3. 搜索文件和目录（不需要确认）- 使用 FTS5 全文搜索
 registerTool("search_files", {
   definition: {
     type: "function",
     function: {
       name: "search_files",
-      description: "在指定文件库中搜索文件或目录。根据关键词匹配文件名。",
+      description: "在指定文件库中搜索文件或目录。使用全文搜索引擎，支持中文分词和前缀匹配。",
       parameters: {
         type: "object",
         properties: {
@@ -258,12 +259,16 @@ registerTool("search_files", {
           },
           keyword: {
             type: "string",
-            description: "搜索关键词，将匹配文件名中包含该关键词的文件或目录",
+            description: "搜索关键词，支持中文和英文，会匹配文件名和路径",
           },
           type: {
             type: "string",
             enum: ["all", "file", "directory"],
             description: "搜索类型：all（全部）、file（仅文件）、directory（仅目录）。默认为 all",
+          },
+          extension: {
+            type: "string",
+            description: "按扩展名过滤（可选），例如 'mp4'、'jpg'、'pdf'",
           },
         },
         required: ["library_id", "keyword"],
@@ -274,6 +279,7 @@ registerTool("search_files", {
     const libraryId = args.library_id;
     const keyword = args.keyword;
     const type = args.type || "all";
+    const extension = args.extension;
 
     if (!libraryId) {
       return { success: false, error: "请提供文件库 ID" };
@@ -282,10 +288,12 @@ registerTool("search_files", {
       return { success: false, error: "请提供搜索关键词" };
     }
 
-    const results = searchEntries({
+    // 使用 FTS5 全文搜索
+    const results = searchByFts({
       libraryId,
       keyword,
       type: type as "all" | "file" | "directory",
+      extension: extension || undefined,
       limit: 30,
     });
 
@@ -296,7 +304,7 @@ registerTool("search_files", {
         libraryId,
         keyword,
         searchType: type,
-        results: results.map(r => ({
+        results: results.map((r) => ({
           id: r.id,
           name: r.name,
           path: r.path,

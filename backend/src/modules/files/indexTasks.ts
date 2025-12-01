@@ -12,6 +12,7 @@ import {
   buildPhysicalName,
   hasIndexSuffix,
 } from "./indexSuffix.ts";
+import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
 
 // ============================================================================
 // 任务类型常量
@@ -579,7 +580,7 @@ const handleIndexLibraryTask = async (task: TaskRecord) => {
     updateTaskStatus({
       id: task.id,
       status: "RUNNING",
-      progress: 95,
+      progress: 85,
       detailProgress: {
         current: result.thumbnailQueue.length,
         total: result.thumbnailQueue.length,
@@ -587,6 +588,36 @@ const handleIndexLibraryTask = async (task: TaskRecord) => {
       },
     });
   }
+
+  // 阶段 3：重建 FTS5 全文搜索索引
+  updateTaskStatus({
+    id: task.id,
+    status: "RUNNING",
+    progress: result.thumbnailQueue.length > 0 ? 85 : 90,
+    detailProgress: { current: 0, total: 0, label: "重建搜索索引..." },
+  });
+
+  const ftsIndexed = rebuildFtsIndexForLibrary(libraryId, (current, total) => {
+    const baseProgress = result.thumbnailQueue.length > 0 ? 85 : 90;
+    const ftsProgress = Math.round((current / total) * 10);
+    updateTaskStatus({
+      id: task.id,
+      status: "RUNNING",
+      progress: baseProgress + ftsProgress,
+      detailProgress: { current, total, label: "重建搜索索引" },
+    });
+  });
+
+  updateTaskStatus({
+    id: task.id,
+    status: "RUNNING",
+    progress: 98,
+    detailProgress: {
+      current: ftsIndexed,
+      total: ftsIndexed,
+      label: `搜索索引: ${ftsIndexed} 条`,
+    },
+  });
 
   // 更新文件库的最后扫描时间
   const now = new Date().toISOString();
