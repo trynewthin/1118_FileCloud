@@ -13,6 +13,10 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
+// 启用 WAL 模式，提高并发性能，避免 "database is locked" 错误
+db.exec("PRAGMA journal_mode = WAL");
+db.exec("PRAGMA busy_timeout = 5000"); // 等待 5 秒再报锁定错误
+
 // 初始化数据库表结构（用户表、系统配置表、文件库表、任务表、文件索引表、操作日志表）
 const initDatabase = () => {
   db.exec(
@@ -213,6 +217,41 @@ const initDatabase = () => {
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_tool_configs_tool_key ON ai_tool_configs(tool_key)",
       ";",
       // ============================================================================
+      // 标签系统表
+      // ============================================================================
+      // 标签定义表
+      "CREATE TABLE IF NOT EXISTS file_tags (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  name TEXT NOT NULL,",                    // 标签名称
+      "  parent_tag_id INTEGER,",                 // 父标签 ID（支持嵌套，最多3层）
+      "  level INTEGER NOT NULL DEFAULT 1,",      // 层级（1-3）
+      "  color TEXT,",                            // 标签颜色（可选）
+      "  allow_multiple INTEGER NOT NULL DEFAULT 0,", // 仅一级标签有效：是否允许多选（0=互斥单选，1=允许多选）
+      "  sort_order INTEGER NOT NULL DEFAULT 0,", // 排序顺序
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
+      "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_tags_parent ON file_tags(parent_tag_id)",
+      ";",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_tags_level_parent_name ON file_tags(level, parent_tag_id, name)",
+      ";",
+      // 文件-标签关联表
+      "CREATE TABLE IF NOT EXISTS file_tag_entries (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  tag_id INTEGER NOT NULL,",               // 标签 ID
+      "  entry_id TEXT NOT NULL,",                // 文件 ID（file_entries.id）
+      "  is_primary INTEGER NOT NULL DEFAULT 0,", // 是否为主标签（每个文件只能有一个主标签）
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_tag_entries_tag ON file_tag_entries(tag_id)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_tag_entries_entry ON file_tag_entries(entry_id)",
+      ";",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_tag_entries_tag_entry ON file_tag_entries(tag_id, entry_id)",
+      ";",
+      // ============================================================================
       // FTS5 全文搜索索引表
       // ============================================================================
       "CREATE VIRTUAL TABLE IF NOT EXISTS file_index_fts USING fts5(",
@@ -284,6 +323,15 @@ const runMigrations = () => {
     db.exec("CREATE INDEX IF NOT EXISTS idx_file_entries_library_suffix ON file_entries(library_id, index_suffix)");
   } catch {
     // 索引可能已存在，忽略错误
+  }
+
+  // 检查 file_tags 表是否有 sort_order 列，如果没有则添加
+  const fileTagsColumns = db.prepare("PRAGMA table_info(file_tags)").all() as { name: string }[];
+  const fileTagsColumnNames = new Set(fileTagsColumns.map((c) => c.name));
+
+  if (!fileTagsColumnNames.has("sort_order")) {
+    db.exec("ALTER TABLE file_tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+    console.log("[DB Migration] Added sort_order column to file_tags table");
   }
 };
 

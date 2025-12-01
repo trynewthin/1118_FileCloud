@@ -4,8 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { FileToolbar } from "@/components/files/FileToolbar";
-import { FileBreadcrumb } from "@/components/files/FileBreadcrumb";
+import { FileToolbar, FileBreadcrumb } from "@/components/files/FileToolbar";
 import { FileGridItem } from "@/components/files/FileGridItem";
 import { FileListItem } from "@/components/files/FileListItem";
 import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
@@ -27,11 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface BreadcrumbItem {
-  id: string;
-  name: string;
-}
+import type { BreadcrumbItem } from "@/components/files/FileToolbar";
 
 export function FileBrowserPage() {
   const navigate = useNavigate();
@@ -217,6 +212,28 @@ export function FileBrowserPage() {
     setSearchParams({ libraryId: activeLibraryId!.toString() });
   };
 
+  // 返回上一级目录
+  const handleGoUp = () => {
+    if (!currentParentId || breadcrumbItems.length === 0) {
+      // 已经在根目录
+      return;
+    }
+    saveScrollPosition();
+    if (breadcrumbItems.length === 1) {
+      // 只有一级，返回根目录
+      setCurrentParentId(null);
+      setSearchParams({ libraryId: activeLibraryId!.toString() });
+    } else {
+      // 返回上一级（倒数第二个）
+      const parentItem = breadcrumbItems[breadcrumbItems.length - 2];
+      setCurrentParentId(parentItem.id);
+      setSearchParams({ 
+        libraryId: activeLibraryId!.toString(), 
+        parentId: parentItem.id 
+      });
+    }
+  };
+
   const handleBreadcrumbItemClick = (item: BreadcrumbItem) => {
     // 如果点击的是当前项，不做任何事
     if (item.id === currentParentId) return;
@@ -378,19 +395,15 @@ export function FileBrowserPage() {
 
   return (
     <PageContainer title="文件浏览" className="h-full flex flex-col relative">
-      <div className="flex-none space-y-4 z-10 relative">
+      <div className="flex-none space-y-2 z-10 relative">
         <FileToolbar
           libraries={libraries}
           currentLibraryId={activeLibraryId}
           onLibraryChange={handleLibraryChange}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          onRefresh={reload}
-          onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
-          onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
-          onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
-          onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
-          onSearch={activeLibraryId ? () => setSearchDialogOpen(true) : undefined}
+          canGoUp={!!currentParentId}
+          onGoUp={handleGoUp}
           batchMode={batchMode}
           onBatchModeChange={handleBatchModeChange}
           selectedCount={selectedIds.size}
@@ -400,11 +413,18 @@ export function FileBrowserPage() {
         />
         
         <div className="px-1">
-           <FileBreadcrumb 
-             items={breadcrumbItems}
-             onRootClick={handleBreadcrumbRootClick}
-             onItemClick={handleBreadcrumbItemClick}
-           />
+          <FileBreadcrumb 
+            items={breadcrumbItems}
+            onRootClick={handleBreadcrumbRootClick}
+            onItemClick={handleBreadcrumbItemClick}
+            onSearch={activeLibraryId ? () => setSearchDialogOpen(true) : undefined}
+            onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
+            onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
+            onRefresh={reload}
+            onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
+            onBatchMode={activeLibraryId ? () => handleBatchModeChange(true) : undefined}
+            onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
+          />
         </div>
       </div>
 

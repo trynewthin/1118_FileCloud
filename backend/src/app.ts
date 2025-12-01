@@ -9,6 +9,7 @@ import { activityLogsRouter } from "./modules/activityLogs/router.ts";
 import { settingsRouter } from "./modules/settings/router.ts";
 import { systemRouter } from "./modules/system/router.ts";
 import { aiRouter } from "./modules/ai/router.ts";
+import { tagsRouter } from "./modules/tags/router.ts";
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/activity-logs", activityLogsRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/tags", tagsRouter);
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

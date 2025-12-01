@@ -3,6 +3,7 @@ import {
   Settings,
   HardDrive,
   Sparkles,
+  Tag,
 } from "lucide-react";
 
 export const navItems = [
@@ -11,6 +12,12 @@ export const navItems = [
     href: "/libraries",
     icon: HardDrive,
     match: /^\/libraries/,
+  },
+  {
+    title: "标签",
+    href: "/tags",
+    icon: Tag,
+    match: /^\/tags/,
   },
   {
     title: "浏览",
