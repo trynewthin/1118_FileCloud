@@ -33,9 +33,11 @@ interface MoveCopyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (entry: FileEntry, targetParentId: string | null, newName?: string, password?: string) => Promise<void>;
+  // 批量模式时显示选中数量
+  batchCount?: number;
 }
 
-export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: MoveCopyDialogProps) {
+export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batchCount }: MoveCopyDialogProps) {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -246,7 +248,10 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
     }
   };
 
-  const title = mode === "move" ? "移动文件" : "复制文件";
+  const isBatch = batchCount && batchCount > 1;
+  const title = isBatch 
+    ? `批量${mode === "move" ? "移动" : "复制"} ${batchCount} 个项目`
+    : (mode === "move" ? "移动文件" : "复制文件");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,7 +259,9 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit }: Mo
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {entry?.is_directory ? "选择目标文件夹" : `${mode === "move" ? "移动" : "复制"} "${entry?.original_name}" 到：`}
+            {isBatch 
+              ? "选择目标文件夹" 
+              : (entry?.is_directory ? "选择目标文件夹" : `${mode === "move" ? "移动" : "复制"} "${entry?.original_name}" 到：`)}
           </DialogDescription>
         </DialogHeader>
 

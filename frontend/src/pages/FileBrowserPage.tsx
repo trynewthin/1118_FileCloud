@@ -74,6 +74,15 @@ export function FileBrowserPage() {
     entry: any;
   }>({ type: null, entry: null });
 
+  // 批量模式状态
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // 批量操作对话框状态
+  const [batchActionDialog, setBatchActionDialog] = useState<{
+    type: "move" | "copy" | "delete" | null;
+  }>({ type: null });
+
   const {
     entries,
     ancestors,
@@ -287,6 +296,82 @@ export function FileBrowserPage() {
     [libraries, activeLibraryId]
   );
 
+  // 批量选择处理
+  const handleBatchSelect = (entry: any, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(entry.id);
+      } else {
+        next.delete(entry.id);
+      }
+      return next;
+    });
+  };
+
+  // 退出批量模式时清空选择
+  const handleBatchModeChange = (enabled: boolean) => {
+    setBatchMode(enabled);
+    if (!enabled) {
+      setSelectedIds(new Set());
+    }
+  };
+
+  // 获取选中的文件列表
+  const selectedEntries = useMemo(() => {
+    return entries.filter(e => selectedIds.has(e.id));
+  }, [entries, selectedIds]);
+
+  // 批量删除处理
+  const handleBatchDelete = async () => {
+    if (selectedEntries.length === 0) return;
+    setBatchActionDialog({ type: "delete" });
+  };
+
+  // 批量删除确认
+  const handleBatchDeleteConfirm = async () => {
+    try {
+      for (const entry of selectedEntries) {
+        await remove(entry.id);
+      }
+      toast.success(`已删除 ${selectedEntries.length} 个项目`);
+      setBatchActionDialog({ type: null });
+      handleBatchModeChange(false);
+    } catch (err) {
+      console.error("批量删除失败", err);
+    }
+  };
+
+  // 批量移动处理
+  const handleBatchMove = () => {
+    if (selectedEntries.length === 0) return;
+    setBatchActionDialog({ type: "move" });
+  };
+
+  // 批量复制处理
+  const handleBatchCopy = () => {
+    if (selectedEntries.length === 0) return;
+    setBatchActionDialog({ type: "copy" });
+  };
+
+  // 批量移动/复制提交
+  const handleBatchMoveCopySubmit = async (targetParentId: string | null) => {
+    try {
+      for (const entry of selectedEntries) {
+        if (batchActionDialog.type === "move") {
+          await move(entry.id, { targetParentId });
+        } else if (batchActionDialog.type === "copy") {
+          await copy(entry.id, { targetParentId });
+        }
+      }
+      toast.success(`已${batchActionDialog.type === "move" ? "移动" : "复制"} ${selectedEntries.length} 个项目`);
+      setBatchActionDialog({ type: null });
+      handleBatchModeChange(false);
+    } catch (err) {
+      console.error("批量操作失败", err);
+    }
+  };
+
   return (
     <PageContainer title="文件浏览" className="h-full flex flex-col relative">
       <div className="flex-none space-y-4 z-10 relative">
@@ -301,6 +386,12 @@ export function FileBrowserPage() {
           onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
           onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
           onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
+          batchMode={batchMode}
+          onBatchModeChange={handleBatchModeChange}
+          selectedCount={selectedIds.size}
+          onBatchMove={handleBatchMove}
+          onBatchCopy={handleBatchCopy}
+          onBatchDelete={handleBatchDelete}
         />
         
         <div className="px-1">
@@ -349,7 +440,7 @@ export function FileBrowserPage() {
           <div
             className={
               viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
                 : "space-y-2"
             }
           >
@@ -360,6 +451,11 @@ export function FileBrowserPage() {
                   key={entry.id}
                   entry={entry}
                   onClick={() => {
+                    // 批量模式下点击切换选中状态
+                    if (batchMode) {
+                      handleBatchSelect(entry, !selectedIds.has(entry.id));
+                      return;
+                    }
                     if (entry.is_directory) {
                       handleEnterDirectory(entry);
                     } else {
@@ -368,6 +464,8 @@ export function FileBrowserPage() {
                     }
                   }}
                   onDoubleClick={() => {
+                    // 批量模式下双击不做任何事
+                    if (batchMode) return;
                     if (entry.is_directory) {
                       handleEnterDirectory(entry);
                     } else {
@@ -376,6 +474,9 @@ export function FileBrowserPage() {
                     }
                   }}
                   onAction={handleFileAction}
+                  batchMode={batchMode}
+                  batchSelected={selectedIds.has(entry.id)}
+                  onBatchSelect={handleBatchSelect}
                 />
               );
             })}
@@ -467,6 +568,45 @@ export function FileBrowserPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog 
+        open={batchActionDialog.type === "delete"} 
+        onOpenChange={(open) => !open && setBatchActionDialog({ type: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除选中的 {selectedEntries.length} 个项目吗？删除后可在回收站中恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <GlassButton
+              glassVariant="lite"
+              onClick={handleBatchDeleteConfirm}
+              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              删除
+            </GlassButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量移动/复制对话框 */}
+      {(batchActionDialog.type === "move" || batchActionDialog.type === "copy") && selectedEntries.length > 0 && (
+        <MoveCopyDialog
+          mode={batchActionDialog.type}
+          entry={selectedEntries[0]}
+          open={true}
+          onOpenChange={(open) => !open && setBatchActionDialog({ type: null })}
+          onSubmit={async (_entry, targetParentId) => {
+            await handleBatchMoveCopySubmit(targetParentId);
+          }}
+          batchCount={selectedEntries.length}
+        />
+      )}
     </PageContainer>
   );
 }

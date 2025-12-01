@@ -1,4 +1,4 @@
-import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2, RotateCw } from "lucide-react";
+import { Grid, List, RefreshCw, Upload, FolderPlus, Trash2, RotateCw, CheckSquare, X, Move, Copy, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
@@ -23,6 +23,13 @@ interface FileToolbarProps {
   onOpenTrash?: () => void;
   onUpload?: () => void;
   onCreateFolder?: () => void;
+  // 批量模式相关
+  batchMode?: boolean;
+  onBatchModeChange?: (enabled: boolean) => void;
+  selectedCount?: number;
+  onBatchMove?: () => void;
+  onBatchCopy?: () => void;
+  onBatchDelete?: () => void;
 }
 
 export function FileToolbar({
@@ -36,7 +43,67 @@ export function FileToolbar({
   onOpenTrash,
   onUpload,
   onCreateFolder,
+  batchMode = false,
+  onBatchModeChange,
+  selectedCount = 0,
+  onBatchMove,
+  onBatchCopy,
+  onBatchDelete,
 }: FileToolbarProps) {
+  // 批量模式下显示批量操作栏
+  if (batchMode) {
+    return (
+      <GlassCard className="p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onBatchModeChange?.(false)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1.5" />
+            取消
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            已选择 <span className="font-medium text-foreground">{selectedCount}</span> 项
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedCount === 0}
+            onClick={onBatchMove}
+            className="bg-background/50 border-transparent shadow-sm"
+          >
+            <Move className="h-4 w-4 mr-1.5" />
+            移动
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedCount === 0}
+            onClick={onBatchCopy}
+            className="bg-background/50 border-transparent shadow-sm"
+          >
+            <Copy className="h-4 w-4 mr-1.5" />
+            复制
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedCount === 0}
+            onClick={onBatchDelete}
+            className="bg-background/50 border-transparent shadow-sm text-destructive hover:text-destructive"
+          >
+            <Trash className="h-4 w-4 mr-1.5" />
+            删除
+          </Button>
+        </div>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard className="p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       {/* Left Section: Library Select & Basic Actions */}
@@ -66,6 +133,18 @@ export function FileToolbar({
         {onReindex && (
           <Button variant="ghost" size="icon-sm" onClick={onReindex} title="重建索引" className="text-muted-foreground hover:text-foreground">
             <RotateCw className="h-4 w-4" />
+          </Button>
+        )}
+
+        {onBatchModeChange && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onBatchModeChange(true)}
+            title="批量选择"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <CheckSquare className="h-4 w-4" />
           </Button>
         )}
       </div>

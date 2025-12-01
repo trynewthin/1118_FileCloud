@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -18,6 +18,10 @@ interface FileGridItemProps {
   onClick?: () => void;
   onDoubleClick?: () => void;
   onAction?: (action: string, entry: FileEntry) => void;
+  // 批量模式相关
+  batchMode?: boolean;
+  batchSelected?: boolean;
+  onBatchSelect?: (entry: FileEntry, selected: boolean) => void;
 }
 
 const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
@@ -28,6 +32,9 @@ export function FileGridItem({
   onClick,
   onDoubleClick,
   onAction,
+  batchMode = false,
+  batchSelected = false,
+  onBatchSelect,
 }: FileGridItemProps) {
   const isDir = entry.is_directory;
   const ext = entry.extension?.toLowerCase() || "";
@@ -49,23 +56,44 @@ export function FileGridItem({
 
   return (
     <GlassCard
-      variant="lite"
+      variant="ghost"
       hoverEffect
       className={cn(
-        "group relative flex flex-col items-center justify-between p-4 text-center cursor-pointer transition-all duration-300 border border-white/10",
-        selected && "border-primary/60 ring-2 ring-primary/30"
+        "group relative flex flex-col items-center justify-between p-2 text-center cursor-pointer transition-all duration-300",
+        selected && "ring-2 ring-primary/40"
       )}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
+      {/* 左上角选择框：批量模式时显示 */}
+      {batchMode && (
+        <div className="absolute top-2 left-2 z-20">
+          <button
+            type="button"
+            className={cn(
+              "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
+              batchSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "bg-background/80 border-muted-foreground/40 hover:border-primary/60"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBatchSelect?.(entry, !batchSelected);
+            }}
+          >
+            {batchSelected && <Check className="h-3 w-3" />}
+          </button>
+        </div>
+      )}
+
       {/* 顶部右上角的操作菜单：悬浮在卡片之上，不再覆盖预览区域 */}
       <div className="absolute top-2 right-2 z-20">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <GlassButton
-              glassVariant="lite"
+              glassVariant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent shadow-none hover:shadow-none border-none"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-4 w-4" />
@@ -101,9 +129,9 @@ export function FileGridItem({
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-1 flex-col items-center gap-3 w-full">
+      <div className="flex flex-1 flex-col items-center gap-2 w-full">
         {/* 统一的缩略图框架：固定比例 + 边框 */}
-        <div className="w-full max-h-32 aspect-4/3 rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
+        <div className="w-full max-h-24 aspect-4/3 rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
           {hasThumbnail && !thumbnailError ? (
             <img
               src={thumbnailUrl}
@@ -115,19 +143,19 @@ export function FileGridItem({
           ) : (
             <div className="flex items-center justify-center text-primary">
               {isDir ? (
-                <Folder className="h-10 w-10" />
+                <Folder className="h-8 w-8" />
               ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
-                <ImageIcon className="h-10 w-10" />
+                <ImageIcon className="h-8 w-8" />
               ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
-                <Film className="h-10 w-10" />
+                <Film className="h-8 w-8" />
               ) : (
-                <File className="h-10 w-10" />
+                <File className="h-8 w-8" />
               )}
             </div>
           )}
         </div>
 
-        <div className="w-full mt-2 space-y-1 text-left">
+        <div className="w-full mt-1 space-y-1 text-left">
           <p className="truncate text-sm font-medium leading-none" title={entry.original_name}>
             {entry.original_name}
           </p>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface VideoPlayerProps {
   src: string;
@@ -161,7 +162,10 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
         }
       >
         <div
-          className="relative w-full bg-black overflow-hidden shadow-lg aspect-video"
+          className={cn(
+            "relative w-full bg-black overflow-hidden shadow-lg",
+            isFullscreen ? "h-full" : "aspect-video"
+          )}
           onMouseMove={handleUserInteract}
           onTouchStart={handleUserInteract}
           onClick={handleUserInteract}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -18,6 +18,10 @@ interface FileListItemProps {
   onClick?: () => void;
   onDoubleClick?: () => void;
   onAction?: (action: string, entry: FileEntry) => void;
+  // 批量模式相关
+  batchMode?: boolean;
+  batchSelected?: boolean;
+  onBatchSelect?: (entry: FileEntry, selected: boolean) => void;
 }
 
 const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
@@ -28,6 +32,9 @@ export function FileListItem({
   onClick,
   onDoubleClick,
   onAction,
+  batchMode = false,
+  batchSelected = false,
+  onBatchSelect,
 }: FileListItemProps) {
   const isDir = entry.is_directory;
   const ext = entry.extension?.toLowerCase() || "";
@@ -59,6 +66,25 @@ export function FileListItem({
       onDoubleClick={onDoubleClick}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* 左侧选择框：批量模式时显示 */}
+        {batchMode && (
+          <button
+            type="button"
+            className={cn(
+              "h-5 w-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
+              batchSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "bg-background/80 border-muted-foreground/40 hover:border-primary/60"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBatchSelect?.(entry, !batchSelected);
+            }}
+          >
+            {batchSelected && <Check className="h-3 w-3" />}
+          </button>
+        )}
+
         {/* 左侧统一缩略图框架 */}
         <div className="h-14 w-20 flex items-center justify-center overflow-hidden rounded-lg bg-background/40 border border-white/10">
           {hasThumbnail && !thumbnailError ? (
