@@ -1,6 +1,6 @@
 import { 
   X, Move, Copy, Trash, ArrowLeft, Upload, FolderPlus,
-  ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search 
+  ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search, Tag, Square, CheckSquare2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -50,6 +50,11 @@ interface FileToolbarProps {
   onBatchMove?: () => void;
   onBatchCopy?: () => void;
   onBatchDelete?: () => void;
+  onBatchTag?: () => void;
+  // 全选/全不选
+  totalCount?: number;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 }
 
 export function FileToolbar({
@@ -66,12 +71,18 @@ export function FileToolbar({
   onBatchMove,
   onBatchCopy,
   onBatchDelete,
+  onBatchTag,
+  totalCount = 0,
+  onSelectAll,
+  onDeselectAll,
 }: FileToolbarProps) {
   // 批量模式下显示批量操作栏
   if (batchMode) {
+    const allSelected = totalCount > 0 && selectedCount === totalCount;
+
     return (
       <GlassCard className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2">
-        {/* 左侧：取消 + 已选数量 */}
+        {/* 左侧：取消 + 全选/全不选 + 已选数量 */}
         <div className="flex items-center gap-2 min-w-0">
           <Button
             variant="ghost"
@@ -82,8 +93,18 @@ export function FileToolbar({
           >
             <X className="h-4 w-4" />
           </Button>
+          {/* 全选/全不选按钮 */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={allSelected ? onDeselectAll : onSelectAll}
+            title={allSelected ? "全不选" : "全选"}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+          >
+            {allSelected ? <CheckSquare2 className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+          </Button>
           <span className="text-xs text-muted-foreground whitespace-nowrap">
-            已选 <span className="font-medium text-foreground">{selectedCount}</span> 项
+            已选 <span className="font-medium text-foreground">{selectedCount}</span> / {totalCount} 项
           </span>
         </div>
         {/* 右侧：批量操作按钮 */}
@@ -107,6 +128,16 @@ export function FileToolbar({
             className="text-muted-foreground hover:text-foreground"
           >
             <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={selectedCount === 0}
+            onClick={onBatchTag}
+            title="标签"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Tag className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
-import { Copy, Move, Trash2, Download } from "lucide-react";
+import { Copy, Move, Trash2, Download, Tag } from "lucide-react";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { getEntry, type FileEntry } from "@/lib/api/files";
@@ -15,6 +15,7 @@ import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
+import { EntryTagDialog } from "@/components/tag";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 
 export function FilePreviewPage() {
@@ -28,6 +29,9 @@ export function FilePreviewPage() {
   const [actionDialog, setActionDialog] = useState<{
     type: "delete" | "move" | "copy" | null;
   }>({ type: null });
+
+  // 标签对话框状态
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
 
   // 使用 useFileBrowser 获取操作方法
   const { remove, move, copy } = useFileBrowser({ 
@@ -162,6 +166,14 @@ export function FilePreviewPage() {
       <GlassButton
         glassVariant="ghost"
         size="icon"
+        onClick={() => setTagDialogOpen(true)}
+        title="标签"
+      >
+        <Tag className="h-4 w-4" />
+      </GlassButton>
+      <GlassButton
+        glassVariant="ghost"
+        size="icon"
         onClick={() => setActionDialog({ type: "copy" })}
         title="复制"
       >
@@ -226,6 +238,15 @@ export function FilePreviewPage() {
           open={true}
           onOpenChange={(open) => !open && setActionDialog({ type: null })}
           onSubmit={handleMoveCopySubmit}
+        />
+      )}
+
+      {/* 标签对话框 */}
+      {tagDialogOpen && entry && (
+        <EntryTagDialog
+          open={true}
+          onOpenChange={setTagDialogOpen}
+          entryId={entry.id}
         />
       )}
     </PageContainer>

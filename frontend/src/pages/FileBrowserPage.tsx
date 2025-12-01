@@ -14,6 +14,7 @@ import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
 import { SearchDialog } from "@/components/files/dialogs/SearchDialog";
+import { EntryTagDialog, BatchTagDialog } from "@/components/tag";
 import { downloadEntry } from "@/lib/api/files";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
@@ -72,6 +73,9 @@ export function FileBrowserPage() {
     type: "rename" | "delete" | "move" | "copy" | null;
     entry: any;
   }>({ type: null, entry: null });
+
+  // 标签对话框状态
+  const [tagDialogEntry, setTagDialogEntry] = useState<any>(null);
 
   // 批量模式状态
   const [batchMode, setBatchMode] = useState(false);
@@ -269,6 +273,8 @@ export function FileBrowserPage() {
 
     if (action === "rename" || action === "delete" || action === "move" || action === "copy") {
       setActionDialog({ type: action, entry });
+    } else if (action === "tag") {
+      setTagDialogEntry(entry);
     } else {
       console.log("Unknown action:", action, entry);
     }
@@ -375,6 +381,27 @@ export function FileBrowserPage() {
     setBatchActionDialog({ type: "copy" });
   };
 
+  // 批量标签处理（只选择文件，不包括文件夹）
+  const [batchTagDialogOpen, setBatchTagDialogOpen] = useState(false);
+  const selectedFiles = useMemo(() => selectedEntries.filter(e => !e.is_directory), [selectedEntries]);
+
+  const handleBatchTag = () => {
+    if (selectedFiles.length === 0) {
+      toast.error("请选择至少一个文件（文件夹不支持打标签）");
+      return;
+    }
+    setBatchTagDialogOpen(true);
+  };
+
+  // 全选/全不选
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(entries.map(e => e.id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
   // 批量移动/复制提交
   const handleBatchMoveCopySubmit = async (targetParentId: string | null) => {
     try {
@@ -410,6 +437,10 @@ export function FileBrowserPage() {
           onBatchMove={handleBatchMove}
           onBatchCopy={handleBatchCopy}
           onBatchDelete={handleBatchDelete}
+          onBatchTag={handleBatchTag}
+          totalCount={entries.length}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
         />
         
         <div className="px-1">
@@ -639,6 +670,26 @@ export function FileBrowserPage() {
           open={searchDialogOpen}
           onOpenChange={setSearchDialogOpen}
           libraryId={activeLibraryId}
+        />
+      )}
+
+      {/* 标签对话框 */}
+      {tagDialogEntry && (
+        <EntryTagDialog
+          open={true}
+          onOpenChange={(open) => !open && setTagDialogEntry(null)}
+          entryId={tagDialogEntry.id}
+        />
+      )}
+
+      {/* 批量标签对话框 */}
+      {batchTagDialogOpen && selectedFiles.length > 0 && (
+        <BatchTagDialog
+          open={true}
+          onOpenChange={setBatchTagDialogOpen}
+          entryIds={selectedFiles.map(e => e.id)}
+          fileCount={selectedFiles.length}
+          onSuccess={() => handleBatchModeChange(false)}
         />
       )}
     </PageContainer>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -107,22 +107,33 @@ export function FileGridItem({
                   onAction?.("download", entry);
                 }}
               >
+                <Download className="h-4 w-4 mr-2" />
                 下载
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
+              <Pencil className="h-4 w-4 mr-2" />
               重命名
             </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("move", entry); }}>
+              <Move className="h-4 w-4 mr-2" />
               移动
             </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
+              <Copy className="h-4 w-4 mr-2" />
               复制
             </DropdownMenuItem>
+            {!isDir && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("tag", entry); }}>
+                <Tag className="h-4 w-4 mr-2" />
+                标签
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className="text-red-600"
               onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
             >
+              <Trash2 className="h-4 w-4 mr-2" />
               删除
             </DropdownMenuItem>
           </DropdownMenuContent>
