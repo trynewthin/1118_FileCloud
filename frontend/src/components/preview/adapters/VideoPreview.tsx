@@ -6,19 +6,19 @@ interface VideoPreviewProps {
   entry: FileEntry;
 }
 
-// 文件视频预览：负责构造下载地址并交给通用播放器渲染
+// 文件视频预览：负责构造流式播放地址并交给通用播放器渲染
 export function VideoPreview({ entry }: VideoPreviewProps) {
   const token = getAuthToken();
-  const url =
-    buildApiUrl(
-      `/files/entries/${entry.id}/download/${encodeURIComponent(entry.original_name)}`,
-    ) + `?token=${token || ""}`;
 
-  const thumbnailUrl = buildApiUrl(
-    token
-      ? `/file-content/${entry.id}/thumbnail?token=${encodeURIComponent(token)}`
-      : `/file-content/${entry.id}/thumbnail`,
-  );
+  const streamPath = token
+    ? `/file-content/${entry.id}/stream?token=${encodeURIComponent(token)}`
+    : `/file-content/${entry.id}/stream`;
+  const url = buildApiUrl(streamPath);
+
+  const thumbnailPath = token
+    ? `/file-content/${entry.id}/thumbnail?token=${encodeURIComponent(token)}`
+    : `/file-content/${entry.id}/thumbnail`;
+  const thumbnailUrl = buildApiUrl(thumbnailPath);
 
   return <VideoPlayer src={url} title={entry.original_name} poster={thumbnailUrl} />;
 }

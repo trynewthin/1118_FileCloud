@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
+import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VideoPlayerProps {
@@ -21,6 +21,11 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
   const hideTimerRef = useRef<number | null>(null);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekingPercent, setSeekingPercent] = useState<number | null>(null);
+
+  // 缓冲状态与下载速度
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [downloadSpeed, setDownloadSpeed] = useState<string>("");
+  const lastBufferedRef = useRef<{ time: number; bytes: number } | null>(null);
 
   // 时间格式化：秒 -> mm:ss 或 hh:mm:ss
   const formatTime = (sec: number) => {
@@ -141,6 +146,82 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
 
+  // 格式化下载速度
+  const formatSpeed = useCallback((bytesPerSec: number): string => {
+    if (bytesPerSec <= 0) return "";
+    if (bytesPerSec >= 1024 * 1024) {
+      return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+    }
+    if (bytesPerSec >= 1024) {
+      return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    }
+    return `${bytesPerSec.toFixed(0)} B/s`;
+  }, []);
+
+  // 计算已缓冲的字节数（基于 buffered 时间范围和 duration 估算）
+  const getBufferedBytes = useCallback((video: HTMLVideoElement, totalSize: number): number => {
+    if (!video.buffered.length || video.duration <= 0) return 0;
+    let bufferedTime = 0;
+    for (let i = 0; i < video.buffered.length; i++) {
+      bufferedTime += video.buffered.end(i) - video.buffered.start(i);
+    }
+    // 按时间比例估算字节数
+    return (bufferedTime / video.duration) * totalSize;
+  }, []);
+
+  // 监听视频缓冲事件
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleWaiting = () => setIsBuffering(true);
+    const handlePlaying = () => setIsBuffering(false);
+    const handleCanPlay = () => setIsBuffering(false);
+    const handleSeeking = () => setIsBuffering(true);
+    const handleSeeked = () => setIsBuffering(false);
+
+    // 监听 progress 事件计算下载速度
+    const handleProgress = () => {
+      // 尝试从响应头获取文件大小，这里用一个估算值
+      // 实际上浏览器不暴露这个信息，我们用 duration * 估算码率
+      const estimatedBitrate = 5 * 1024 * 1024; // 假设 5 Mbps 码率
+      const estimatedSize = video.duration * estimatedBitrate / 8;
+      
+      if (estimatedSize <= 0) return;
+      
+      const currentBuffered = getBufferedBytes(video, estimatedSize);
+      const now = Date.now();
+      
+      if (lastBufferedRef.current) {
+        const timeDiff = (now - lastBufferedRef.current.time) / 1000;
+        const bytesDiff = currentBuffered - lastBufferedRef.current.bytes;
+        
+        if (timeDiff > 0.1 && bytesDiff > 0) {
+          const speed = bytesDiff / timeDiff;
+          setDownloadSpeed(formatSpeed(speed));
+        }
+      }
+      
+      lastBufferedRef.current = { time: now, bytes: currentBuffered };
+    };
+
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("playing", handlePlaying);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("seeking", handleSeeking);
+    video.addEventListener("seeked", handleSeeked);
+    video.addEventListener("progress", handleProgress);
+
+    return () => {
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("playing", handlePlaying);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("seeking", handleSeeking);
+      video.removeEventListener("seeked", handleSeeked);
+      video.removeEventListener("progress", handleProgress);
+    };
+  }, [formatSpeed, getBufferedBytes]);
+
   const hasStarted = playing || currentTime > 0;
   const progressPercent =
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
@@ -176,6 +257,8 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
             className="w-full h-full object-contain bg-black"
             src={src}
             poster={poster}
+            preload="metadata"
+            playsInline
             onTimeUpdate={(e) => {
               setCurrentTime(e.currentTarget.currentTime);
             }}
@@ -193,7 +276,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
           />
 
           {/* 初始大播放按钮：仅在尚未开始播放时显示 */}
-          {!playing && currentTime === 0 && (
+          {!playing && currentTime === 0 && !isBuffering && (
             <button
               type="button"
               onClick={togglePlay}
@@ -203,6 +286,22 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
                 <Play className="w-8 h-8" />
               </span>
             </button>
+          )}
+
+          {/* 缓冲加载指示器：视频卡顿/缓冲时居中显示 */}
+          {isBuffering && hasStarted && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2 rounded-xl bg-black/70 px-5 py-4 backdrop-blur-sm">
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                <div className="text-xs text-white/90">
+                  {downloadSpeed ? (
+                    <span>缓冲中… {downloadSpeed}</span>
+                  ) : (
+                    <span>缓冲中…</span>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* 顶部标题层：与底部控制层风格接近的渐变背景（仅在开始播放后出现） */}

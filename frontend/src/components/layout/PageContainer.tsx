@@ -37,7 +37,7 @@ export const PageContainer: FC<PageContainerProps> = ({
     <div className={cn("relative flex min-h-0 flex-col space-y-4 w-full h-full overflow-hidden pt-1", className)}>
       {/* Header Area (Back button, Center content & Actions) */}
       {(showBack || action || headerCenter) && (
-        <div className="flex items-center justify-between shrink-0 z-10 relative mt-1">
+        <div className="flex items-center justify-between shrink-0 z-10 relative mt-1 px-4">
           <div className="flex items-center gap-2">
             {showBack && (
               <GlassButton

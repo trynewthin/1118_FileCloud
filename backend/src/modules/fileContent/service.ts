@@ -36,12 +36,22 @@ const guessContentType = (filePath: string): string => {
 
   switch (ext) {
     case ".mp4":
+    case ".m4v":
       return "video/mp4";
     case ".webm":
       return "video/webm";
     case ".ogg":
     case ".ogv":
       return "video/ogg";
+    case ".mkv":
+      // Matroska 容器常用类型
+      return "video/x-matroska";
+    case ".avi":
+      return "video/x-msvideo";
+    case ".mov":
+      return "video/quicktime";
+    case ".wmv":
+      return "video/x-ms-wmv";
     case ".mp3":
       return "audio/mpeg";
     case ".wav":
