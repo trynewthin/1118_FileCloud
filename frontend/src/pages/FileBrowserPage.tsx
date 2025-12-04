@@ -28,6 +28,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { BreadcrumbItem } from "@/components/files/FileToolbar";
+import {
+  type FilterSortState,
+  defaultFilterSortState,
+  getFileTypeCategory,
+} from "@/components/files/FileToolbar";
 
 export function FileBrowserPage() {
   const navigate = useNavigate();
@@ -89,6 +94,25 @@ export function FileBrowserPage() {
   const [batchActionDialog, setBatchActionDialog] = useState<{
     type: "move" | "copy" | "delete" | null;
   }>({ type: null });
+
+  // 筛选排序状态（持久化到 localStorage）
+  const [filterSortState, setFilterSortState] = useState<FilterSortState>(() => {
+    try {
+      const cached = localStorage.getItem("file_browser_filter_sort");
+      if (cached) {
+        return { ...defaultFilterSortState, ...JSON.parse(cached) };
+      }
+    } catch {
+      // 解析失败时使用默认值
+    }
+    return defaultFilterSortState;
+  });
+
+  // 筛选排序状态变化时持久化
+  const handleFilterSortChange = (state: FilterSortState) => {
+    setFilterSortState(state);
+    localStorage.setItem("file_browser_filter_sort", JSON.stringify(state));
+  };
 
   const {
     entries,
@@ -359,6 +383,48 @@ export function FileBrowserPage() {
     return entries.filter(e => selectedIds.has(e.id));
   }, [entries, selectedIds]);
 
+  // 筛选和排序后的文件列表
+  const filteredAndSortedEntries = useMemo(() => {
+    let result = [...entries];
+
+    // 筛选文件类型
+    if (filterSortState.fileType !== "all") {
+      result = result.filter((entry) => {
+        const category = getFileTypeCategory(entry.extension, entry.is_directory);
+        return category === filterSortState.fileType;
+      });
+    }
+
+    // 排序
+    result.sort((a, b) => {
+      // 文件夹始终排在前面（除非筛选了特定类型）
+      if (filterSortState.fileType === "all") {
+        if (a.is_directory && !b.is_directory) return -1;
+        if (!a.is_directory && b.is_directory) return 1;
+      }
+
+      let comparison = 0;
+      switch (filterSortState.sortField) {
+        case "name":
+          comparison = a.original_name.localeCompare(b.original_name, "zh-CN");
+          break;
+        case "size":
+          comparison = (a.size_bytes || 0) - (b.size_bytes || 0);
+          break;
+        case "created_at":
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case "updated_at":
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          break;
+      }
+
+      return filterSortState.sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return result;
+  }, [entries, filterSortState]);
+
   // 批量删除处理
   const handleBatchDelete = async () => {
     if (selectedEntries.length === 0) return;
@@ -441,6 +507,8 @@ export function FileBrowserPage() {
           onViewModeChange={handleViewModeChange}
           canGoUp={!!currentParentId}
           onGoUp={handleGoUp}
+          filterSortState={activeLibraryId ? filterSortState : undefined}
+          onFilterSortChange={activeLibraryId ? handleFilterSortChange : undefined}
           batchMode={batchMode}
           onBatchModeChange={handleBatchModeChange}
           selectedCount={selectedIds.size}
@@ -490,17 +558,33 @@ export function FileBrowserPage() {
           <div className="flex h-full items-center justify-center text-muted-foreground">
             加载失败
           </div>
-        ) : entries.length === 0 ? (
+        ) : filteredAndSortedEntries.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
-            <p>此文件夹为空</p>
-            <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
-            <GlassButton 
-              onClick={() => setReindexDialogOpen(true)}
-              className="text-xs text-primary hover:underline mt-2"
-              glassVariant="ghost"
-            >
-              手动触发索引
-            </GlassButton>
+            {filterSortState.fileType !== "all" && entries.length > 0 ? (
+              <>
+                <p>没有符合筛选条件的文件</p>
+                <p className="text-xs opacity-70">当前筛选条件下无匹配结果，请调整筛选条件</p>
+                <GlassButton 
+                  onClick={() => handleFilterSortChange(defaultFilterSortState)}
+                  className="text-xs text-primary hover:underline mt-2"
+                  glassVariant="ghost"
+                >
+                  清除筛选条件
+                </GlassButton>
+              </>
+            ) : (
+              <>
+                <p>此文件夹为空</p>
+                <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
+                <GlassButton 
+                  onClick={() => setReindexDialogOpen(true)}
+                  className="text-xs text-primary hover:underline mt-2"
+                  glassVariant="ghost"
+                >
+                  手动触发索引
+                </GlassButton>
+              </>
+            )}
           </div>
         ) : (
           <div
@@ -510,7 +594,7 @@ export function FileBrowserPage() {
                 : "space-y-2"
             }
           >
-            {entries.map((entry) => {
+            {filteredAndSortedEntries.map((entry) => {
               const Component = viewMode === "grid" ? FileGridItem : FileListItem;
               return (
                 <Component

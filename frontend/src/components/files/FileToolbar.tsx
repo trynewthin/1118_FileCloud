@@ -2,6 +2,12 @@ import {
   X, Move, Copy, Trash, ArrowLeft, Upload, FolderPlus,
   ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search, Tag, Square, CheckSquare2
 } from "lucide-react";
+import { FilterSortMenu, type FilterSortState } from "./FilterSortMenu";
+
+// 重新导出筛选排序相关类型，方便外部使用
+export type { FilterSortState } from "./FilterSortMenu";
+export { defaultFilterSortState, getFileTypeCategory } from "./FilterSortMenu";
+
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -44,6 +50,9 @@ interface FileToolbarProps {
   // 上一级
   canGoUp?: boolean;
   onGoUp?: () => void;
+  // 筛选排序
+  filterSortState?: FilterSortState;
+  onFilterSortChange?: (state: FilterSortState) => void;
   // 批量模式相关
   batchMode?: boolean;
   onBatchModeChange?: (enabled: boolean) => void;
@@ -66,6 +75,8 @@ export function FileToolbar({
   onViewModeChange,
   canGoUp = false,
   onGoUp,
+  filterSortState,
+  onFilterSortChange,
   batchMode = false,
   onBatchModeChange,
   selectedCount = 0,
@@ -174,7 +185,7 @@ export function FileToolbar({
         </SelectContent>
       </Select>
 
-      {/* 右侧：上一级 + 视图切换 */}
+      {/* 右侧：上一级 + 筛选排序 + 视图切换 */}
       <div className="flex items-center gap-1">
         {/* 上一级按钮 */}
         <Button
@@ -187,6 +198,14 @@ export function FileToolbar({
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
+
+        {/* 筛选排序按钮 */}
+        {filterSortState && onFilterSortChange && (
+          <FilterSortMenu
+            state={filterSortState}
+            onChange={onFilterSortChange}
+          />
+        )}
 
         {/* 视图切换 */}
         {onViewModeChange && (
