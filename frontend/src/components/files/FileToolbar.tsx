@@ -2,6 +2,7 @@ import {
   X, Move, Copy, Trash, ArrowLeft, Upload, FolderPlus,
   ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search, Tag, Square, CheckSquare2
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
@@ -249,37 +250,55 @@ export function FileBreadcrumb({
 }: FileBreadcrumbProps) {
   const hasActions = onSearch || onUpload || onCreateFolder || onRefresh || onReindex || onBatchMode || onOpenTrash;
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 当面包屑变化时自动滚动到最右侧，保证当前目录可见
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // 使用 requestAnimationFrame 确保布局已完成
+    requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+  }, [items.length]);
+
   return (
     <div className={cn("flex items-center justify-between gap-2", className)}>
-      {/* 左侧：面包屑导航 */}
-      <nav className="flex items-center text-sm text-muted-foreground min-w-0 overflow-hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-auto p-1 hover:bg-transparent hover:text-foreground shrink-0"
-          onClick={onRootClick}
-        >
-          <Home className="h-4 w-4" />
-        </Button>
-        
-        {items.map((item, index) => (
-          <div key={item.id} className="flex items-center min-w-0">
-            <ChevronRight className="h-4 w-4 mx-0.5 shrink-0 opacity-50" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-auto p-1 hover:bg-transparent hover:text-foreground font-normal truncate max-w-[120px] md:max-w-[200px]",
-                index === items.length - 1 && "font-medium text-foreground pointer-events-none"
-              )}
-              onClick={() => onItemClick(item, index)}
-              title={item.name}
-            >
-              {item.name}
-            </Button>
-          </div>
-        ))}
-      </nav>
+      {/* 左侧固定 Home 图标 */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-auto p-1 hover:bg-transparent hover:text-foreground shrink-0"
+        onClick={onRootClick}
+      >
+        <Home className="h-4 w-4" />
+      </Button>
+
+      {/* 中间：可横向滚动的路径部分 */}
+      <div
+        ref={scrollRef}
+        className="flex-1 min-w-0 overflow-x-auto scrollbar-thin pr-1"
+      >
+        <nav className="flex items-center text-sm text-muted-foreground min-w-fit">
+          {items.map((item, index) => (
+            <div key={item.id} className="flex items-center min-w-0">
+              <ChevronRight className="h-4 w-4 mx-0.5 shrink-0 opacity-50" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-auto p-1 hover:bg-transparent hover:text-foreground font-normal truncate max-w-[140px] md:max-w-[220px]",
+                  index === items.length - 1 && "font-medium text-foreground pointer-events-none"
+                )}
+                onClick={() => onItemClick(item, index)}
+                title={item.name}
+              >
+                {item.name}
+              </Button>
+            </div>
+          ))}
+        </nav>
+      </div>
 
       {/* 右侧：操作按钮 */}
       {hasActions && (
