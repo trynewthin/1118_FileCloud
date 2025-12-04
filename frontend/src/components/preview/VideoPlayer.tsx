@@ -72,12 +72,38 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
 
   const toggleFullscreen = () => {
     handleUserInteract();
-    const container = videoRef.current?.parentElement?.parentElement;
-    if (!container) return;
-    if (!document.fullscreenElement) {
-      container.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const anyVideo = videoEl as any;
+
+    // 已在系统全屏中：尝试退出
+    if (document.fullscreenElement) {
       document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+      return;
+    }
+    if (anyVideo.webkitDisplayingFullscreen) {
+      anyVideo.webkitExitFullscreen?.();
+      setIsFullscreen(false);
+      return;
+    }
+
+    // 进入全屏：优先使用标准 API，其次使用 iOS Safari 的 webkitEnterFullscreen
+    if (videoEl.requestFullscreen) {
+      videoEl
+        .requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
+      return;
+    }
+
+    if (typeof anyVideo.webkitEnterFullscreen === "function") {
+      try {
+        anyVideo.webkitEnterFullscreen();
+        setIsFullscreen(true);
+      } catch {
+        // 忽略 iOS 下的全屏异常
+      }
     }
   };
 
@@ -139,11 +165,27 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
     handleSeekCommit(value);
   };
 
-  // 监听全屏变化，保持状态同步
+  // 监听全屏变化，保持状态同步（兼容桌面与 iOS Safari）
   useEffect(() => {
     const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+
+    const video = videoRef.current as any;
+    const handleWebkitBegin = () => setIsFullscreen(true);
+    const handleWebkitEnd = () => setIsFullscreen(false);
+
+    if (video) {
+      video.addEventListener("webkitbeginfullscreen", handleWebkitBegin);
+      video.addEventListener("webkitendfullscreen", handleWebkitEnd);
+    }
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      if (video) {
+        video.removeEventListener("webkitbeginfullscreen", handleWebkitBegin);
+        video.removeEventListener("webkitendfullscreen", handleWebkitEnd);
+      }
+    };
   }, []);
 
   // 格式化下载速度
