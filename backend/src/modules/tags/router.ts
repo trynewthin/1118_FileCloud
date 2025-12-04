@@ -2,8 +2,7 @@ import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import {
-  getTagById,
-  listAllTags,
+  getTagByIdForUser,
   listAllTagsWithStats,
   listChildTags,
   createTag,
@@ -25,23 +24,32 @@ const router = express.Router();
 // 标签 CRUD
 // ============================================================================
 
-// 获取所有标签（树形结构，带统计信息）
+// 获取当前用户的所有标签（树形结构，带统计信息）
 router.get(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (_req, res) => {
-    const tags = listAllTagsWithStats();
+  (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    const tags = listAllTagsWithStats(userId);
     return res.json({ tags });
   }
 );
 
-// 获取指定父标签下的子标签
+// 获取当前用户指定父标签下的子标签
 router.get(
   "/children",
   authenticate,
   requirePermission(PermissionLevel.User),
   (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    
     const { parentId } = req.query as { parentId?: string };
     const parentTagId = parentId ? parseInt(parentId, 10) : null;
     
@@ -49,23 +57,28 @@ router.get(
       return res.status(400).json({ message: "父标签 ID 不合法" });
     }
     
-    const tags = listChildTags(parentTagId);
+    const tags = listChildTags(userId, parentTagId);
     return res.json({ tags });
   }
 );
 
-// 获取单个标签详情
+// 获取当前用户的单个标签详情
 router.get(
   "/:id",
   authenticate,
   requirePermission(PermissionLevel.User),
   (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
-    const tag = getTagById(id);
+    const tag = getTagByIdForUser(id, userId);
     if (!tag) {
       return res.status(404).json({ message: "标签不存在" });
     }
@@ -74,12 +87,17 @@ router.get(
   }
 );
 
-// 创建标签（管理员权限）
+// 创建标签（普通用户即可创建自己的标签）
 router.post(
   "/",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    
     const { name, parentTagId, color, allowMultiple, sortOrder } = req.body as {
       name?: string;
       parentTagId?: number | null;
@@ -94,6 +112,7 @@ router.post(
     
     try {
       const tag = createTag({
+        userId,
         name: name.trim(),
         parentTagId,
         color,
@@ -107,12 +126,17 @@ router.post(
   }
 );
 
-// 更新标签（管理员权限）
+// 更新标签（用户只能更新自己的标签）
 router.put(
   "/:id",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
@@ -126,7 +150,7 @@ router.put(
     };
     
     try {
-      const tag = updateTag(id, { name, color, allowMultiple, sortOrder });
+      const tag = updateTag(id, userId, { name, color, allowMultiple, sortOrder });
       return res.json({ tag });
     } catch (err: any) {
       return res.status(400).json({ message: err.message || "更新标签失败" });
@@ -134,19 +158,24 @@ router.put(
   }
 );
 
-// 删除标签（管理员权限）
+// 删除标签（用户只能删除自己的标签）
 router.delete(
   "/:id",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "未登录" });
+    }
+    
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
     try {
-      deleteTag(id);
+      deleteTag(id, userId);
       return res.status(204).send();
     } catch (err: any) {
       return res.status(400).json({ message: err.message || "删除标签失败" });
@@ -191,11 +220,11 @@ router.get(
   }
 );
 
-// 给文件添加标签（管理员权限）
+// 给文件添加标签（普通用户即可）
 router.post(
   "/entry/:entryId/add",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const { entryId } = req.params;
     const { tagId, isPrimary } = req.body as { tagId?: number; isPrimary?: boolean };
@@ -217,11 +246,11 @@ router.post(
   }
 );
 
-// 从文件移除标签（管理员权限）
+// 从文件移除标签（普通用户即可）
 router.post(
   "/entry/:entryId/remove",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const { entryId } = req.params;
     const { tagId } = req.body as { tagId?: number };
@@ -239,11 +268,11 @@ router.post(
   }
 );
 
-// 设置文件的主标签（管理员权限）
+// 设置文件的主标签（普通用户即可）
 router.post(
   "/entry/:entryId/primary",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const { entryId } = req.params;
     const { tagId } = req.body as { tagId?: number };
@@ -265,11 +294,11 @@ router.post(
   }
 );
 
-// 清除文件的主标签（管理员权限）
+// 清除文件的主标签（普通用户即可）
 router.delete(
   "/entry/:entryId/primary",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const { entryId } = req.params;
     
@@ -282,11 +311,11 @@ router.delete(
   }
 );
 
-// 批量给文件添加标签（管理员权限）
+// 批量给文件添加标签（普通用户即可）
 router.post(
   "/:id/batch-add",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
@@ -304,11 +333,11 @@ router.post(
   }
 );
 
-// 批量从文件移除标签（管理员权限）
+// 批量从文件移除标签（普通用户即可）
 router.post(
   "/:id/batch-remove",
   authenticate,
-  requirePermission(PermissionLevel.Admin),
+  requirePermission(PermissionLevel.User),
   (req, res) => {
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {

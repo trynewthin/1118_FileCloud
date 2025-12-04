@@ -6,6 +6,7 @@ import { apiClient } from "./client";
 
 export interface FileTag {
   id: number;
+  user_id: number;  // 所属用户 ID（全局标签系统）
   name: string;
   parent_tag_id: number | null;
   level: number;

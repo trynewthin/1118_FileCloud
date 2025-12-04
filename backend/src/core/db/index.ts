@@ -342,6 +342,33 @@ const runMigrations = () => {
     db.exec("ALTER TABLE file_libraries ADD COLUMN last_online_check_at TEXT");
     console.log("[DB Migration] Added last_online_check_at column to file_libraries table");
   }
+
+  // 检查 file_tags 表是否有 user_id 列，如果没有则添加（全局标签系统迁移）
+  const fileTagsColumnsForUserId = db.prepare("PRAGMA table_info(file_tags)").all() as { name: string }[];
+  const fileTagsColumnNamesForUserId = new Set(fileTagsColumnsForUserId.map((c) => c.name));
+
+  if (!fileTagsColumnNamesForUserId.has("user_id")) {
+    db.exec("ALTER TABLE file_tags ADD COLUMN user_id INTEGER");
+    console.log("[DB Migration] Added user_id column to file_tags table");
+    
+    // 创建用户标签索引
+    try {
+      db.exec("CREATE INDEX IF NOT EXISTS idx_file_tags_user ON file_tags(user_id)");
+      console.log("[DB Migration] Created idx_file_tags_user index");
+    } catch {
+      // 索引可能已存在
+    }
+    
+    // 更新唯一索引：同一用户下同级同名标签唯一
+    // 注意：SQLite 不支持直接修改索引，需要删除后重建
+    try {
+      db.exec("DROP INDEX IF EXISTS idx_file_tags_level_parent_name");
+      db.exec("CREATE UNIQUE INDEX idx_file_tags_user_level_parent_name ON file_tags(user_id, level, parent_tag_id, name)");
+      console.log("[DB Migration] Recreated unique index for user-scoped tags");
+    } catch (err) {
+      console.error("[DB Migration] Failed to recreate unique index:", err);
+    }
+  }
 };
 
 export { db, initDatabase };
