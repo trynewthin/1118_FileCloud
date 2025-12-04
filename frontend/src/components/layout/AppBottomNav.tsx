@@ -1,10 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/configs/nav";
 import { DS } from "@/lib/design-system";
 
 export function AppBottomNav() {
   const location = useLocation();
+  const [lastBrowsePath, setLastBrowsePath] = useState<string>("/files");
+
+  // 记录最近一次在“浏览”域（/files 或 /preview）中的路径
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith("/files") || path.startsWith("/preview")) {
+      const fullPath = location.search ? `${path}${location.search}` : path;
+      setLastBrowsePath(fullPath);
+    }
+  }, [location.pathname, location.search]);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
@@ -19,10 +30,12 @@ export function AppBottomNav() {
         >
           {navItems.map((item, index) => {
             const isActive = item.match.test(location.pathname);
+            const isBrowseItem = item.href === "/files";
+            const targetHref = isBrowseItem ? lastBrowsePath : item.href;
             return (
               <Link
                 key={index}
-                to={item.href}
+                to={targetHref}
                 className={cn(
                   "group flex flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground transition-all",
                   isActive && "text-primary font-medium"

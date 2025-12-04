@@ -23,7 +23,7 @@ export const navItems = [
     title: "浏览",
     href: "/files",
     icon: FolderOpen,
-    match: /^\/files/,
+    match: /^\/(files|preview)/,
   },
   {
     title: "AI 助手",

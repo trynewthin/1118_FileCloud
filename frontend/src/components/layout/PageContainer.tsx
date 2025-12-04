@@ -13,6 +13,7 @@ interface PageContainerProps extends PropsWithChildren {
   showBack?: boolean;
   className?: string;
   headerCenter?: ReactNode;
+  onBack?: () => void;
 }
 
 export const PageContainer: FC<PageContainerProps> = ({
@@ -22,6 +23,7 @@ export const PageContainer: FC<PageContainerProps> = ({
   children,
   className,
   headerCenter,
+  onBack,
 }) => {
   const { setConfig } = usePageHeader();
   const navigate = useNavigate();
@@ -44,7 +46,13 @@ export const PageContainer: FC<PageContainerProps> = ({
                 glassVariant="lite"
                 size="icon"
                 className="h-9 w-9 rounded-full text-foreground hover:text-primary"
-                onClick={() => navigate(-1)}
+                onClick={() => {
+                  if (onBack) {
+                    onBack();
+                  } else {
+                    navigate(-1);
+                  }
+                }}
                 title="返回"
               >
                 <ArrowLeft className="h-5 w-5" />

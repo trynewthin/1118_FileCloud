@@ -142,6 +142,14 @@ export function FilePreviewPage() {
 
   const pageTitle = entry ? entry.original_name : "文件预览";
 
+  const handleBack = () => {
+    if (entry) {
+      navigate(`/files?libraryId=${entry.library_id}${entry.parent_id ? `&parentId=${entry.parent_id}` : ""}`);
+    } else {
+      navigate(-1);
+    }
+  };
+
   // 下载文件
   const handleDownload = () => {
     if (!entry) return;
@@ -200,7 +208,7 @@ export function FilePreviewPage() {
   ) : null;
 
   return (
-    <PageContainer title={pageTitle} showBack action={actionButtons}>
+    <PageContainer title={pageTitle} showBack action={actionButtons} onBack={handleBack}>
       <div className="flex flex-col min-h-0">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
