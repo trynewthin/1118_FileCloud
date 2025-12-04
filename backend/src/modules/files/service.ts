@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
+import { isLibraryOnline } from "../../core/services/index.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 // 物理文件保持原始名称，不再使用 [xxxxxx] 后缀
 
@@ -56,6 +57,42 @@ export const listEntriesByParent = (params: {
     .all(params.libraryId, parentId) as any[];
 
   return rows.map(mapRowToFileEntry);
+};
+
+// 增强版文件条目，包含库信息
+export interface EnhancedFileEntry extends FileEntry {
+  library_name: string;
+  library_online: boolean;
+}
+
+// 查询指定文件库下的子项列表（增强版，包含库状态）
+export const listEntriesByParentEnhanced = (params: {
+  libraryId: number;
+  parentId?: string | null;
+}): { items: EnhancedFileEntry[]; library_online: boolean } => {
+  const parentId = params.parentId ?? null;
+
+  // 获取库信息
+  const libRow = db
+    .prepare("SELECT display_name FROM file_libraries WHERE id = ? LIMIT 1")
+    .get(params.libraryId) as { display_name: string } | undefined;
+
+  const libraryName = libRow?.display_name || `库 ${params.libraryId}`;
+  const libraryOnline = isLibraryOnline(params.libraryId);
+
+  const rows = db
+    .prepare(
+      "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, deleted_at, created_at, updated_at FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0 ORDER BY is_directory DESC, original_name ASC",
+    )
+    .all(params.libraryId, parentId) as any[];
+
+  const items: EnhancedFileEntry[] = rows.map((row) => ({
+    ...mapRowToFileEntry(row),
+    library_name: libraryName,
+    library_online: libraryOnline,
+  }));
+
+  return { items, library_online: libraryOnline };
 };
 
 // 回收站条目类型，附带相对于文件库根目录的路径

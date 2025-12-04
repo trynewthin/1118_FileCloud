@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2 } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2, CloudOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -22,6 +22,8 @@ interface FileListItemProps {
   batchMode?: boolean;
   batchSelected?: boolean;
   onBatchSelect?: (entry: FileEntry, selected: boolean) => void;
+  // 融合访问：库离线状态
+  libraryOffline?: boolean;
 }
 
 const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
@@ -35,6 +37,7 @@ export function FileListItem({
   batchMode = false,
   batchSelected = false,
   onBatchSelect,
+  libraryOffline = false,
 }: FileListItemProps) {
   const isDir = entry.is_directory;
   const ext = entry.extension?.toLowerCase() || "";
@@ -57,17 +60,26 @@ export function FileListItem({
   return (
     <GlassCard
       variant="lite"
-      hoverEffect
+      hoverEffect={!libraryOffline}
       className={cn(
-        "group flex items-center justify-between px-4 py-3 cursor-pointer border border-white/10 transition-all duration-300",
-        selected && "border-primary/60 ring-2 ring-primary/30"
+        "group flex items-center justify-between px-4 py-3 border border-white/10 transition-all duration-300",
+        selected && "border-primary/60 ring-2 ring-primary/30",
+        libraryOffline 
+          ? "opacity-50 cursor-not-allowed" 
+          : "cursor-pointer"
       )}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      onClick={libraryOffline ? undefined : onClick}
+      onDoubleClick={libraryOffline ? undefined : onDoubleClick}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* 离线标识 */}
+        {libraryOffline && (
+          <div className="h-6 w-6 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0" title="文件库离线">
+            <CloudOff className="h-3.5 w-3.5 text-orange-500" />
+          </div>
+        )}
         {/* 左侧选择框：批量模式时显示 */}
-        {batchMode && (
+        {batchMode && !libraryOffline && (
           <button
             type="button"
             className={cn(

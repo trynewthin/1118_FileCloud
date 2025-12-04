@@ -333,6 +333,15 @@ const runMigrations = () => {
     db.exec("ALTER TABLE file_tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
     console.log("[DB Migration] Added sort_order column to file_tags table");
   }
+
+  // 检查 file_libraries 表是否有 last_online_check_at 列，如果没有则添加
+  const fileLibrariesColumns = db.prepare("PRAGMA table_info(file_libraries)").all() as { name: string }[];
+  const fileLibrariesColumnNames = new Set(fileLibrariesColumns.map((c) => c.name));
+
+  if (!fileLibrariesColumnNames.has("last_online_check_at")) {
+    db.exec("ALTER TABLE file_libraries ADD COLUMN last_online_check_at TEXT");
+    console.log("[DB Migration] Added last_online_check_at column to file_libraries table");
+  }
 };
 
 export { db, initDatabase };

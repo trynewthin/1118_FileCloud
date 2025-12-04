@@ -6,7 +6,7 @@ export interface FileEntry {
   parent_id: string | null;
   is_directory: boolean;
   original_name: string;
-  index_suffix: string | null;  // 6 位索引后缀（前端不直接使用，仅保持类型一致）
+  index_suffix: string | null;  // 已废弃，非侵入式索引不再使用
   extension: string | null;
   size_bytes: number;
   mime_type: string | null;
@@ -14,6 +14,9 @@ export interface FileEntry {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  // 融合访问增强字段
+  library_name?: string;
+  library_online?: boolean;
 }
 
 export interface TrashEntry extends FileEntry {
@@ -22,6 +25,7 @@ export interface TrashEntry extends FileEntry {
 
 export interface ListEntriesResponse {
   items: FileEntry[];
+  library_online?: boolean;  // 库在线状态
 }
 
 export interface ListTrashResponse {

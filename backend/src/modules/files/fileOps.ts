@@ -11,35 +11,13 @@ import {
 } from "./service.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 import { recordFileEvent, upsertFtsIndex, deleteFtsIndex } from "./ftsService.ts";
+import { getLibraryRoot } from "../../core/middleware/index.ts";
 
 // 内部配置目录与回收站目录名称
 const INTERNAL_META_DIR = ".filecloud_meta";
 const TRASH_DIR_NAME = "trash";
 
-interface LibraryRow {
-  id: number;
-  root_path: string;
-  is_enabled: number;
-}
-
-// 查询文件库根路径
-const getLibraryRoot = (libraryId: number): string => {
-  const row = db
-    .prepare(
-      "SELECT id, root_path, is_enabled FROM file_libraries WHERE id = ? LIMIT 1",
-    )
-    .get(libraryId) as LibraryRow | undefined;
-
-  if (!row) {
-    throw new Error("文件库不存在");
-  }
-
-  if (!row.is_enabled) {
-    throw new Error("文件库未启用");
-  }
-
-  return row.root_path;
-};
+// 注意：getLibraryRoot 已统一从 core/middleware 导入
 
 // 计算条目在活动区的真实路径
 const getActivePathForEntry = (entry: FileEntry, libraryRootPath: string): string => {

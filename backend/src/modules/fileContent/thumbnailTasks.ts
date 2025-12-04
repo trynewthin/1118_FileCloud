@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 import { registerTaskHandler } from "../../core/tasks/executor.ts";
+import { getLibraryRoot } from "../../core/middleware/index.ts";
 import type { TaskRecord } from "../tasks/service.ts";
 import { updateTaskStatus } from "../tasks/service.ts";
 
@@ -42,24 +43,7 @@ const isSupportedForThumbnail = (ext: string | null): boolean => {
   return IMAGE_EXTS.has(lower) || VIDEO_EXTS.has(lower) || AUDIO_EXTS.has(lower) || PDF_EXTS.has(lower);
 };
 
-// 查询文件库根路径
-const getLibraryRoot = (libraryId: number): string => {
-  const row = db
-    .prepare(
-      "SELECT id, root_path, is_enabled FROM file_libraries WHERE id = ? LIMIT 1",
-    )
-    .get(libraryId) as { id: number; root_path: string; is_enabled: number } | undefined;
-
-  if (!row) {
-    throw new Error("文件库不存在");
-  }
-
-  if (!row.is_enabled) {
-    throw new Error("文件库未启用");
-  }
-
-  return row.root_path;
-};
+// 注意：getLibraryRoot 已统一从 core/middleware 导入
 
 // 根据文件扩展名获取对应的缩略图后缀
 const getThumbnailExt = (ext: string | null): string => {

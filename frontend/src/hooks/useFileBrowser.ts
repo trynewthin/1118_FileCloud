@@ -21,6 +21,7 @@ interface FileBrowserState {
   ancestors: { id: string; name: string }[];
   loading: boolean;
   error: string | null;
+  libraryOnline: boolean;  // 库在线状态
 }
 
 interface UseFileBrowserOptions {
@@ -89,11 +90,12 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
     ancestors: [],
     loading: false,
     error: null,
+    libraryOnline: true,
   });
 
   const load = useCallback(async () => {
     if (!libraryId) {
-      setState({ entries: [], ancestors: [], loading: false, error: null });
+      setState({ entries: [], ancestors: [], loading: false, error: null, libraryOnline: true });
       return;
     }
 
@@ -127,7 +129,13 @@ export const useFileBrowser = (options: UseFileBrowserOptions): UseFileBrowserRe
       }
 
       const res = await listPromise;
-      setState({ entries: res.items, ancestors, loading: false, error: null });
+      setState({ 
+        entries: res.items, 
+        ancestors, 
+        loading: false, 
+        error: null,
+        libraryOnline: res.library_online ?? true,
+      });
     } catch (err: any) {
       const message = typeof err?.message === "string" ? err.message : "加载文件列表失败";
       setState((prev) => ({ ...prev, loading: false, error: message }));

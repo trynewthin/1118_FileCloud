@@ -5,7 +5,8 @@ import Busboy from "busboy";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
-import { listEntriesByParent, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors, listDeletedEntriesByLibrary, searchFolders } from "./service.ts";
+import { withLibrary, withEntry, ensureLibraryEnabled } from "../../core/middleware/index.ts";
+import { listEntriesByParent, listEntriesByParentEnhanced, getEntryById, resolveRealPathForEntry, getEntryByIdIncludingDeleted, getEntryAncestors, listDeletedEntriesByLibrary, searchFolders } from "./service.ts";
 import { searchByFts, getFtsIndexStats } from "./ftsService.ts";
 import { createTask } from "../tasks/service.ts";
 import { TASK_TYPE_FILE_INDEX_LIBRARY, TASK_TYPE_FILE_INDEX_SINGLE } from "./indexTasks.ts";
@@ -14,24 +15,9 @@ import { getEntrySecurity, setEntryPassword, clearEntryPassword, checkEntryPassw
 
 const router = express.Router();
 
-// 校验文件库是否存在且已启用
-const ensureLibraryEnabled = (libraryId: number) => {
-  const row = db
-    .prepare(
-      "SELECT id, root_path, is_enabled FROM file_libraries WHERE id = ? LIMIT 1",
-    )
-    .get(libraryId) as { id: number; root_path: string; is_enabled: number } | undefined;
-
-  if (!row) {
-    return { ok: false as const, message: "文件库不存在" };
-  }
-
-  if (!row.is_enabled) {
-    return { ok: false as const, message: "文件库未启用" };
-  }
-
-  return { ok: true as const, library: row };
-};
+// ============================================================================
+// 文件库级别操作（使用 withLibrary 中间件统一校验）
+// ============================================================================
 
 // 新建文件夹（管理员权限）
 router.post(
@@ -60,7 +46,7 @@ router.post(
       return res.status(400).json({ message: "文件夹名称包含非法字符" });
     }
 
-    let targetDir = check.library.root_path;
+    let targetDir = check.library.rootPath;
 
     if (parentId) {
       const parentEntry = getEntryById(parentId);
@@ -74,7 +60,7 @@ router.post(
         return res.status(400).json({ message: "父目录不属于当前文件库" });
       }
 
-      targetDir = resolveRealPathForEntry(parentEntry, check.library.root_path);
+      targetDir = resolveRealPathForEntry(parentEntry, check.library.rootPath);
     }
 
     const trimmedName = name.trim();
@@ -124,7 +110,7 @@ router.post(
 
     const parentId = (req.query as { parentId?: string }).parentId ?? null;
 
-    let targetDir = check.library.root_path;
+    let targetDir = check.library.rootPath;
 
     if (parentId) {
       const parentEntry = getEntryById(parentId);
@@ -138,7 +124,7 @@ router.post(
         return res.status(400).json({ message: "父目录不属于当前文件库" });
       }
 
-      const relative = resolveRealPathForEntry(parentEntry, check.library.root_path);
+      const relative = resolveRealPathForEntry(parentEntry, check.library.rootPath);
       targetDir = relative;
     }
 
@@ -216,7 +202,7 @@ router.post(
         return res.status(400).json({ message: "未收到任何文件" });
       }
 
-      const relativePath = path.relative(check.library.root_path, targetDir);
+      const relativePath = path.relative(check.library.rootPath, targetDir);
       const userId = req.user?.id ?? null;
 
       const task = createTask({
@@ -261,12 +247,16 @@ router.get(
       }
     }
 
-    const items = listEntriesByParent({
+    // 使用增强版列表函数，返回库在线状态
+    const result = listEntriesByParentEnhanced({
       libraryId,
       parentId: parentId ?? null,
     });
 
-    return res.json({ items });
+    return res.json({
+      items: result.items,
+      library_online: result.library_online,
+    });
   },
 );
 
@@ -532,7 +522,7 @@ const handleDownload = (req: express.Request, res: express.Response) => {
       return res.status(403).json({ message: checkPwd.message ?? "访问密码错误" });
     }
 
-    const realPath = resolveRealPathForEntry(entry, check.library.root_path);
+    const realPath = resolveRealPathForEntry(entry, check.library.rootPath);
 
     let stat: fs.Stats;
     try {

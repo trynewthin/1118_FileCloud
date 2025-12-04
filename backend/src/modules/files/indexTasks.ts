@@ -8,6 +8,7 @@ import { updateTaskStatus, updateTaskDetailProgress, createTask } from "../tasks
 // 注意：已移除 indexSuffix 相关导入，采用非侵入式索引策略
 // 物理文件保持原始名称，不再添加 [xxxxxx] 后缀
 import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
+import { getLibraryRoot } from "../../core/middleware/index.ts";
 
 // ============================================================================
 // 任务类型常量
@@ -65,16 +66,7 @@ const needsThumbnail = (category: FileCategory): boolean => {
 // 数据库辅助函数
 // ============================================================================
 
-// 查询文件库的根路径
-const getLibraryRoot = (libraryId: number): string => {
-  const row = db
-    .prepare("SELECT id, root_path, is_enabled FROM file_libraries WHERE id = ? LIMIT 1")
-    .get(libraryId) as { id: number; root_path: string; is_enabled: number } | undefined;
-
-  if (!row) throw new Error("文件库不存在");
-  if (!row.is_enabled) throw new Error("文件库未启用");
-  return row.root_path;
-};
+// 注意：getLibraryRoot 已统一从 core/middleware 导入
 
 // 根据原始名称在指定父目录下查找已存在的索引记录
 const findEntryByName = (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2 } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2, CloudOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -22,6 +22,8 @@ interface FileGridItemProps {
   batchMode?: boolean;
   batchSelected?: boolean;
   onBatchSelect?: (entry: FileEntry, selected: boolean) => void;
+  // 融合访问：库离线状态
+  libraryOffline?: boolean;
 }
 
 const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
@@ -35,6 +37,7 @@ export function FileGridItem({
   batchMode = false,
   batchSelected = false,
   onBatchSelect,
+  libraryOffline = false,
 }: FileGridItemProps) {
   const isDir = entry.is_directory;
   const ext = entry.extension?.toLowerCase() || "";
@@ -57,14 +60,25 @@ export function FileGridItem({
   return (
     <GlassCard
       variant="ghost"
-      hoverEffect
+      hoverEffect={!libraryOffline}
       className={cn(
-        "group relative flex flex-col items-center justify-between p-2 text-center cursor-pointer transition-all duration-300",
-        selected && "ring-2 ring-primary/40"
+        "group relative flex flex-col items-center justify-between p-2 text-center transition-all duration-300",
+        selected && "ring-2 ring-primary/40",
+        libraryOffline 
+          ? "opacity-50 cursor-not-allowed" 
+          : "cursor-pointer"
       )}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      onClick={libraryOffline ? undefined : onClick}
+      onDoubleClick={libraryOffline ? undefined : onDoubleClick}
     >
+      {/* 离线标识 */}
+      {libraryOffline && (
+        <div className="absolute top-2 left-2 z-20">
+          <div className="h-6 w-6 rounded-full bg-orange-500/20 flex items-center justify-center" title="文件库离线">
+            <CloudOff className="h-3.5 w-3.5 text-orange-500" />
+          </div>
+        </div>
+      )}
       {/* 左上角选择框：批量模式时显示 */}
       {batchMode && (
         <div className="absolute top-2 left-2 z-20">

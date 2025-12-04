@@ -1,34 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Request, Response } from "express";
-import { db } from "../../core/db/index.ts";
 import { getEntryById, buildRelativePathForEntry } from "../files/service.ts";
 import { checkEntryPasswordIfProtected } from "../files/security.ts";
+import { getLibraryRoot } from "../../core/middleware/index.ts";
 
-interface LibraryRow {
-  id: number;
-  root_path: string;
-  is_enabled: number;
-}
-
-// 查询文件库根路径
-const getLibraryRoot = (libraryId: number): string => {
-  const row = db
-    .prepare(
-      "SELECT id, root_path, is_enabled FROM file_libraries WHERE id = ? LIMIT 1",
-    )
-    .get(libraryId) as LibraryRow | undefined;
-
-  if (!row) {
-    throw new Error("文件库不存在");
-  }
-
-  if (!row.is_enabled) {
-    throw new Error("文件库未启用");
-  }
-
-  return row.root_path;
-};
+// 注意：getLibraryRoot 已统一从 core/middleware 导入
 
 // 简单根据扩展名推断内容类型
 const guessContentType = (filePath: string): string => {

@@ -1,6 +1,7 @@
 import { app } from "./app";
 import { initDatabase } from "./core/db/index.ts";
 import { startTaskWorker } from "./core/tasks/executor.ts";
+import { startLibraryWatcher } from "./core/services/index.ts";
 import { registerFileIndexTaskHandlers } from "./modules/files/indexTasks.ts";
 import { registerFileOpsTaskHandlers } from "./modules/files/fileOpsTasks.ts";
 import { registerThumbnailTaskHandlers } from "./modules/fileContent/thumbnailTasks.ts";
@@ -20,6 +21,9 @@ registerThumbnailTaskHandlers();
 const workerConfig = getTaskWorkerConfig();
 console.log("Task worker config", workerConfig);
 startTaskWorker(workerConfig);
+
+// 启动文件库在线状态监控服务
+startLibraryWatcher();
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);

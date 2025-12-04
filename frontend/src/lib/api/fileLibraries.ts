@@ -7,7 +7,8 @@ export interface FileLibrary {
   capacity_limit_bytes: number | null;
   current_size_bytes: number;
   is_enabled: boolean;
-  is_online_cached: boolean;
+  is_online: boolean;  // 库在线状态（后端返回 is_online）
+  is_online_cached?: boolean;  // 兼容旧字段
   last_scanned_at: string | null;
   created_at: string;
   updated_at: string;

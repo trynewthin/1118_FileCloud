@@ -10,6 +10,7 @@ import { settingsRouter } from "./modules/settings/router.ts";
 import { systemRouter } from "./modules/system/router.ts";
 import { aiRouter } from "./modules/ai/router.ts";
 import { tagsRouter } from "./modules/tags/router.ts";
+import { entriesRouter } from "./modules/entries/router.ts";
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/tags", tagsRouter);
+app.use("/api/entries", entriesRouter);  // 统一文件访问 API
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
