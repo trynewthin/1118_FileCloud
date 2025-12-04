@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Folder, ChevronRight, Home, XIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,24 @@ export function FolderPickerDialog({
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const systemBreadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const systemBreadcrumbs = useMemo(() => {
+    if (!currentPath) return [] as { label: string; path: string }[];
+    const sep = currentPath.includes("\\") ? "\\" : "/";
+    const rawParts = currentPath.split(sep).filter(Boolean);
+    const parts: { label: string; path: string }[] = [];
+    let acc = "";
+    rawParts.forEach((part, index) => {
+      if (index === 0) {
+        acc = part;
+      } else {
+        acc = `${acc}${sep}${part}`;
+      }
+      parts.push({ label: part, path: acc });
+    });
+    return parts;
+  }, [currentPath]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,6 +160,15 @@ export function FolderPickerDialog({
     }
   };
 
+  useEffect(() => {
+    const el = systemBreadcrumbScrollRef.current;
+    if (!el) return;
+    if (!currentPath) return;
+    requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+  }, [systemBreadcrumbs.length, currentPath]);
+
   // 当 currentParentId 或 currentPath 变化时重新加载
   useEffect(() => {
     if (open && initialized) {
@@ -206,17 +233,64 @@ export function FolderPickerDialog({
           <DialogTitle>{title || "选择文件夹"}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        
-        <div className="flex items-center gap-2 py-2 border-b text-sm">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleGoUp} disabled={mode==="library" && !currentParentId}>
-             <Home className="h-4 w-4" />
-          </Button>
-          <div className="flex-1 truncate font-mono text-xs text-muted-foreground">
-            {mode === "system" ? (currentPath || "磁盘根目录") : (
-                breadcrumbs.length === 0 ? "根目录" : breadcrumbs.map(b => b.name).join(" / ")
-            )}
+
+        {mode === "system" ? (
+          <div className="flex items-center gap-2 py-2 border-b text-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={() => {
+                setCurrentPath("");
+                setSelectedId(null);
+              }}
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+            <div
+              ref={systemBreadcrumbScrollRef}
+              className="flex-1 min-w-0 overflow-x-auto scrollbar-thin pr-1"
+            >
+              <div className="flex items-center font-mono text-xs text-muted-foreground min-w-fit">
+                {currentPath === "" && <span className="whitespace-nowrap">磁盘根目录</span>}
+                {currentPath !== "" && systemBreadcrumbs.map((seg, index) => (
+                  <div key={seg.path} className="flex items-center min-w-0">
+                    {index > 0 && <span className="mx-1 opacity-60">/</span>}
+                    <button
+                      type="button"
+                      className={cn(
+                        "truncate max-w-[120px] md:max-w-[200px] text-left",
+                        index === systemBreadcrumbs.length - 1 ? "text-foreground" : "hover:text-foreground"
+                      )}
+                      onClick={() => {
+                        setCurrentPath(seg.path);
+                        setSelectedId(null);
+                      }}
+                      title={seg.label}
+                    >
+                      {seg.label}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2 py-2 border-b text-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleGoUp}
+              disabled={mode === "library" && !currentParentId}
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 truncate font-mono text-xs text-muted-foreground">
+              {breadcrumbs.length === 0 ? "根目录" : breadcrumbs.map(b => b.name).join(" / ")}
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto py-2">
           {loading ? (
