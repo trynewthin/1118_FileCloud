@@ -1,7 +1,11 @@
 export { TagItem } from "./TagItem";
-export { TagGridItem } from "./TagGridItem";
-export { TagEditDialog, PRESET_COLORS } from "./TagEditDialog";
-export { TagDeleteDialog } from "./TagDeleteDialog";
+export * from "./TagManageDialog";
+export * from "./TagGridItem";
+export * from "./TagItem";
+export * from "./TagEditDialog";
+export * from "./TagDeleteDialog";
+export * from "./BatchTagDialog";
+export * from "./TagFlatView";
 export { EntryTagDialog } from "./EntryTagDialog";
 export { BatchTagDialog } from "./BatchTagDialog";
 export { TagManageDialog } from "./TagManageDialog";

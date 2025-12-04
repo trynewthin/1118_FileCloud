@@ -24,7 +24,7 @@ export function FileLibrariesPage() {
       action={<NewLibraryDialog onSuccess={reload} />}
       className="h-full"
     >
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto px-1">
         {loading && items.length === 0 ? (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3].map((i) => (
