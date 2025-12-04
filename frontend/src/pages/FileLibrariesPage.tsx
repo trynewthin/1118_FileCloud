@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { PageScrollContent } from "@/components/layout/PageScrollContent";
 import { LibraryCard } from "@/components/file-libraries/LibraryCard";
 import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -24,7 +25,7 @@ export function FileLibrariesPage() {
       action={<NewLibraryDialog onSuccess={reload} />}
       className="h-full"
     >
-      <div className="flex-1 min-h-0 overflow-y-auto px-1">
+      <PageScrollContent>
         {loading && items.length === 0 ? (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3].map((i) => (
@@ -58,7 +59,7 @@ export function FileLibrariesPage() {
             ))}
           </div>
         )}
-      </div>
+      </PageScrollContent>
     </PageContainer>
   );
 }
