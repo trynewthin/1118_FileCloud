@@ -279,6 +279,29 @@ const initDatabase = () => {
       ";",
       "CREATE INDEX IF NOT EXISTS idx_file_events_library ON file_events(library_id, created_at DESC)",
       ";",
+      // ============================================================================
+      // 视频转码版本表
+      // ============================================================================
+      "CREATE TABLE IF NOT EXISTS file_transcodes (",
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  entry_id TEXT NOT NULL,",                // 原始文件 ID（file_entries.id）
+      "  library_id INTEGER NOT NULL,",           // 文件库 ID（冗余，便于清理）
+      "  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','processing','completed','failed')),",
+      "  progress INTEGER NOT NULL DEFAULT 0,",   // 转码进度（0-100）
+      "  output_path TEXT,",                      // 转码后文件路径（相对于 .filecloud_meta/transcoded）
+      "  output_size INTEGER,",                   // 转码后文件大小
+      "  error_message TEXT,",                    // 失败时的错误信息
+      "  task_id INTEGER,",                       // 关联的任务 ID
+      "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
+      "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      ")",
+      ";",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_transcodes_entry ON file_transcodes(entry_id)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_transcodes_library ON file_transcodes(library_id)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_transcodes_status ON file_transcodes(status)",
+      ";",
     ].join("\n"),
   );
 

@@ -9,6 +9,7 @@ import { updateTaskStatus, updateTaskDetailProgress, createTask } from "../tasks
 // 物理文件保持原始名称，不再添加 [xxxxxx] 后缀
 import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
+import { cleanupTranscodesForLibrary } from "../fileContent/transcodeService.ts";
 
 // ============================================================================
 // 任务类型常量
@@ -346,7 +347,7 @@ const handleIndexLibraryTask = async (task: TaskRecord) => {
 
   const rootPath = getLibraryRoot(libraryId);
 
-  // 强制索引模式：先标记所有现有索引为已删除
+  // 强制索引模式：先标记所有现有索引为已删除，并清理转码文件
   if (forceReindex) {
     updateTaskStatus({
       id: task.id,
@@ -359,6 +360,9 @@ const handleIndexLibraryTask = async (task: TaskRecord) => {
     db.prepare(
       "UPDATE file_entries SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE library_id = ? AND is_deleted = 0",
     ).run(now, now, libraryId);
+
+    // 清理该文件库的所有转码文件
+    cleanupTranscodesForLibrary(libraryId);
   }
 
   // 阶段 1：扫描文件系统

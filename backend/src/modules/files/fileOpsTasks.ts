@@ -9,6 +9,7 @@ import {
   moveEntry,
   copyEntry,
 } from "./fileOps.ts";
+import { deleteTranscodeForEntry } from "../fileContent/transcodeService.ts";
 
 export const TASK_TYPE_FILE_DELETE_ENTRY = "FILE_DELETE_ENTRY";
 export const TASK_TYPE_FILE_RESTORE_ENTRY = "FILE_RESTORE_ENTRY";
@@ -50,6 +51,9 @@ const handleDestroyEntryTask = async (task: TaskRecord) => {
   if (!entryId || typeof entryId !== "string") {
     throw new Error("彻底删除任务缺少合法的文件索引 ID");
   }
+
+  // 先删除转码文件
+  deleteTranscodeForEntry(entryId);
 
   permanentlyDeleteEntry(entryId);
 

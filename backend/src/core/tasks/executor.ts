@@ -10,14 +10,20 @@ const handlers = new Map<string, TaskHandler>();
 // 注册任务处理器，在各业务模块初始化时调用
 export const registerTaskHandler = (type: string, handler: TaskHandler) => {
   handlers.set(type, handler);
+  console.log(`[TaskExecutor] 注册任务处理器: ${type}, 当前已注册: ${Array.from(handlers.keys()).join(", ")}`);
 };
 
 // 执行单个任务（由内部 worker 调用）
 const runSingleTask = async (task: TaskRecord) => {
+  console.log(`[TaskExecutor] 准备执行任务 ${task.id}, 类型: ${task.type}`);
+  console.log(`[TaskExecutor] 当前 handlers: [${Array.from(handlers.keys()).join(", ")}]`);
+  
   const handler = handlers.get(task.type);
 
   // 如果没有对应处理器，直接标记为失败，避免任务一直挂着
   if (!handler) {
+    console.error(`[TaskExecutor] 未找到任务类型 ${task.type} 的处理器`);
+    console.error(`[TaskExecutor] handlers Map size: ${handlers.size}, 已注册: [${Array.from(handlers.keys()).join(", ")}]`);
     updateTaskStatus({
       id: task.id,
       status: "FAILED",
