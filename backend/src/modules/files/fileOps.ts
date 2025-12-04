@@ -9,7 +9,7 @@ import {
   buildRelativePathForEntry,
   getPhysicalName,
 } from "./service.ts";
-import { generateIndexSuffix, buildPhysicalName } from "./indexSuffix.ts";
+// 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 import { recordFileEvent, upsertFtsIndex, deleteFtsIndex } from "./ftsService.ts";
 
 // 内部配置目录与回收站目录名称
@@ -270,9 +270,7 @@ export const permanentlyDeleteEntry = (entryId: string): void => {
 
 /**
  * 重命名条目（仅作用于未删除条目）
- * 新逻辑：只修改 original_name，物理文件名的后缀部分保持不变
- * 例如：用户将 "文件.mp4" 重命名为 "新文件.mp4"
- *       物理文件从 "文件[abc123].mp4" 变为 "新文件[abc123].mp4"
+ * 非侵入式索引：直接重命名物理文件
  */
 export const renameEntry = (entryId: string, newName: string): void => {
   const trimmed = newName.trim();
@@ -288,16 +286,8 @@ export const renameEntry = (entryId: string, newName: string): void => {
   const rootPath = getLibraryRoot(entry.library_id);
   const oldPath = getActivePathForEntry(entry, rootPath);
 
-  // 构建新的物理文件名（保持原有后缀）
-  let newPhysicalName: string;
-  if (entry.index_suffix) {
-    newPhysicalName = buildPhysicalName(trimmed, entry.index_suffix);
-  } else {
-    // 旧数据没有后缀，直接使用新名称
-    newPhysicalName = trimmed;
-  }
-
-  const newPath = path.join(path.dirname(oldPath), newPhysicalName);
+  // 非侵入式：直接使用新名称作为物理文件名
+  const newPath = path.join(path.dirname(oldPath), trimmed);
 
   if (fs.existsSync(newPath) && newPath !== oldPath) {
     throw new Error("目标名称已存在");
@@ -329,7 +319,7 @@ export const renameEntry = (entryId: string, newName: string): void => {
 
 /**
  * 移动条目到新的父目录（仅作用于未删除条目）
- * 物理文件名（带后缀）跟着移动，数据库只更新 parent_id
+ * 非侵入式索引：物理文件名保持不变，数据库只更新 parent_id
  */
 export const moveEntry = (entryId: string, targetParentId: string | null): void => {
   const entry = getEntryById(entryId);
@@ -396,7 +386,7 @@ export const moveEntry = (entryId: string, targetParentId: string | null): void 
 
 /**
  * 复制条目到新的父目录，目前仅支持文件复制
- * 新逻辑：为复制的文件生成新的后缀
+ * 非侵入式索引：复制后的文件使用原始名称
  */
 export const copyEntry = (
   entryId: string,
@@ -437,13 +427,9 @@ export const copyEntry = (
     fs.mkdirSync(targetDirPath, { recursive: true });
   }
 
-  // 用户指定的名称或原始名称（不含后缀）
+  // 非侵入式：直接使用原始名称作为物理文件名
   const originalName = newName && newName.trim().length > 0 ? newName.trim() : entry.original_name;
-
-  // 为新文件生成新后缀
-  const newSuffix = generateIndexSuffix();
-  const physicalName = buildPhysicalName(originalName, newSuffix);
-  const destPath = path.join(targetDirPath, physicalName);
+  const destPath = path.join(targetDirPath, originalName);
 
   if (fs.existsSync(destPath)) {
     throw new Error("目标位置已存在同名文件");
@@ -456,9 +442,10 @@ export const copyEntry = (
   const now = new Date().toISOString();
   const newId = crypto.randomUUID();
 
+  // 非侵入式：index_suffix 设为 NULL
   db.prepare(
-    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?, ?, ?, NULL, 0, ?, ?)",
-  ).run(newId, entry.library_id, targetParentId, originalName, newSuffix, extension, stat.size, now, now);
+    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, NULL, ?, ?, NULL, 0, ?, ?)",
+  ).run(newId, entry.library_id, targetParentId, originalName, extension, stat.size, now, now);
 
   // 为新复制的文件添加 FTS 索引
   const copiedEntry = getEntryById(newId);

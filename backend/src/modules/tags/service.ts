@@ -143,7 +143,7 @@ export const createTag = (input: CreateTagInput): FileTag => {
   if (parentTagId === null) {
     existing = db.prepare("SELECT id FROM file_tags WHERE parent_tag_id IS NULL AND name = ?").get(name.trim());
   } else {
-    existing = db.prepare("SELECT id FROM file_tags WHERE parent_tag_id = ? AND name = ?").get(parentTagId, name.trim());
+    existing = db.prepare("SELECT id FROM file_tags WHERE parent_tag_id = ? AND name = ?").get(parentTagId ?? null, name.trim());
   }
   
   if (existing) {

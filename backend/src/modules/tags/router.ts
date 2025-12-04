@@ -60,7 +60,7 @@ router.get(
   authenticate,
   requirePermission(PermissionLevel.User),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
@@ -113,7 +113,7 @@ router.put(
   authenticate,
   requirePermission(PermissionLevel.Admin),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
@@ -140,7 +140,7 @@ router.delete(
   authenticate,
   requirePermission(PermissionLevel.Admin),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
@@ -180,7 +180,7 @@ router.get(
   authenticate,
   requirePermission(PermissionLevel.User),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
@@ -288,7 +288,7 @@ router.post(
   authenticate,
   requirePermission(PermissionLevel.Admin),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
@@ -310,7 +310,7 @@ router.post(
   authenticate,
   requirePermission(PermissionLevel.Admin),
   (req, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }

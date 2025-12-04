@@ -5,13 +5,8 @@ import { db } from "../../core/db/index.ts";
 import { registerTaskHandler } from "../../core/tasks/executor.ts";
 import type { TaskRecord, DetailProgress } from "../tasks/service.ts";
 import { updateTaskStatus, updateTaskDetailProgress, createTask } from "../tasks/service.ts";
-import {
-  generateIndexSuffix,
-  parseIndexSuffix,
-  extractOriginalName,
-  buildPhysicalName,
-  hasIndexSuffix,
-} from "./indexSuffix.ts";
+// 注意：已移除 indexSuffix 相关导入，采用非侵入式索引策略
+// 物理文件保持原始名称，不再添加 [xxxxxx] 后缀
 import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
 
 // ============================================================================
@@ -81,188 +76,94 @@ const getLibraryRoot = (libraryId: number): string => {
   return row.root_path;
 };
 
-// 根据后缀在指定父目录下查找已存在的索引记录
-const findEntryBySuffix = (
-  libraryId: number,
-  parentId: string | null,
-  suffix: string,
-): { id: string; original_name: string; index_suffix: string } | null => {
-  const row = db
-    .prepare(
-      "SELECT id, original_name, index_suffix FROM file_entries WHERE library_id = ? AND parent_id IS ? AND index_suffix = ? LIMIT 1",
-    )
-    .get(libraryId, parentId, suffix) as
-    | { id: string; original_name: string; index_suffix: string }
-    | undefined;
-  return row ?? null;
-};
-
-// 根据原始名称在指定父目录下查找已存在的索引记录（用于兼容旧数据）
-const findEntryByOriginalName = (
+// 根据原始名称在指定父目录下查找已存在的索引记录
+const findEntryByName = (
   libraryId: number,
   parentId: string | null,
   originalName: string,
-): { id: string; index_suffix: string | null } | null => {
+): { id: string; original_name: string } | null => {
   const row = db
     .prepare(
-      "SELECT id, index_suffix FROM file_entries WHERE library_id = ? AND parent_id IS ? AND original_name = ? LIMIT 1",
+      "SELECT id, original_name FROM file_entries WHERE library_id = ? AND parent_id IS ? AND original_name = ? AND is_deleted = 0 LIMIT 1",
     )
     .get(libraryId, parentId, originalName) as
-    | { id: string; index_suffix: string | null }
+    | { id: string; original_name: string }
     | undefined;
   return row ?? null;
 };
 
+
 /**
- * 处理目录索引
+ * 处理目录索引（非侵入式：不修改物理目录名）
  * @param libraryId 文件库 ID
  * @param parentId 父目录 ID
- * @param physicalName 物理目录名（可能带后缀）
- * @param dirPath 目录完整路径
- * @returns { entryId, physicalName } 如果需要重命名，返回新的物理名称
+ * @param dirName 目录名
+ * @returns entryId
  */
 const processDirectoryEntry = (
   libraryId: number,
   parentId: string | null,
-  physicalName: string,
-  dirPath: string,
-): { entryId: string; newPhysicalName: string | null } => {
+  dirName: string,
+): string => {
   const now = new Date().toISOString();
-  const suffix = parseIndexSuffix(physicalName);
 
-  // 情况 1：物理名称已带后缀，按后缀查找
-  if (suffix) {
-    const originalName = extractOriginalName(physicalName);
-    const existing = findEntryBySuffix(libraryId, parentId, suffix);
-
-    if (existing) {
-      // 更新已有记录（可能原始名称被外部修改了）
-      db.prepare(
-        "UPDATE file_entries SET is_directory = 1, original_name = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-      ).run(originalName, now, existing.id);
-      return { entryId: existing.id, newPhysicalName: null };
-    }
-
-    // 后缀存在但数据库中没有记录，创建新记录
-    const id = crypto.randomUUID();
-    db.prepare(
-      "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 1, ?, ?, NULL, 0, NULL, 0, ?, ?)",
-    ).run(id, libraryId, parentId, originalName, suffix, now, now);
-    return { entryId: id, newPhysicalName: null };
-  }
-
-  // 情况 2：物理名称无后缀，需要生成后缀并重命名
-  const originalName = physicalName;
-
-  // 先检查是否有旧记录（兼容迁移）
-  const existingByName = findEntryByOriginalName(libraryId, parentId, originalName);
-  if (existingByName && existingByName.index_suffix) {
-    // 旧记录已有后缀，但物理文件没有，需要重命名物理文件
-    const newPhysicalName = buildPhysicalName(originalName, existingByName.index_suffix);
+  // 按原始名称查找已存在的记录
+  const existing = findEntryByName(libraryId, parentId, dirName);
+  if (existing) {
+    // 更新已有记录
     db.prepare(
       "UPDATE file_entries SET is_directory = 1, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-    ).run(now, existingByName.id);
-    return { entryId: existingByName.id, newPhysicalName };
+    ).run(now, existing.id);
+    return existing.id;
   }
 
-  // 生成新后缀
-  const newSuffix = generateIndexSuffix();
-  const newPhysicalName = buildPhysicalName(originalName, newSuffix);
-
-  if (existingByName) {
-    // 更新旧记录，添加后缀
-    db.prepare(
-      "UPDATE file_entries SET is_directory = 1, index_suffix = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-    ).run(newSuffix, now, existingByName.id);
-    return { entryId: existingByName.id, newPhysicalName };
-  }
-
-  // 创建新记录
+  // 创建新记录（不生成 index_suffix）
   const id = crypto.randomUUID();
   db.prepare(
-    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 1, ?, ?, NULL, 0, NULL, 0, ?, ?)",
-  ).run(id, libraryId, parentId, originalName, newSuffix, now, now);
-  return { entryId: id, newPhysicalName };
+    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 1, ?, NULL, NULL, 0, NULL, 0, ?, ?)",
+  ).run(id, libraryId, parentId, dirName, now, now);
+  return id;
 };
 
 /**
- * 处理文件索引
- * @returns { entryId, isNew, newPhysicalName }
+ * 处理文件索引（非侵入式：不修改物理文件名）
+ * @returns { entryId, isNew }
  */
 const processFileEntry = (
   libraryId: number,
   parentId: string | null,
-  physicalName: string,
+  fileName: string,
   size: number,
-): { entryId: string; isNew: boolean; newPhysicalName: string | null } => {
+): { entryId: string; isNew: boolean } => {
   const now = new Date().toISOString();
-  const suffix = parseIndexSuffix(physicalName);
+  const extension = path.extname(fileName).toLowerCase().replace(/^\./, "") || null;
 
-  // 情况 1：物理名称已带后缀
-  if (suffix) {
-    const originalName = extractOriginalName(physicalName);
-    const extension = path.extname(originalName).toLowerCase().replace(/^\./, "") || null;
-    const existing = findEntryBySuffix(libraryId, parentId, suffix);
-
-    if (existing) {
-      // 更新已有记录
-      db.prepare(
-        "UPDATE file_entries SET is_directory = 0, original_name = ?, extension = ?, size_bytes = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-      ).run(originalName, extension, size, now, existing.id);
-      return { entryId: existing.id, isNew: false, newPhysicalName: null };
-    }
-
-    // 后缀存在但数据库中没有记录，创建新记录
-    const id = crypto.randomUUID();
-    db.prepare(
-      "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?, ?, ?, NULL, 0, ?, ?)",
-    ).run(id, libraryId, parentId, originalName, suffix, extension, size, now, now);
-    return { entryId: id, isNew: true, newPhysicalName: null };
-  }
-
-  // 情况 2：物理名称无后缀，需要生成后缀并重命名
-  const originalName = physicalName;
-  const extension = path.extname(originalName).toLowerCase().replace(/^\./, "") || null;
-
-  // 先检查是否有旧记录（兼容迁移）
-  const existingByName = findEntryByOriginalName(libraryId, parentId, originalName);
-  if (existingByName && existingByName.index_suffix) {
-    // 旧记录已有后缀，但物理文件没有，需要重命名物理文件
-    const newPhysicalName = buildPhysicalName(originalName, existingByName.index_suffix);
+  // 按原始名称查找已存在的记录
+  const existing = findEntryByName(libraryId, parentId, fileName);
+  if (existing) {
+    // 更新已有记录
     db.prepare(
       "UPDATE file_entries SET is_directory = 0, extension = ?, size_bytes = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-    ).run(extension, size, now, existingByName.id);
-    return { entryId: existingByName.id, isNew: false, newPhysicalName };
+    ).run(extension, size, now, existing.id);
+    return { entryId: existing.id, isNew: false };
   }
 
-  // 生成新后缀
-  const newSuffix = generateIndexSuffix();
-  const newPhysicalName = buildPhysicalName(originalName, newSuffix);
-
-  if (existingByName) {
-    // 更新旧记录，添加后缀
-    db.prepare(
-      "UPDATE file_entries SET is_directory = 0, index_suffix = ?, extension = ?, size_bytes = ?, is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?",
-    ).run(newSuffix, extension, size, now, existingByName.id);
-    return { entryId: existingByName.id, isNew: false, newPhysicalName };
-  }
-
-  // 创建新记录
+  // 创建新记录（不生成 index_suffix）
   const id = crypto.randomUUID();
   db.prepare(
-    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, ?, ?, ?, NULL, 0, ?, ?)",
-  ).run(id, libraryId, parentId, originalName, newSuffix, extension, size, now, now);
-  return { entryId: id, isNew: true, newPhysicalName };
+    "INSERT INTO file_entries(id, library_id, parent_id, is_directory, original_name, index_suffix, extension, size_bytes, mime_type, is_deleted, created_at, updated_at) VALUES(?, ?, ?, 0, ?, NULL, ?, ?, NULL, 0, ?, ?)",
+  ).run(id, libraryId, parentId, fileName, extension, size, now, now);
+  return { entryId: id, isNew: true };
 };
 
 /**
  * 标记不存在的文件为已删除
- * 现在按 index_suffix 匹配，而不是 original_name
+ * 按 original_name 匹配
  */
-const markDeletedEntries = (libraryId: number, parentId: string | null, existingSuffixes: Set<string>): number => {
+const markDeletedEntries = (libraryId: number, parentId: string | null, existingNames: Set<string>): number => {
   const rows = db
-    .prepare("SELECT id, index_suffix FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0")
-    .all(libraryId, parentId) as { id: string; index_suffix: string | null }[];
+    .prepare("SELECT id, original_name FROM file_entries WHERE library_id = ? AND parent_id IS ? AND is_deleted = 0")
+    .all(libraryId, parentId) as { id: string; original_name: string }[];
 
   if (rows.length === 0) return 0;
 
@@ -273,8 +174,8 @@ const markDeletedEntries = (libraryId: number, parentId: string | null, existing
 
   let deletedCount = 0;
   for (const row of rows) {
-    // 如果记录没有后缀（旧数据），或者后缀不在当前扫描到的集合中，标记为删除
-    if (!row.index_suffix || !existingSuffixes.has(row.index_suffix)) {
+    // 如果原始名称不在当前扫描到的集合中，标记为删除
+    if (!existingNames.has(row.original_name)) {
       stmt.run(now, now, row.id);
       deletedCount++;
     }
@@ -321,29 +222,7 @@ interface ScanResult {
 }
 
 /**
- * 安全重命名文件/目录
- * 如果目标已存在，返回 false
- */
-const safeRename = (oldPath: string, newPath: string): boolean => {
-  try {
-    if (fs.existsSync(newPath)) {
-      console.warn(`重命名失败：目标已存在 ${newPath}`);
-      return false;
-    }
-    fs.renameSync(oldPath, newPath);
-    return true;
-  } catch (err) {
-    console.error(`重命名失败 ${oldPath} -> ${newPath}:`, err);
-    return false;
-  }
-};
-
-/**
- * 递归扫描目录，收集文件信息
- * 新逻辑：
- * 1. 解析物理文件名中的后缀
- * 2. 通过后缀匹配已有记录
- * 3. 新文件生成后缀并重命名物理文件
+ * 递归扫描目录，收集文件信息（非侵入式：不修改物理文件名）
  */
 const scanDirectory = (
   libraryId: number,
@@ -363,8 +242,8 @@ const scanDirectory = (
     return;
   }
 
-  // 收集当前目录下所有已处理的后缀（用于标记删除）
-  const existingSuffixes = new Set<string>();
+  // 收集当前目录下所有已处理的文件名（用于标记删除）
+  const existingNames = new Set<string>();
 
   for (const entry of entries) {
     // 跳过内部配置目录
@@ -373,32 +252,18 @@ const scanDirectory = (
     const fullPath = path.join(dirPath, entry.name);
 
     if (entry.isDirectory()) {
-      const { entryId, newPhysicalName } = processDirectoryEntry(
+      const entryId = processDirectoryEntry(
         libraryId,
         parentEntryId,
         entry.name,
-        fullPath,
       );
 
-      // 如果需要重命名物理目录
-      let actualDirPath = fullPath;
-      if (newPhysicalName) {
-        const newFullPath = path.join(dirPath, newPhysicalName);
-        if (safeRename(fullPath, newFullPath)) {
-          actualDirPath = newFullPath;
-        }
-      }
-
-      // 记录后缀
-      const suffix = parseIndexSuffix(newPhysicalName || entry.name);
-      if (suffix) {
-        existingSuffixes.add(suffix);
-      }
-
+      // 记录目录名
+      existingNames.add(entry.name);
       result.totalDirs++;
 
-      // 递归扫描子目录（使用实际路径）
-      scanDirectory(libraryId, rootPath, actualDirPath, entryId, result, onProgress);
+      // 递归扫描子目录
+      scanDirectory(libraryId, rootPath, fullPath, entryId, result, onProgress);
     } else if (entry.isFile()) {
       let stat: fs.Stats;
       try {
@@ -407,32 +272,20 @@ const scanDirectory = (
         continue; // 无法读取文件，跳过
       }
 
-      const { entryId, isNew, newPhysicalName } = processFileEntry(
+      const { entryId, isNew } = processFileEntry(
         libraryId,
         parentEntryId,
         entry.name,
         stat.size,
       );
 
-      // 如果需要重命名物理文件
-      if (newPhysicalName) {
-        const newFullPath = path.join(dirPath, newPhysicalName);
-        safeRename(fullPath, newFullPath);
-      }
-
-      // 记录后缀
-      const suffix = parseIndexSuffix(newPhysicalName || entry.name);
-      if (suffix) {
-        existingSuffixes.add(suffix);
-      }
-
+      // 记录文件名
+      existingNames.add(entry.name);
       result.totalFiles++;
       if (isNew) result.newFiles++;
 
       // 检查是否需要生成缩略图
-      // 从原始名称获取扩展名
-      const originalName = extractOriginalName(newPhysicalName || entry.name);
-      const extension = path.extname(originalName).toLowerCase().replace(/^\./, "") || null;
+      const extension = path.extname(entry.name).toLowerCase().replace(/^\./, "") || null;
       const category = getFileCategory(extension);
       if (needsThumbnail(category) && !thumbnailExists(rootPath, entryId, extension)) {
         result.thumbnailQueue.push({ entryId, extension: extension! });
@@ -445,8 +298,8 @@ const scanDirectory = (
     }
   }
 
-  // 标记已删除的条目（按后缀匹配）
-  result.deletedEntries += markDeletedEntries(libraryId, parentEntryId, existingSuffixes);
+  // 标记已删除的条目（按原始名称匹配）
+  result.deletedEntries += markDeletedEntries(libraryId, parentEntryId, existingNames);
 };
 
 // ============================================================================
@@ -666,51 +519,27 @@ const handleIndexSingleTask = async (task: TaskRecord) => {
     // 找到或创建目录的父级 entry
     const segments = relativePath.split(/[/\\]/).filter(Boolean);
     let parentId: string | null = null;
-    let currentDirPath = rootPath;
 
     // 逐级确保父目录存在
     for (let i = 0; i < segments.length - 1; i++) {
       const seg = segments[i];
       if (seg) {
-        currentDirPath = path.join(currentDirPath, seg);
-        const { entryId, newPhysicalName } = processDirectoryEntry(libraryId, parentId, seg, currentDirPath);
-        if (newPhysicalName) {
-          // 需要重命名，但这里是父目录，暂时跳过重命名（单路径索引场景较少用）
-          console.warn(`单路径索引：父目录 ${seg} 需要重命名为 ${newPhysicalName}，暂不处理`);
-        }
-        parentId = entryId;
+        parentId = processDirectoryEntry(libraryId, parentId, seg);
       }
     }
 
     const dirName = segments[segments.length - 1] || path.basename(targetPath);
-    const { entryId: dirEntryId, newPhysicalName } = processDirectoryEntry(libraryId, parentId, dirName, targetPath);
+    const dirEntryId = processDirectoryEntry(libraryId, parentId, dirName);
 
-    // 如果需要重命名目标目录
-    let actualTargetPath = targetPath;
-    if (newPhysicalName) {
-      const newTargetPath = path.join(path.dirname(targetPath), newPhysicalName);
-      if (safeRename(targetPath, newTargetPath)) {
-        actualTargetPath = newTargetPath;
-      }
-    }
-
-    scanDirectory(libraryId, rootPath, actualTargetPath, dirEntryId, result);
+    scanDirectory(libraryId, rootPath, targetPath, dirEntryId, result);
   } else if (stat.isFile()) {
     const baseName = path.basename(targetPath);
-    const dirPath = path.dirname(targetPath);
-    const { entryId, isNew, newPhysicalName } = processFileEntry(libraryId, null, baseName, stat.size);
-
-    // 如果需要重命名文件
-    if (newPhysicalName) {
-      const newTargetPath = path.join(dirPath, newPhysicalName);
-      safeRename(targetPath, newTargetPath);
-    }
+    const { entryId, isNew } = processFileEntry(libraryId, null, baseName, stat.size);
 
     result.totalFiles = 1;
     if (isNew) result.newFiles = 1;
 
-    const originalName = extractOriginalName(newPhysicalName || baseName);
-    const extension = path.extname(originalName).toLowerCase().replace(/^\./, "") || null;
+    const extension = path.extname(baseName).toLowerCase().replace(/^\./, "") || null;
     const category = getFileCategory(extension);
     if (needsThumbnail(category) && !thumbnailExists(rootPath, entryId, extension)) {
       result.thumbnailQueue.push({ entryId, extension: extension! });

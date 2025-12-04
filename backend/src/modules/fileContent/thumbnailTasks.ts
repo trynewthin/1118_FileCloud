@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
-import { buildPhysicalName } from "../files/indexSuffix.ts";
+// 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 import { registerTaskHandler } from "../../core/tasks/executor.ts";
 import type { TaskRecord } from "../tasks/service.ts";
 import { updateTaskStatus } from "../tasks/service.ts";
@@ -78,7 +78,7 @@ const getThumbnailPath = (libraryRoot: string, entryId: string, ext: string | nu
   return path.join(libraryRoot, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`);
 };
 
-// 根据 entry 构建实际文件路径（使用物理文件名：original_name + [index_suffix]）
+// 根据 entry 构建实际文件路径（非侵入式：直接使用 original_name）
 const buildRealPathFromEntryRow = (
   libraryRoot: string,
   entryRow: any,
@@ -88,10 +88,8 @@ const buildRealPathFromEntryRow = (
   let current: any | undefined = entryRow;
 
   while (current) {
-    const originalName: string = current.original_name;
-    const suffix: string | null = current.index_suffix ?? null;
-    const physicalName = suffix ? buildPhysicalName(originalName, suffix) : originalName;
-    segments.unshift(physicalName);
+    // 非侵入式索引：直接使用原始文件名
+    segments.unshift(current.original_name);
     if (!current.parent_id) break;
     const parentRow = stmt.get(current.parent_id) as any | undefined;
     if (!parentRow) break;

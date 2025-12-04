@@ -3,7 +3,7 @@ import path from "node:path";
 import { db } from "../../core/db/index.ts";
 import { createTask } from "../tasks/service.ts";
 import { TASK_TYPE_FILE_INDEX_LIBRARY } from "../files/indexTasks.ts";
-import { extractOriginalName, buildPhysicalName } from "../files/indexSuffix.ts";
+// 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 
 export interface FileLibrary {
   id: number;
@@ -161,7 +161,7 @@ export const updateFileLibrary = (
 
 /**
  * 辅助函数：根据 entry_id 构建相对于文件库根目录的物理路径
- * 使用物理文件名（带后缀）构建路径
+ * 非侵入式索引：直接使用原始文件名构建路径
  */
 const buildRelativePathForEntryId = (entryId: string): string | null => {
   const segments: string[] = [];
@@ -170,17 +170,14 @@ const buildRelativePathForEntryId = (entryId: string): string | null => {
   while (currentId) {
     const row = db
       .prepare(
-        "SELECT id, parent_id, original_name, index_suffix FROM file_entries WHERE id = ?"
+        "SELECT id, parent_id, original_name FROM file_entries WHERE id = ?"
       )
-      .get(currentId) as { id: string; parent_id: string | null; original_name: string; index_suffix: string | null } | undefined;
+      .get(currentId) as { id: string; parent_id: string | null; original_name: string } | undefined;
 
     if (!row) return null;
 
-    // 使用物理文件名（带后缀）
-    const physicalName = row.index_suffix
-      ? buildPhysicalName(row.original_name, row.index_suffix)
-      : row.original_name;
-    segments.unshift(physicalName);
+    // 非侵入式索引：直接使用原始文件名
+    segments.unshift(row.original_name);
 
     currentId = row.parent_id;
   }
@@ -190,58 +187,18 @@ const buildRelativePathForEntryId = (entryId: string): string | null => {
 
 /**
  * 删除文件库配置记录（不删除真实目录）
- * 在删除前，会将所有带 index_suffix 的文件恢复为原始文件名
+ * 非侵入式索引：物理文件保持原始名称，无需恢复
  */
 export const deleteFileLibrary = (id: number): boolean => {
   const library = getFileLibraryById(id);
   if (!library) return false;
 
-  // 1. 查询该文件库下所有带 index_suffix 的文件条目
-  const entriesWithSuffix = db
-    .prepare(
-      "SELECT id, parent_id, original_name, index_suffix, is_directory FROM file_entries WHERE library_id = ? AND index_suffix IS NOT NULL"
-    )
-    .all(id) as Array<{
-      id: string;
-      parent_id: string | null;
-      original_name: string;
-      index_suffix: string;
-      is_directory: number;
-    }>;
+  // 非侵入式索引：物理文件保持原始名称，无需重命名操作
 
-  // 2. 遍历并重命名物理文件（恢复原始名称）
-  for (const entry of entriesWithSuffix) {
-    try {
-      // 构建当前物理路径（带后缀）- 需要向上追溯父节点
-      const relativePath = buildRelativePathForEntryId(entry.id);
-      if (!relativePath) continue;
-
-      const currentPhysicalPath = path.join(library.root_path, relativePath);
-
-      // 构建目标路径（不带后缀）
-      const parentDir = path.dirname(currentPhysicalPath);
-      const currentFileName = path.basename(currentPhysicalPath);
-      const originalFileName = extractOriginalName(currentFileName);
-      const targetPhysicalPath = path.join(parentDir, originalFileName);
-
-      // 如果当前文件存在且目标文件不存在，则重命名
-      if (fs.existsSync(currentPhysicalPath) && !fs.existsSync(targetPhysicalPath)) {
-        fs.renameSync(currentPhysicalPath, targetPhysicalPath);
-        console.log(`[deleteFileLibrary] 恢复文件名: ${currentFileName} -> ${originalFileName}`);
-      }
-    } catch (err) {
-      // 重命名失败不阻塞删除流程，仅记录日志
-      console.error(`[deleteFileLibrary] 恢复文件名失败: ${entry.original_name}`, err);
-    }
-  }
-
-  // 3. 删除该文件库下的所有 file_entries 记录
+  // 1. 删除该文件库下的所有 file_entries 记录
   db.prepare("DELETE FROM file_entries WHERE library_id = ?").run(id);
 
-  // 4. 删除该文件库下的所有 file_entry_security 记录（通过子查询已不存在，但保险起见清理）
-  // 注意：file_entry_security 是按 entry_id 关联的，entry 已删除，这里可以跳过
-
-  // 5. 删除文件库配置记录
+  // 2. 删除文件库配置记录
   const stmt = db.prepare("DELETE FROM file_libraries WHERE id = ?");
   const result = stmt.run(id);
   return result.changes > 0;

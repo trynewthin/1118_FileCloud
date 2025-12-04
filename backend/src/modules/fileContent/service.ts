@@ -98,7 +98,7 @@ export const resolveFileForStreaming = (
 
   const rootPath = getLibraryRoot(entry.library_id);
 
-  // 使用 files.service 中的 buildRelativePathForEntry 构建物理路径（包含 index_suffix）
+  // 使用 files.service 中的 buildRelativePathForEntry 构建物理路径
   const relativePath = buildRelativePathForEntry(entry);
   const realPath = path.join(rootPath, relativePath);
 

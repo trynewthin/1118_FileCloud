@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
-import { buildPhysicalName } from "./indexSuffix.ts";
+// 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
+// 物理文件保持原始名称，不再使用 [xxxxxx] 后缀
 
 export interface FileEntry {
   id: string;
@@ -9,7 +10,7 @@ export interface FileEntry {
   parent_id: string | null;
   is_directory: boolean;
   original_name: string;
-  index_suffix: string | null;  // 6 位索引后缀，用于物理文件名绑定
+  index_suffix: string | null;  // 已废弃：非侵入式索引不再使用后缀
   extension: string | null;
   size_bytes: number;
   mime_type: string | null;
@@ -125,19 +126,16 @@ export const getEntryByIdIncludingDeleted = (id: string): FileEntry | null => {
 };
 
 /**
- * 获取条目的物理文件名（带后缀）
- * 如果有 index_suffix，返回 original_name + [suffix]；否则返回 original_name
+ * 获取条目的物理文件名
+ * 非侵入式索引：直接返回原始文件名
  */
 export const getPhysicalName = (entry: FileEntry): string => {
-  if (entry.index_suffix) {
-    return buildPhysicalName(entry.original_name, entry.index_suffix);
-  }
   return entry.original_name;
 };
 
 /**
  * 基于父子关系构建相对于文件库根目录的物理路径
- * 使用物理文件名（带后缀）构建路径
+ * 非侵入式索引：使用原始文件名构建路径
  */
 export const buildRelativePathForEntry = (entry: FileEntry): string => {
   const segments: string[] = [];
@@ -146,7 +144,7 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
 
   // 向上追溯父节点，直到虚拟根（parent_id 为空）
   while (current) {
-    // 使用物理文件名（带后缀）
+    // 非侵入式索引：直接使用原始文件名
     segments.unshift(getPhysicalName(current));
 
     if (!current.parent_id) {
