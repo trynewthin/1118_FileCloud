@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, MessageSquare, Archive, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 interface AiMobileConversationManagerProps {
   conversations: AiChatConversation[];

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 export function AiChatPage() {
   const {

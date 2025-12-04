@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import React, { forwardRef } from "react";
 
 type ButtonProps = React.ComponentProps<typeof Button>;

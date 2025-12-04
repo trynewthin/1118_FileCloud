@@ -4,7 +4,7 @@ import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { Pencil, FileText, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 interface AiPromptListProps {
   prompts: AiChatPrompt[];

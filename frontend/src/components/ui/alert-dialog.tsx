@@ -2,7 +2,7 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { DS } from "@/lib/design-system"
+import { DS } from "@/theme/design-system"
 import { GlassButton } from "@/components/common/GlassButton"
 import { Trash2, XIcon } from "lucide-react"
 

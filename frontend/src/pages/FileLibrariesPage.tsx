@@ -6,7 +6,7 @@ import { PageScrollContent } from "@/components/layout/PageScrollContent";
 import { LibraryCard } from "@/components/file-libraries/LibraryCard";
 import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
 import { GlassCard } from "@/components/common/GlassCard";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";
 
 export function FileLibrariesPage() {

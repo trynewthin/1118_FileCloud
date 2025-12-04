@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
 import { ArrowLeft } from "lucide-react";
 import { GlassButton } from "@/components/common/GlassButton";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 interface PageContainerProps extends PropsWithChildren {
   title?: string;

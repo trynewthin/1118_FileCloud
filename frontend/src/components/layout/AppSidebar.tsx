@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { navItems } from "@/configs/nav";
 import { Button } from "@/components/ui/button";
 import { PanelLeft, PanelLeftOpen } from "lucide-react";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 interface AppSidebarProps {
   collapsed?: boolean;

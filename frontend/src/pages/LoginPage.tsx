@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/common/GlassCard";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";
 
 export function LoginPage() {

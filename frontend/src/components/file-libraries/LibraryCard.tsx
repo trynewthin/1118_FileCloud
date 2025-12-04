@@ -3,7 +3,7 @@ import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassCard } from "@/components/common/GlassCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 // 格式化字节数为可读字符串
 function formatBytes(bytes: number | null | undefined): string {

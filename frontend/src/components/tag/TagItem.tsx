@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
 import type { FileTag } from "@/lib/api/tags";

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";
 
 export function AppHeader() {

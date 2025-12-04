@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, XIcon } from "lucide-react";
 import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { AiProviderList } from "@/components/ai/AiProviderList";
 import { AiProviderFormDialog } from "@/components/ai/AiProviderFormDialog";
 import { AiModelList } from "@/components/ai/AiModelList";

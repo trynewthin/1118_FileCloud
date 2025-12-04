@@ -4,7 +4,7 @@ import { GlassButton } from "@/components/common/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 interface AiModelListProps {
   models: AiChatModel[];

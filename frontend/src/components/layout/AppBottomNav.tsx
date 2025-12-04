@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/configs/nav";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 
 export function AppBottomNav() {
   const location = useLocation();

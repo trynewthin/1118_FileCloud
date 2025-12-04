@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppBottomNav } from "@/components/layout/AppBottomNav";
 import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
-import { DS } from "@/lib/design-system";
+import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";
 import { AmbientGlow } from "@/components/common/AmbientGlow";
 import { useUiCompat } from "@/hooks/useUiCompat";
