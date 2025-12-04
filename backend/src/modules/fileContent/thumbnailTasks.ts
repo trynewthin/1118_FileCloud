@@ -1,12 +1,12 @@
+/**
+ * 缩略图生成任务处理器
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
-// 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
-import { registerTaskHandler } from "../../core/tasks/executor.ts";
+import type { TaskContext } from "../../core/tasks/types.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
-import type { TaskRecord } from "../tasks/service.ts";
-import { updateTaskStatus } from "../tasks/service.ts";
 
 // 缩略图相关任务类型常量（保留用于独立任务，但索引任务会直接调用生成函数）
 export const TASK_TYPE_FILE_GENERATE_THUMBNAIL = "FILE_GENERATE_THUMBNAIL";
@@ -249,7 +249,8 @@ const generateThumbnailWithFfmpeg = async (
 };
 
 // 缩略图生成任务处理
-export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
+export const handleGenerateThumbnailTask = async (ctx: TaskContext): Promise<void> => {
+  const { task, log } = ctx;
   const payload = task.payload as { entryId?: string };
   const entryId = payload.entryId;
 
@@ -275,12 +276,11 @@ export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
     | undefined;
 
   if (!entryRow) {
-    // 找不到条目，视为无需处理
+    log.warn(`文件条目不存在: ${entryId}`);
     return;
   }
 
   if (entryRow.is_directory || entryRow.is_deleted) {
-    // 目录或已删除条目不生成缩略图
     return;
   }
 
@@ -291,7 +291,6 @@ export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   const libraryRoot = getLibraryRoot(entryRow.library_id);
   const thumbnailPath = getThumbnailPath(libraryRoot, entryId, entryRow.extension);
 
-  // 已存在缩略图则跳过
   if (fs.existsSync(thumbnailPath)) {
     return;
   }
@@ -306,6 +305,7 @@ export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 
+  log.info(`生成缩略图: ${entryRow.original_name}`);
   const extLower = entryRow.extension?.toLowerCase() || "";
   
   if (VIDEO_EXTS.has(extLower)) {
@@ -313,28 +313,17 @@ export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   } else if (IMAGE_EXTS.has(extLower)) {
     await generateThumbnailWithFfmpeg(fullPath, thumbnailPath, false);
   } else if (AUDIO_EXTS.has(extLower)) {
-    // 音频文件：尝试提取嵌入封面，失败则跳过（不报错）
     const success = await extractAudioCover(fullPath, thumbnailPath);
     if (!success) {
-      // 没有嵌入封面，跳过
       return;
     }
   } else if (PDF_EXTS.has(extLower)) {
-    // PDF 文件：生成首页预览
     try {
       await generatePdfThumbnail(fullPath, thumbnailPath);
     } catch {
-      // PDF 缩略图生成失败，跳过（可能 ffmpeg 不支持 PDF）
       return;
     }
   }
-
-  updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
-};
-
-// 注册缩略图任务处理器
-export const registerThumbnailTaskHandlers = () => {
-  registerTaskHandler(TASK_TYPE_FILE_GENERATE_THUMBNAIL, handleGenerateThumbnailTask);
 };
 
 // ============================================================================

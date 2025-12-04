@@ -44,6 +44,7 @@ const initDatabase = () => {
       "  is_enabled INTEGER NOT NULL DEFAULT 1,",
       "  is_online_cached INTEGER NOT NULL DEFAULT 1,",
       "  last_scanned_at TEXT,",
+      "  last_online_check_at TEXT,",              // 最后在线检查时间
       "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
       "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       ")",
@@ -53,10 +54,13 @@ const initDatabase = () => {
       "  parent_task_id INTEGER,",
       "  type TEXT NOT NULL,",
       "  payload TEXT NOT NULL,",
-      "  status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','SUCCESS','FAILED')),",
+      "  status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','SUCCESS','FAILED','CANCELLED')),",
+      "  priority INTEGER NOT NULL DEFAULT 1,",
       "  progress INTEGER NOT NULL DEFAULT 0,",
       "  detail_progress TEXT,",
       "  error_message TEXT,",
+      "  retry_count INTEGER NOT NULL DEFAULT 0,",
+      "  max_retries INTEGER NOT NULL DEFAULT 3,",
       "  created_by_user_id INTEGER,",
       "  started_at TEXT,",
       "  finished_at TEXT,",
@@ -64,7 +68,7 @@ const initDatabase = () => {
       "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       ")",
       ";",
-      "CREATE INDEX IF NOT EXISTS idx_tasks_status_created_at ON tasks(status, created_at DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_tasks_status_priority ON tasks(status, priority DESC, created_at ASC)",
       ";",
       "CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)",
       ";",
@@ -87,6 +91,8 @@ const initDatabase = () => {
       "CREATE INDEX IF NOT EXISTS idx_file_entries_library_parent ON file_entries(library_id, parent_id, is_deleted)",
       ";",
       "CREATE INDEX IF NOT EXISTS idx_file_entries_library_name ON file_entries(library_id, is_deleted, original_name)",
+      ";",
+      "CREATE INDEX IF NOT EXISTS idx_file_entries_library_suffix ON file_entries(library_id, index_suffix)",
       ";",
       "CREATE TABLE IF NOT EXISTS file_entry_security (",
       "  entry_id TEXT PRIMARY KEY,",
@@ -222,6 +228,7 @@ const initDatabase = () => {
       // 标签定义表
       "CREATE TABLE IF NOT EXISTS file_tags (",
       "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+      "  user_id INTEGER,",                       // 所属用户 ID（支持用户级标签）
       "  name TEXT NOT NULL,",                    // 标签名称
       "  parent_tag_id INTEGER,",                 // 父标签 ID（支持嵌套，最多3层）
       "  level INTEGER NOT NULL DEFAULT 1,",      // 层级（1-3）
@@ -234,7 +241,9 @@ const initDatabase = () => {
       ";",
       "CREATE INDEX IF NOT EXISTS idx_file_tags_parent ON file_tags(parent_tag_id)",
       ";",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_tags_level_parent_name ON file_tags(level, parent_tag_id, name)",
+      "CREATE INDEX IF NOT EXISTS idx_file_tags_user ON file_tags(user_id)",
+      ";",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_tags_user_level_parent_name ON file_tags(user_id, level, parent_tag_id, name)",
       ";",
       // 文件-标签关联表
       "CREATE TABLE IF NOT EXISTS file_tag_entries (",
@@ -305,93 +314,7 @@ const initDatabase = () => {
     ].join("\n"),
   );
 
-  // 数据库迁移：为现有表添加新列
-  runMigrations();
-};
-
-// 数据库迁移函数
-const runMigrations = () => {
-  // 检查 tasks 表是否有 parent_task_id 列，如果没有则添加
-  const tasksColumns = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
-  const tasksColumnNames = new Set(tasksColumns.map((c) => c.name));
-
-  if (!tasksColumnNames.has("parent_task_id")) {
-    db.exec("ALTER TABLE tasks ADD COLUMN parent_task_id INTEGER");
-    console.log("[DB Migration] Added parent_task_id column to tasks table");
-  }
-
-  if (!tasksColumnNames.has("detail_progress")) {
-    db.exec("ALTER TABLE tasks ADD COLUMN detail_progress TEXT");
-    console.log("[DB Migration] Added detail_progress column to tasks table");
-  }
-
-  // 创建 parent_task_id 索引（如果不存在）
-  try {
-    db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)");
-  } catch {
-    // 索引可能已存在，忽略错误
-  }
-
-  // 检查 file_entries 表是否有 index_suffix 列，如果没有则添加
-  const fileEntriesColumns = db.prepare("PRAGMA table_info(file_entries)").all() as { name: string }[];
-  const fileEntriesColumnNames = new Set(fileEntriesColumns.map((c) => c.name));
-
-  if (!fileEntriesColumnNames.has("index_suffix")) {
-    db.exec("ALTER TABLE file_entries ADD COLUMN index_suffix TEXT");
-    console.log("[DB Migration] Added index_suffix column to file_entries table");
-  }
-
-  // 创建 index_suffix 索引（用于按后缀快速查找）
-  try {
-    db.exec("CREATE INDEX IF NOT EXISTS idx_file_entries_library_suffix ON file_entries(library_id, index_suffix)");
-  } catch {
-    // 索引可能已存在，忽略错误
-  }
-
-  // 检查 file_tags 表是否有 sort_order 列，如果没有则添加
-  const fileTagsColumns = db.prepare("PRAGMA table_info(file_tags)").all() as { name: string }[];
-  const fileTagsColumnNames = new Set(fileTagsColumns.map((c) => c.name));
-
-  if (!fileTagsColumnNames.has("sort_order")) {
-    db.exec("ALTER TABLE file_tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
-    console.log("[DB Migration] Added sort_order column to file_tags table");
-  }
-
-  // 检查 file_libraries 表是否有 last_online_check_at 列，如果没有则添加
-  const fileLibrariesColumns = db.prepare("PRAGMA table_info(file_libraries)").all() as { name: string }[];
-  const fileLibrariesColumnNames = new Set(fileLibrariesColumns.map((c) => c.name));
-
-  if (!fileLibrariesColumnNames.has("last_online_check_at")) {
-    db.exec("ALTER TABLE file_libraries ADD COLUMN last_online_check_at TEXT");
-    console.log("[DB Migration] Added last_online_check_at column to file_libraries table");
-  }
-
-  // 检查 file_tags 表是否有 user_id 列，如果没有则添加（全局标签系统迁移）
-  const fileTagsColumnsForUserId = db.prepare("PRAGMA table_info(file_tags)").all() as { name: string }[];
-  const fileTagsColumnNamesForUserId = new Set(fileTagsColumnsForUserId.map((c) => c.name));
-
-  if (!fileTagsColumnNamesForUserId.has("user_id")) {
-    db.exec("ALTER TABLE file_tags ADD COLUMN user_id INTEGER");
-    console.log("[DB Migration] Added user_id column to file_tags table");
-    
-    // 创建用户标签索引
-    try {
-      db.exec("CREATE INDEX IF NOT EXISTS idx_file_tags_user ON file_tags(user_id)");
-      console.log("[DB Migration] Created idx_file_tags_user index");
-    } catch {
-      // 索引可能已存在
-    }
-    
-    // 更新唯一索引：同一用户下同级同名标签唯一
-    // 注意：SQLite 不支持直接修改索引，需要删除后重建
-    try {
-      db.exec("DROP INDEX IF EXISTS idx_file_tags_level_parent_name");
-      db.exec("CREATE UNIQUE INDEX idx_file_tags_user_level_parent_name ON file_tags(user_id, level, parent_tag_id, name)");
-      console.log("[DB Migration] Recreated unique index for user-scoped tags");
-    } catch (err) {
-      console.error("[DB Migration] Failed to recreate unique index:", err);
-    }
-  }
+  // 数据库已重置，无需迁移
 };
 
 export { db, initDatabase };

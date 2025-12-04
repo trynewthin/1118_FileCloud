@@ -79,13 +79,14 @@ export function TaskItem({ task, onDeleted }: TaskItemProps) {
             {task.status === "RUNNING" && <span>{task.progress}%</span>}
           </div>
 
-          {/* 详细进度信息 */}
-          {detailText && (
+          {/* 详细进度信息（仅运行中任务显示） */}
+          {task.status === "RUNNING" && detailText && (
             <p className="text-xs text-muted-foreground/80">
               {detailText}
             </p>
           )}
 
+          {/* 进度条（仅运行中任务显示） */}
           {task.status === "RUNNING" && (
             <div className="mt-2">
               <Progress value={task.progress} className="h-1.5" />

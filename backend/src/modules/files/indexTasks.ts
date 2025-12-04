@@ -2,11 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { db } from "../../core/db/index.ts";
-import { registerTaskHandler } from "../../core/tasks/executor.ts";
-import type { TaskRecord, DetailProgress } from "../tasks/service.ts";
-import { updateTaskStatus, updateTaskDetailProgress, createTask } from "../tasks/service.ts";
-// 注意：已移除 indexSuffix 相关导入，采用非侵入式索引策略
-// 物理文件保持原始名称，不再添加 [xxxxxx] 后缀
+import type { TaskContext } from "../../core/tasks/types.ts";
 import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
 import { cleanupTranscodesForLibrary } from "../fileContent/transcodeService.ts";
@@ -304,7 +300,7 @@ import { generateThumbnailForEntry } from "../fileContent/thumbnailTasks.ts";
 
 const processThumbnailQueue = async (
   queue: Array<{ entryId: string; extension: string }>,
-  taskId: number,
+  ctx: TaskContext,
   onProgress: (current: number, total: number) => void,
 ): Promise<{ success: number; failed: number }> => {
   const total = queue.length;
@@ -312,6 +308,12 @@ const processThumbnailQueue = async (
   let failed = 0;
 
   for (let i = 0; i < queue.length; i++) {
+    // 检查是否被取消
+    if (ctx.isCancelled()) {
+      ctx.log.warn("任务已取消，停止生成缩略图");
+      break;
+    }
+
     const item = queue[i];
     if (!item) continue;
     const { entryId } = item;
@@ -319,7 +321,7 @@ const processThumbnailQueue = async (
       await generateThumbnailForEntry(entryId);
       success++;
     } catch (err) {
-      console.error(`生成缩略图失败 [${entryId}]:`, err);
+      ctx.log.error(`生成缩略图失败 [${entryId}]`, err);
       failed++;
     }
 
@@ -336,7 +338,8 @@ const processThumbnailQueue = async (
 // 全库索引任务处理
 // ============================================================================
 
-export const handleIndexLibraryTask = async (task: TaskRecord) => {
+export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> => {
+  const { task, updateProgress, updateDetailProgress, log } = ctx;
   const payload = task.payload as { libraryId?: number; forceReindex?: boolean };
   const libraryId = payload.libraryId;
   const forceReindex = payload.forceReindex === true;
@@ -346,15 +349,11 @@ export const handleIndexLibraryTask = async (task: TaskRecord) => {
   }
 
   const rootPath = getLibraryRoot(libraryId);
+  log.info(`开始索引文件库 #${libraryId}, 路径: ${rootPath}, 强制重建: ${forceReindex}`);
 
   // 强制索引模式：先标记所有现有索引为已删除，并清理转码文件
   if (forceReindex) {
-    updateTaskStatus({
-      id: task.id,
-      status: "RUNNING",
-      progress: 0,
-      detailProgress: { current: 0, total: 0, label: "清理旧索引..." },
-    });
+    updateDetailProgress(0, 0, "清理旧索引...");
 
     const now = new Date().toISOString();
     db.prepare(
@@ -366,12 +365,7 @@ export const handleIndexLibraryTask = async (task: TaskRecord) => {
   }
 
   // 阶段 1：扫描文件系统
-  updateTaskStatus({
-    id: task.id,
-    status: "RUNNING",
-    progress: forceReindex ? 5 : 0,
-    detailProgress: { current: 0, total: 0, label: "扫描文件系统" },
-  });
+  updateProgress(forceReindex ? 5 : 0, "扫描文件系统");
 
   const result: ScanResult = {
     totalFiles: 0,
@@ -382,91 +376,46 @@ export const handleIndexLibraryTask = async (task: TaskRecord) => {
   };
 
   scanDirectory(libraryId, rootPath, rootPath, null, result, (current, label) => {
-    updateTaskDetailProgress(task.id, { current, total: 0, label });
+    updateDetailProgress(current, 0, label);
   });
 
-  // 扫描完成，更新进度
-  const scanProgress: DetailProgress = {
-    current: result.totalFiles,
-    total: result.totalFiles,
-    label: `扫描完成: ${result.totalFiles} 文件, ${result.totalDirs} 目录, ${result.newFiles} 新增, ${result.deletedEntries} 删除`,
-  };
-  updateTaskStatus({
-    id: task.id,
-    status: "RUNNING",
-    progress: result.thumbnailQueue.length > 0 ? 30 : 90,
-    detailProgress: scanProgress,
-  });
+  // 扫描完成
+  log.info(`扫描完成: ${result.totalFiles} 文件, ${result.totalDirs} 目录, ${result.newFiles} 新增`);
+  updateProgress(
+    result.thumbnailQueue.length > 0 ? 30 : 90,
+    `扫描完成: ${result.totalFiles} 文件, ${result.newFiles} 新增`
+  );
 
   // 阶段 2：生成缩略图（如果有需要）
   if (result.thumbnailQueue.length > 0) {
-    updateTaskStatus({
-      id: task.id,
-      status: "RUNNING",
-      progress: 30,
-      detailProgress: {
-        current: 0,
-        total: result.thumbnailQueue.length,
-        label: "生成缩略图",
-      },
-    });
+    updateDetailProgress(0, result.thumbnailQueue.length, "生成缩略图");
 
     const thumbResult = await processThumbnailQueue(
       result.thumbnailQueue,
-      task.id,
+      ctx,
       (current, total) => {
         const overallProgress = 30 + Math.round((current / total) * 60);
-        updateTaskStatus({
-          id: task.id,
-          status: "RUNNING",
-          progress: overallProgress,
-          detailProgress: { current, total, label: "生成缩略图" },
-        });
+        updateProgress(overallProgress, "生成缩略图");
+        updateDetailProgress(current, total, "生成缩略图");
       },
     );
 
-    // 最终进度
-    updateTaskStatus({
-      id: task.id,
-      status: "RUNNING",
-      progress: 85,
-      detailProgress: {
-        current: result.thumbnailQueue.length,
-        total: result.thumbnailQueue.length,
-        label: `缩略图: ${thumbResult.success} 成功, ${thumbResult.failed} 失败`,
-      },
-    });
+    log.info(`缩略图生成完成: ${thumbResult.success} 成功, ${thumbResult.failed} 失败`);
+    updateProgress(85, `缩略图: ${thumbResult.success} 成功, ${thumbResult.failed} 失败`);
   }
 
   // 阶段 3：重建 FTS5 全文搜索索引
-  updateTaskStatus({
-    id: task.id,
-    status: "RUNNING",
-    progress: result.thumbnailQueue.length > 0 ? 85 : 90,
-    detailProgress: { current: 0, total: 0, label: "重建搜索索引..." },
-  });
+  updateProgress(result.thumbnailQueue.length > 0 ? 85 : 90, "重建搜索索引...");
 
   const ftsIndexed = rebuildFtsIndexForLibrary(libraryId, (current, total) => {
     const baseProgress = result.thumbnailQueue.length > 0 ? 85 : 90;
     const ftsProgress = Math.round((current / total) * 10);
-    updateTaskStatus({
-      id: task.id,
-      status: "RUNNING",
-      progress: baseProgress + ftsProgress,
-      detailProgress: { current, total, label: "重建搜索索引" },
-    });
+    updateProgress(baseProgress + ftsProgress, "重建搜索索引");
+    updateDetailProgress(current, total, "重建搜索索引");
   });
 
-  updateTaskStatus({
-    id: task.id,
-    status: "RUNNING",
-    progress: 98,
-    detailProgress: {
-      current: ftsIndexed,
-      total: ftsIndexed,
-      label: `搜索索引: ${ftsIndexed} 条`,
-    },
-  });
+  log.info(`搜索索引重建完成: ${ftsIndexed} 条`);
+  updateProgress(98, `搜索索引: ${ftsIndexed} 条`);
 
   // 更新文件库的最后扫描时间
   const now = new Date().toISOString();
@@ -477,7 +426,8 @@ export const handleIndexLibraryTask = async (task: TaskRecord) => {
 // 单路径索引任务处理
 // ============================================================================
 
-export const handleIndexSingleTask = async (task: TaskRecord) => {
+export const handleIndexSingleTask = async (ctx: TaskContext): Promise<void> => {
+  const { task, updateProgress, log } = ctx;
   const payload = task.payload as { libraryId?: number; relativePath?: string };
   const libraryId = payload.libraryId;
   const relativePath = payload.relativePath;
@@ -501,6 +451,8 @@ export const handleIndexSingleTask = async (task: TaskRecord) => {
   if (!fs.existsSync(targetPath)) {
     throw new Error("目标路径不存在");
   }
+
+  log.info(`开始索引路径: ${relativePath}`);
 
   const stat = fs.statSync(targetPath);
   const result: ScanResult = {
@@ -544,28 +496,11 @@ export const handleIndexSingleTask = async (task: TaskRecord) => {
 
   // 处理缩略图
   if (result.thumbnailQueue.length > 0) {
-    await processThumbnailQueue(result.thumbnailQueue, task.id, () => {});
+    await processThumbnailQueue(result.thumbnailQueue, ctx, () => {});
   }
 
-  updateTaskStatus({
-    id: task.id,
-    status: "RUNNING",
-    progress: 90,
-    detailProgress: {
-      current: result.totalFiles,
-      total: result.totalFiles,
-      label: `索引完成: ${result.totalFiles} 文件`,
-    },
-  });
-};
-
-// ============================================================================
-// 注册任务处理器
-// ============================================================================
-
-export const registerFileIndexTaskHandlers = () => {
-  registerTaskHandler(TASK_TYPE_FILE_INDEX_LIBRARY, handleIndexLibraryTask);
-  registerTaskHandler(TASK_TYPE_FILE_INDEX_SINGLE, handleIndexSingleTask);
+  log.info(`索引完成: ${result.totalFiles} 文件`);
+  updateProgress(90, `索引完成: ${result.totalFiles} 文件`);
 };
 
 // 导出缩略图后缀常量供其他模块使用

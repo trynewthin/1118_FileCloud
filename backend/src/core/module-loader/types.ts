@@ -3,7 +3,7 @@
  */
 
 import type { Router } from "express";
-import type { TaskHandler } from "../tasks/executor.ts";
+import type { TaskHandler } from "../tasks/types.ts";
 
 // ============================================================================
 // 模块定义接口

@@ -14,10 +14,11 @@ import { app } from "./app.ts";
 import { initDatabase } from "./core/db/index.ts";
 import { createLogger, setProductionMode } from "./core/logger/index.ts";
 import { registerModules, bootstrapModules } from "./core/module-loader/index.ts";
-import { startTaskWorker } from "./core/tasks/executor.ts";
+import { injectTaskService, startExecutor, configureExecutor } from "./core/tasks/executor.ts";
 import { startLibraryWatcher } from "./core/services/index.ts";
 import { allModules } from "./modules/index.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
+import * as taskService from "./modules/tasks/service.ts";
 
 const logger = createLogger("Server");
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -38,11 +39,17 @@ const bootstrap = async () => {
   await bootstrapModules(app);
   logger.info("模块加载完成");
 
-  // 4. 启动任务 Worker
+  // 4. 启动任务执行器
   const workerConfig = getTaskWorkerConfig();
-  logger.debug(`任务 Worker 配置: intervalMs=${workerConfig.intervalMs}, batchSize=${workerConfig.batchSize}`);
-  startTaskWorker(workerConfig);
-  logger.info("任务 Worker 已启动");
+  logger.debug(`任务执行器配置: intervalMs=${workerConfig.intervalMs}, batchSize=${workerConfig.batchSize}`);
+  
+  // 注入任务服务并配置执行器
+  injectTaskService(taskService);
+  configureExecutor({
+    pollIntervalMs: workerConfig.intervalMs,
+  });
+  startExecutor();
+  logger.info("任务执行器已启动");
 
   // 5. 启动文件库监控服务
   startLibraryWatcher();
