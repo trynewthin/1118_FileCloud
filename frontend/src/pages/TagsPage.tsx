@@ -204,7 +204,6 @@ export const TagsPage = () => {
             onClick={handleGoRoot}
           >
             <Home className="h-4 w-4" />
-            <span>全部标签</span>
           </button>
           {breadcrumbPath.map((tag) => (
             <div key={tag.id} className="flex items-center gap-1 shrink-0">

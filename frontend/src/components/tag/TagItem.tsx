@@ -21,7 +21,7 @@ export const TagItem = ({
   onDelete,
   onAddChild,
 }: TagItemProps) => {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const hasChildren = tag.children && tag.children.length > 0;
   const canAddChild = tag.level < 3;
 

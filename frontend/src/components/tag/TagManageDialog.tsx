@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { GlassButton } from "@/components/common/GlassButton";
 import { useTagList } from "@/hooks/useTags";
 import { TagItem } from "./TagItem";
 import { TagEditDialog } from "./TagEditDialog";
@@ -97,16 +96,6 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
         <DialogContent
           className="sm:max-w-[480px] h-[560px] flex flex-col"
           showCloseButton={false}
-          rightButton={
-            <GlassButton
-              glassVariant="ghost"
-              size="icon"
-              onClick={handleAddRoot}
-              title="新建标签"
-            >
-              <Plus className="h-4 w-4" />
-            </GlassButton>
-          }
         >
           <DialogHeader>
             <DialogTitle>标签管理</DialogTitle>
@@ -131,7 +120,7 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
                   <Tag className="h-8 w-8" />
                   <p>暂无标签</p>
-                  <p className="text-xs">点击右上角 + 创建标签</p>
+                  <p className="text-xs">点击右下角 + 创建标签</p>
                 </div>
               )}
 
@@ -155,6 +144,9 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
             leftButtonIcon={<X className="h-4 w-4" />}
             onLeftButtonClick={() => onOpenChange(false)}
             leftButtonGlassVariant="lite"
+            rightButtonIcon={<Plus className="h-4 w-4" />}
+            onRightButtonClick={handleAddRoot}
+            rightButtonGlassVariant="lite"
           />
         </DialogContent>
       </Dialog>
