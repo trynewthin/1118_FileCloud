@@ -249,7 +249,7 @@ const generateThumbnailWithFfmpeg = async (
 };
 
 // 缩略图生成任务处理
-const handleGenerateThumbnailTask = async (task: TaskRecord) => {
+export const handleGenerateThumbnailTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string };
   const entryId = payload.entryId;
 

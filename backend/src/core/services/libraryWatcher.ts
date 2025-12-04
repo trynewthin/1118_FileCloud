@@ -4,6 +4,9 @@
  */
 import fs from "node:fs";
 import { db } from "../db/index.ts";
+import { createLogger } from "../logger/index.ts";
+
+const logger = createLogger("LibraryWatcher");
 
 // 库状态信息
 export interface LibraryStatus {
@@ -103,12 +106,12 @@ const performCheck = (): void => {
         try {
           listener(lib.id, isOnline, lib.display_name);
         } catch (err) {
-          console.error("[LibraryWatcher] 监听器执行错误:", err);
+          logger.error("监听器执行错误", err);
         }
       }
 
-      console.log(
-        `[LibraryWatcher] 文件库 "${lib.display_name}" (ID: ${lib.id}) 状态变化: ${wasOnline ? "在线" : "离线"} -> ${isOnline ? "在线" : "离线"}`
+      logger.info(
+        `文件库 "${lib.display_name}" (ID: ${lib.id}) 状态变化: ${wasOnline ? "在线" : "离线"} -> ${isOnline ? "在线" : "离线"}`
       );
     } else if (wasOnline === undefined) {
       // 首次检测，同步数据库状态
@@ -124,11 +127,11 @@ const performCheck = (): void => {
  */
 export const startLibraryWatcher = (intervalMs: number = DEFAULT_CHECK_INTERVAL): void => {
   if (watcherTimer) {
-    console.log("[LibraryWatcher] 服务已在运行");
+    logger.warn("服务已在运行");
     return;
   }
 
-  console.log(`[LibraryWatcher] 启动文件库监控服务，检测间隔: ${intervalMs}ms`);
+  logger.info(`启动文件库监控服务，检测间隔: ${intervalMs}ms`);
 
   // 立即执行一次检测
   performCheck();
@@ -144,7 +147,7 @@ export const stopLibraryWatcher = (): void => {
   if (watcherTimer) {
     clearInterval(watcherTimer);
     watcherTimer = null;
-    console.log("[LibraryWatcher] 文件库监控服务已停止");
+    logger.info("文件库监控服务已停止");
   }
 };
 

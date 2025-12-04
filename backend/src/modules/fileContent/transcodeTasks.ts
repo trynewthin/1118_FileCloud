@@ -28,7 +28,7 @@ interface TranscodePayload {
 // 任务处理器
 // ============================================================================
 
-const handleVideoTranscode = async (task: TaskRecord): Promise<void> => {
+export const handleVideoTranscode = async (task: TaskRecord): Promise<void> => {
   const payload = task.payload as TranscodePayload;
   const { entryId } = payload;
 
@@ -75,5 +75,4 @@ const handleVideoTranscode = async (task: TaskRecord): Promise<void> => {
 
 export const registerTranscodeTaskHandlers = (): void => {
   registerTaskHandler(TASK_TYPE_VIDEO_TRANSCODE, handleVideoTranscode);
-  console.log("[TranscodeTasks] 视频转码任务处理器已注册");
 };

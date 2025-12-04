@@ -18,7 +18,7 @@ export const TASK_TYPE_FILE_RENAME_ENTRY = "FILE_RENAME_ENTRY";
 export const TASK_TYPE_FILE_MOVE_ENTRY = "FILE_MOVE_ENTRY";
 export const TASK_TYPE_FILE_COPY_ENTRY = "FILE_COPY_ENTRY";
 
-const handleDeleteEntryTask = async (task: TaskRecord) => {
+export const handleDeleteEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string };
   const entryId = payload.entryId;
 
@@ -31,7 +31,7 @@ const handleDeleteEntryTask = async (task: TaskRecord) => {
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
 
-const handleRestoreEntryTask = async (task: TaskRecord) => {
+export const handleRestoreEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string };
   const entryId = payload.entryId;
 
@@ -44,7 +44,7 @@ const handleRestoreEntryTask = async (task: TaskRecord) => {
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
 
-const handleDestroyEntryTask = async (task: TaskRecord) => {
+export const handleDestroyEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string };
   const entryId = payload.entryId;
 
@@ -59,7 +59,7 @@ const handleDestroyEntryTask = async (task: TaskRecord) => {
 
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
-const handleRenameEntryTask = async (task: TaskRecord) => {
+export const handleRenameEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string; newName?: string };
   const { entryId, newName } = payload;
 
@@ -76,7 +76,7 @@ const handleRenameEntryTask = async (task: TaskRecord) => {
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
 
-const handleMoveEntryTask = async (task: TaskRecord) => {
+export const handleMoveEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as { entryId?: string; targetParentId?: string | null };
   const { entryId, targetParentId } = payload;
 
@@ -89,7 +89,7 @@ const handleMoveEntryTask = async (task: TaskRecord) => {
   updateTaskStatus({ id: task.id, status: "RUNNING", progress: 90 });
 };
 
-const handleCopyEntryTask = async (task: TaskRecord) => {
+export const handleCopyEntryTask = async (task: TaskRecord) => {
   const payload = task.payload as {
     entryId?: string;
     targetParentId?: string | null;

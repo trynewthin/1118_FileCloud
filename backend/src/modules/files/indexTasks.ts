@@ -336,7 +336,7 @@ const processThumbnailQueue = async (
 // 全库索引任务处理
 // ============================================================================
 
-const handleIndexLibraryTask = async (task: TaskRecord) => {
+export const handleIndexLibraryTask = async (task: TaskRecord) => {
   const payload = task.payload as { libraryId?: number; forceReindex?: boolean };
   const libraryId = payload.libraryId;
   const forceReindex = payload.forceReindex === true;
@@ -477,7 +477,7 @@ const handleIndexLibraryTask = async (task: TaskRecord) => {
 // 单路径索引任务处理
 // ============================================================================
 
-const handleIndexSingleTask = async (task: TaskRecord) => {
+export const handleIndexSingleTask = async (task: TaskRecord) => {
   const payload = task.payload as { libraryId?: number; relativePath?: string };
   const libraryId = payload.libraryId;
   const relativePath = payload.relativePath;

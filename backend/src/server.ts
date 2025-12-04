@@ -1,32 +1,61 @@
-import { app } from "./app";
+/**
+ * 服务器入口
+ * 
+ * 启动流程：
+ * 1. 初始化数据库
+ * 2. 配置日志系统
+ * 3. 注册所有模块（路由 + 任务处理器）
+ * 4. 启动任务 Worker
+ * 5. 启动文件库监控服务
+ * 6. 启动 HTTP 服务
+ */
+
+import { app } from "./app.ts";
 import { initDatabase } from "./core/db/index.ts";
+import { createLogger, setProductionMode } from "./core/logger/index.ts";
+import { registerModules, bootstrapModules } from "./core/module-loader/index.ts";
 import { startTaskWorker } from "./core/tasks/executor.ts";
 import { startLibraryWatcher } from "./core/services/index.ts";
-import { registerFileIndexTaskHandlers } from "./modules/files/indexTasks.ts";
-import { registerFileOpsTaskHandlers } from "./modules/files/fileOpsTasks.ts";
-import { registerThumbnailTaskHandlers } from "./modules/fileContent/thumbnailTasks.ts";
-import { registerTranscodeTaskHandlers } from "./modules/fileContent/transcodeTasks.ts";
+import { allModules } from "./modules/index.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 
+const logger = createLogger("Server");
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-// 启动服务前初始化数据库表结构
-initDatabase();
+// 主启动函数
+const bootstrap = async () => {
+  // 1. 配置日志系统
+  setProductionMode(IS_PRODUCTION);
+  logger.info(`启动模式: ${IS_PRODUCTION ? "生产" : "开发"}`);
 
-// 注册文件索引、文件操作、缩略图及转码相关任务处理器
-registerFileIndexTaskHandlers();
-registerFileOpsTaskHandlers();
-registerThumbnailTaskHandlers();
-registerTranscodeTaskHandlers();
+  // 2. 初始化数据库
+  initDatabase();
+  logger.info("数据库初始化完成");
 
-// 读取任务 worker 配置并启动 worker
-const workerConfig = getTaskWorkerConfig();
-console.log("Task worker config", workerConfig);
-startTaskWorker(workerConfig);
+  // 3. 注册所有模块
+  registerModules(allModules);
+  await bootstrapModules(app);
+  logger.info("模块加载完成");
 
-// 启动文件库在线状态监控服务
-startLibraryWatcher();
+  // 4. 启动任务 Worker
+  const workerConfig = getTaskWorkerConfig();
+  logger.debug(`任务 Worker 配置: intervalMs=${workerConfig.intervalMs}, batchSize=${workerConfig.batchSize}`);
+  startTaskWorker(workerConfig);
+  logger.info("任务 Worker 已启动");
 
-app.listen(PORT, () => {
-  console.log(`Backend server listening on port ${PORT}`);
+  // 5. 启动文件库监控服务
+  startLibraryWatcher();
+  logger.info("文件库监控服务已启动");
+
+  // 6. 启动 HTTP 服务
+  app.listen(PORT, () => {
+    logger.info(`HTTP 服务已启动，端口: ${PORT}`);
+  });
+};
+
+// 执行启动
+bootstrap().catch((err) => {
+  logger.error("启动失败", err);
+  process.exit(1);
 });

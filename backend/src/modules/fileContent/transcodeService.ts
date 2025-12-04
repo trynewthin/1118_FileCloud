@@ -4,6 +4,9 @@ import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
 import { getEntryById, buildRelativePathForEntry } from "../files/service.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
+import { createLogger } from "../../core/logger/index.ts";
+
+const logger = createLogger("Transcode");
 
 // ============================================================================
 // 配置常量
@@ -132,7 +135,7 @@ export const deleteTranscodeForEntry = (entryId: string): void => {
         }
       }
     } catch (err) {
-      console.error("[Transcode] 删除转码文件失败:", err);
+      logger.error("删除转码文件失败", err);
     }
   }
   db.prepare("DELETE FROM file_transcodes WHERE entry_id = ?").run(entryId);
@@ -161,7 +164,7 @@ export const cleanupTranscodesForLibrary = (libraryId: number): number => {
       }
     }
   } catch (err) {
-    console.error("[Transcode] 清理转码目录失败:", err);
+    logger.error("清理转码目录失败", err);
   }
 
   // 删除数据库记录
@@ -170,7 +173,7 @@ export const cleanupTranscodesForLibrary = (libraryId: number): number => {
     .run(libraryId);
   deletedCount = result.changes;
 
-  console.log(`[Transcode] 清理文件库 ${libraryId} 的转码记录: ${deletedCount} 条`);
+  logger.info(`清理文件库 ${libraryId} 的转码记录: ${deletedCount} 条`);
   return deletedCount;
 };
 
@@ -245,7 +248,7 @@ export const executeTranscode = async (
       tempOutputPath, // 先输出为 .mp4
     ];
 
-    console.log("[Transcode] 启动 FFmpeg:", "ffmpeg", ffmpegArgs.join(" "));
+    logger.debug(`启动 FFmpeg: ffmpeg ${ffmpegArgs.join(" ")}`);
 
     const ffmpeg = spawn("ffmpeg", ffmpegArgs);
 
@@ -285,7 +288,7 @@ export const executeTranscode = async (
     });
 
     ffmpeg.on("error", (err) => {
-      console.error("[Transcode] FFmpeg 启动失败:", err);
+      logger.error("FFmpeg 启动失败", err);
       resolve({ success: false, error: `FFmpeg 启动失败: ${err.message}` });
     });
 
@@ -302,14 +305,13 @@ export const executeTranscode = async (
             outputSize: stat.size,
           });
         } catch (renameErr: any) {
-          console.error("[Transcode] 重命名失败:", renameErr);
+          logger.error("重命名失败", renameErr);
           resolve({ success: false, error: `重命名失败: ${renameErr.message}` });
         }
       } else {
         // 打印最后一部分日志帮助排查
-        console.error("[Transcode] FFmpeg 失败，退出码:", code);
-        console.error("[Transcode] 错误日志 (Last 20 lines):");
-        console.error(stderrLog.split("\n").slice(-20).join("\n"));
+        logger.error(`FFmpeg 失败，退出码: ${code}`);
+        logger.error(`错误日志 (Last 20 lines):\n${stderrLog.split("\n").slice(-20).join("\n")}`);
         
         // 清理可能存在的不完整文件
         if (fs.existsSync(tempOutputPath)) {

@@ -1,5 +1,8 @@
 import { listTasks, updateTaskStatus, type TaskRecord } from "../../modules/tasks/service.ts";
 import type { TaskStatus } from "../../modules/tasks/service.ts";
+import { createLogger } from "../logger/index.ts";
+
+const logger = createLogger("TaskExecutor");
 
 // 任务处理函数类型，每个模块可以按需实现自己的任务处理逻辑
 export type TaskHandler = (task: TaskRecord) => Promise<void> | void;
@@ -10,20 +13,18 @@ const handlers = new Map<string, TaskHandler>();
 // 注册任务处理器，在各业务模块初始化时调用
 export const registerTaskHandler = (type: string, handler: TaskHandler) => {
   handlers.set(type, handler);
-  console.log(`[TaskExecutor] 注册任务处理器: ${type}, 当前已注册: ${Array.from(handlers.keys()).join(", ")}`);
+  logger.debug(`注册任务处理器: ${type}`);
 };
 
 // 执行单个任务（由内部 worker 调用）
 const runSingleTask = async (task: TaskRecord) => {
-  console.log(`[TaskExecutor] 准备执行任务 ${task.id}, 类型: ${task.type}`);
-  console.log(`[TaskExecutor] 当前 handlers: [${Array.from(handlers.keys()).join(", ")}]`);
+  logger.debug(`执行任务 #${task.id}, 类型: ${task.type}`);
   
   const handler = handlers.get(task.type);
 
   // 如果没有对应处理器，直接标记为失败，避免任务一直挂着
   if (!handler) {
-    console.error(`[TaskExecutor] 未找到任务类型 ${task.type} 的处理器`);
-    console.error(`[TaskExecutor] handlers Map size: ${handlers.size}, 已注册: [${Array.from(handlers.keys()).join(", ")}]`);
+    logger.error(`未找到任务类型 ${task.type} 的处理器`);
     updateTaskStatus({
       id: task.id,
       status: "FAILED",
@@ -95,8 +96,7 @@ export const startTaskWorker = (options?: TaskWorkerOptions) => {
         await runSingleTask(task);
       }
     } catch (err) {
-      // 这里仅记录错误，避免 worker 停掉；可接入日志系统
-      console.error("Task worker tick error", err);
+      logger.error("任务轮询出错", err);
     }
   };
 

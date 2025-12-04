@@ -1,22 +1,24 @@
+/**
+ * Express 应用配置
+ * 
+ * 仅负责：
+ * 1. 创建 Express 实例
+ * 2. 配置中间件（JSON 解析、CORS 等）
+ * 3. 健康检查端点
+ * 
+ * 路由挂载由 ModuleLoader 统一处理
+ */
+
 import express from "express";
 import type { Request, Response } from "express";
-import { authRouter } from "./modules/auth/router.ts";
-import { fileLibrariesRouter } from "./modules/fileLibraries/router.ts";
-import { tasksRouter } from "./modules/tasks/router.ts";
-import { filesRouter } from "./modules/files/router.ts";
-import { fileContentRouter } from "./modules/fileContent/router.ts";
-import { activityLogsRouter } from "./modules/activityLogs/router.ts";
-import { settingsRouter } from "./modules/settings/router.ts";
-import { systemRouter } from "./modules/system/router.ts";
-import { aiRouter } from "./modules/ai/router.ts";
-import { tagsRouter } from "./modules/tags/router.ts";
-import { entriesRouter } from "./modules/entries/router.ts";
 
 const app = express();
 
+// JSON 和 URL 编码解析
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// CORS 配置
 app.use((req, res, next) => {
   const origin = req.headers.origin ?? "*";
   res.header("Access-Control-Allow-Origin", origin);
@@ -34,18 +36,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/api/auth", authRouter);
-app.use("/api/file-libraries", fileLibrariesRouter);
-app.use("/api/tasks", tasksRouter);
-app.use("/api/files", filesRouter);
-app.use("/api/file-content", fileContentRouter);
-app.use("/api/activity-logs", activityLogsRouter);
-app.use("/api/settings", settingsRouter);
-app.use("/api/system", systemRouter);
-app.use("/api/ai", aiRouter);
-app.use("/api/tags", tagsRouter);
-app.use("/api/entries", entriesRouter);  // 统一文件访问 API
-
+// 健康检查端点（不通过模块加载器，直接挂载）
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
