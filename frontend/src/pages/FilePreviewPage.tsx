@@ -164,43 +164,47 @@ export function FilePreviewPage() {
   const actionButtons = entry ? (
     <div className="flex items-center gap-2">
       <GlassButton
-        glassVariant="ghost"
+        glassVariant="lite"
         size="icon"
+        className="h-9 w-9 rounded-full"
         onClick={handleDownload}
         title="下载"
       >
         <Download className="h-4 w-4" />
       </GlassButton>
       <GlassButton
-        glassVariant="ghost"
+        glassVariant="lite"
         size="icon"
+        className="h-9 w-9 rounded-full"
         onClick={() => setTagDialogOpen(true)}
         title="标签"
       >
         <Tag className="h-4 w-4" />
       </GlassButton>
       <GlassButton
-        glassVariant="ghost"
+        glassVariant="lite"
         size="icon"
+        className="h-9 w-9 rounded-full"
         onClick={() => setActionDialog({ type: "copy" })}
         title="复制"
       >
         <Copy className="h-4 w-4" />
       </GlassButton>
       <GlassButton
-        glassVariant="ghost"
+        glassVariant="lite"
         size="icon"
+        className="h-9 w-9 rounded-full"
         onClick={() => setActionDialog({ type: "move" })}
         title="移动"
       >
         <Move className="h-4 w-4" />
       </GlassButton>
       <GlassButton
-        glassVariant="ghost"
+        glassVariant="lite"
         size="icon"
         onClick={() => setActionDialog({ type: "delete" })}
         title="删除"
-        className="text-destructive hover:text-destructive"
+        className="h-9 w-9 rounded-full text-destructive hover:text-destructive"
       >
         <Trash2 className="h-4 w-4" />
       </GlassButton>
