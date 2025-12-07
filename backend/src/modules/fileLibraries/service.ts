@@ -219,3 +219,41 @@ export const refreshFileLibraryStatus = (id: number): FileLibrary | null => {
 
   return getFileLibraryById(id);
 };
+
+// 文件库统计信息
+export interface FileLibraryStats {
+  libraryId: number;
+  totalFiles: number;      // 文件总数
+  totalFolders: number;    // 文件夹总数
+  totalSizeBytes: number;  // 索引中记录的总大小
+  diskSizeBytes: number;   // 磁盘实际大小
+}
+
+// 获取文件库统计信息
+export const getFileLibraryStats = (id: number): FileLibraryStats | null => {
+  const library = getFileLibraryById(id);
+  if (!library) return null;
+
+  // 从索引中统计文件和文件夹数量
+  const countResult = db.prepare(`
+    SELECT 
+      SUM(CASE WHEN is_directory = 0 AND is_deleted = 0 THEN 1 ELSE 0 END) as file_count,
+      SUM(CASE WHEN is_directory = 1 AND is_deleted = 0 THEN 1 ELSE 0 END) as folder_count,
+      SUM(CASE WHEN is_deleted = 0 THEN size_bytes ELSE 0 END) as total_size
+    FROM file_entries 
+    WHERE library_id = ?
+  `).get(id) as { file_count: number; folder_count: number; total_size: number } | undefined;
+
+  // 计算磁盘实际大小
+  const diskSize = fs.existsSync(library.root_path) 
+    ? calculateDirectorySize(library.root_path) 
+    : 0;
+
+  return {
+    libraryId: id,
+    totalFiles: countResult?.file_count ?? 0,
+    totalFolders: countResult?.folder_count ?? 0,
+    totalSizeBytes: countResult?.total_size ?? 0,
+    diskSizeBytes: diskSize,
+  };
+};

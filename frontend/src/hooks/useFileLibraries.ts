@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
-import type { FileLibrary } from "@/lib/api/fileLibraries";
+import type { FileLibrary, FileLibraryStats } from "@/lib/api/fileLibraries";
 import {
   createFileLibrary,
   deleteFileLibrary,
   listFileLibraries,
   refreshFileLibrary,
   updateFileLibrary,
+  getFileLibraryStats,
 } from "@/lib/api/fileLibraries";
+import { indexLibrary } from "@/lib/api/files";
 
 interface FileLibrariesState {
   items: FileLibrary[];
@@ -102,6 +104,24 @@ export const useFileLibraries = (options?: UseFileLibrariesOptions) => {
     [load],
   );
 
+  // 获取文件库统计信息
+  const getStats = useCallback(
+    async (id: number): Promise<FileLibraryStats> => {
+      const res = await getFileLibraryStats(id);
+      return res.stats;
+    },
+    [],
+  );
+
+  // 重建文件库索引
+  const reindex = useCallback(
+    async (id: number, forceReindex = true) => {
+      await indexLibrary(id, { forceReindex });
+      toast.success("索引任务已创建，请在任务中心查看进度");
+    },
+    [],
+  );
+
   return {
     ...state,
     reload: load,
@@ -109,5 +129,7 @@ export const useFileLibraries = (options?: UseFileLibrariesOptions) => {
     update,
     remove,
     refresh,
+    getStats,
+    reindex,
   };
 };

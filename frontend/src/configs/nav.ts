@@ -1,29 +1,22 @@
 import {
   FolderOpen,
   Settings,
-  HardDrive,
   Sparkles,
   Tag,
 } from "lucide-react";
 
 export const navItems = [
   {
-    title: "文件库",
-    href: "/libraries",
-    icon: HardDrive,
-    match: /^\/libraries/,
+    title: "文件",
+    href: "/files",
+    icon: FolderOpen,
+    match: /^\/(files|preview)/,
   },
   {
     title: "标签",
     href: "/tags",
     icon: Tag,
     match: /^\/tags/,
-  },
-  {
-    title: "浏览",
-    href: "/files",
-    icon: FolderOpen,
-    match: /^\/(files|preview)/,
   },
   {
     title: "AI 助手",

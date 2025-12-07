@@ -28,6 +28,11 @@ import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialo
 
 interface NewLibraryDialogProps {
   onSuccess?: () => void;
+  // 受控模式：外部控制对话框开关
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // 是否显示触发按钮（默认显示）
+  showTrigger?: boolean;
 }
 
 /**
@@ -39,8 +44,22 @@ const isDriveRoot = (path: string): boolean => {
   return /^[A-Za-z]:\\?$/.test(path.trim());
 };
 
-export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
-  const [open, setOpen] = useState(false);
+export function NewLibraryDialog({ 
+  onSuccess, 
+  open: controlledOpen, 
+  onOpenChange: controlledOnOpenChange,
+  showTrigger = true,
+}: NewLibraryDialogProps) {
+  // 内部状态（非受控模式）
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // 判断是否为受控模式
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled 
+    ? (value: boolean) => controlledOnOpenChange?.(value)
+    : setInternalOpen;
+
   const [rootPath, setRootPath] = useState("");
   const [displayName, setDisplayName] = useState("");
   const { create, loading } = useFileLibraries({ autoRefresh: false });
@@ -74,12 +93,14 @@ export function NewLibraryDialog({ onSuccess }: NewLibraryDialogProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <GlassButton className="gap-2" glassVariant="lite">
-            <Plus className="h-4 w-4" />
-            新建文件库
-          </GlassButton>
-        </DialogTrigger>
+        {showTrigger && (
+          <DialogTrigger asChild>
+            <GlassButton className="gap-2" glassVariant="lite">
+              <Plus className="h-4 w-4" />
+              新建文件库
+            </GlassButton>
+          </DialogTrigger>
+        )}
         <DialogContent className="sm:max-w-[450px]" showCloseButton={false}>
           <form onSubmit={(e) => handleSubmit(e)}>
             <DialogHeader>

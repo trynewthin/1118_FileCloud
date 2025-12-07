@@ -8,6 +8,7 @@ import {
   deleteFileLibrary,
   refreshFileLibraryStatus,
   getFileLibraryById,
+  getFileLibraryStats,
 } from "./service.ts";
 
 const router = express.Router();
@@ -148,6 +149,26 @@ router.post(
     }
 
     return res.json({ library: lib });
+  },
+);
+
+// 获取指定文件库的统计信息（文件数量、大小等）
+router.get(
+  "/:id/stats",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "文件库 ID 不合法" });
+    }
+
+    const stats = getFileLibraryStats(id);
+    if (!stats) {
+      return res.status(404).json({ message: "文件库不存在" });
+    }
+
+    return res.json({ stats });
   },
 );
 

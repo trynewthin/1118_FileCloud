@@ -7,7 +7,6 @@ import { RootLayout } from "@/pages/RootLayout";
 
 import { InitPage } from "@/pages/InitPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { FileLibrariesPage } from "@/pages/FileLibrariesPage";
 import { FileBrowserPage } from "@/pages/FileBrowserPage";
 import { TasksPage } from "@/pages/TasksPage";
 import { ActivityLogsPage } from "@/pages/ActivityLogsPage";
@@ -87,7 +86,6 @@ function InitGate() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route path="/" element={<Navigate to="/files" replace />} />
-        <Route path="/libraries" element={<FileLibrariesPage />} />
         <Route path="/tags" element={<TagsPage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
         <Route path="/preview/:id" element={<FilePreviewPage />} />

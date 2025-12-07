@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2, CloudOff } from "lucide-react";
+import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2, CloudOff, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
@@ -24,6 +24,8 @@ interface FileListItemProps {
   onBatchSelect?: (entry: FileEntry, selected: boolean) => void;
   // 融合访问：库离线状态
   libraryOffline?: boolean;
+  // 文件库操作回调（仅当 entry._isLibraryEntry 为 true 时使用）
+  onLibraryAction?: (action: "config" | "delete" | "reindex", libraryId: number) => void;
 }
 
 const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
@@ -38,10 +40,12 @@ export function FileListItem({
   batchSelected = false,
   onBatchSelect,
   libraryOffline = false,
+  onLibraryAction,
 }: FileListItemProps) {
   const isDir = entry.is_directory;
+  const isLibrary = entry._isLibraryEntry === true;
   const ext = entry.extension?.toLowerCase() || "";
-  const hasThumbnail = !isDir && THUMBNAIL_EXTS.has(ext);
+  const hasThumbnail = !isDir && !isLibrary && THUMBNAIL_EXTS.has(ext);
   const [thumbnailError, setThumbnailError] = useState(false);
 
   const token =
@@ -109,7 +113,9 @@ export function FileListItem({
             />
           ) : (
             <div className="flex items-center justify-center text-primary">
-              {isDir ? (
+              {isLibrary ? (
+                <HardDrive className="h-8 w-8" />
+              ) : isDir ? (
                 <Folder className="h-8 w-8" />
               ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
                 <ImageIcon className="h-8 w-8" />
@@ -127,13 +133,14 @@ export function FileListItem({
             {entry.original_name}
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{isDir ? "文件夹" : formatSize(entry.size_bytes)}</span>
+            <span>{isLibrary ? "文件库" : isDir ? "文件夹" : formatSize(entry.size_bytes)}</span>
             <span>•</span>
             <span>{new Date(entry.updated_at).toLocaleString()}</span>
           </div>
         </div>
       </div>
 
+      {/* 操作菜单 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <GlassButton
@@ -146,42 +153,66 @@ export function FileListItem({
           </GlassButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {!isDir && (
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction?.("download", entry);
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              下载
-            </DropdownMenuItem>
+          {isLibrary ? (
+            // 文件库操作菜单
+            <>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onLibraryAction?.("config", entry.library_id); }}>
+                <Pencil className="h-4 w-4 mr-2" />
+                配置
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onLibraryAction?.("reindex", entry.library_id); }}>
+                <Tag className="h-4 w-4 mr-2" />
+                重建索引
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={(e) => { e.stopPropagation(); onLibraryAction?.("delete", entry.library_id); }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除
+              </DropdownMenuItem>
+            </>
+          ) : (
+            // 普通文件/文件夹操作菜单
+            <>
+              {!isDir && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAction?.("download", entry);
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  下载
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
+                <Pencil className="h-4 w-4 mr-2" />
+                重命名
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("move", entry); }}>
+                <Move className="h-4 w-4 mr-2" />
+                移动
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
+                <Copy className="h-4 w-4 mr-2" />
+                复制
+              </DropdownMenuItem>
+              {!isDir && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("tag", entry); }}>
+                  <Tag className="h-4 w-4 mr-2" />
+                  标签
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                className="text-red-600"
+                onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除
+              </DropdownMenuItem>
+            </>
           )}
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("rename", entry); }}>
-            <Pencil className="h-4 w-4 mr-2" />
-            重命名
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("move", entry); }}>
-            <Move className="h-4 w-4 mr-2" />
-            移动
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("copy", entry); }}>
-            <Copy className="h-4 w-4 mr-2" />
-            复制
-          </DropdownMenuItem>
-          {!isDir && (
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction?.("tag", entry); }}>
-              <Tag className="h-4 w-4 mr-2" />
-              标签
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem 
-            className="text-red-600"
-            onClick={(e) => { e.stopPropagation(); onAction?.("delete", entry); }}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            删除
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </GlassCard>

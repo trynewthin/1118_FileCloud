@@ -54,3 +54,16 @@ export const deleteFileLibrary = async (id: number): Promise<void> => {
 export const refreshFileLibrary = async (id: number): Promise<{ library: FileLibrary }> => {
   return apiClient.post<{ library: FileLibrary }>(`/file-libraries/${id}/refresh`);
 };
+
+// 文件库统计信息
+export interface FileLibraryStats {
+  libraryId: number;
+  totalFiles: number;      // 文件总数
+  totalFolders: number;    // 文件夹总数
+  totalSizeBytes: number;  // 索引中记录的总大小
+  diskSizeBytes: number;   // 磁盘实际大小
+}
+
+export const getFileLibraryStats = async (id: number): Promise<{ stats: FileLibraryStats }> => {
+  return apiClient.get<{ stats: FileLibraryStats }>(`/file-libraries/${id}/stats`);
+};

@@ -15,7 +15,10 @@ import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
 import { SearchDialog } from "@/components/files/dialogs/SearchDialog";
 import { EntryTagDialog, BatchTagDialog } from "@/components/tag";
-import { downloadEntry } from "@/lib/api/files";
+import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
+import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
+import { LibraryConfigDialog } from "@/components/file-libraries/LibraryConfigDialog";
+import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DelayedLoader } from "@/components/common/DelayedLoader";
@@ -44,13 +47,13 @@ export function FileBrowserPage() {
   
   const { items: libraries, loading: libsLoading } = useFileLibraries();
   
-  // 当前选中的文件库 ID（优先从 URL 读取，其次从 localStorage 读取）
+  // 当前选中的文件库 ID（从 URL 读取，不再使用 localStorage 缓存）
+  // null 表示在根目录（文件库列表）
   const [activeLibraryId, setActiveLibraryId] = useState<number | null>(() => {
     if (libraryIdParam) {
       return parseInt(libraryIdParam);
     }
-    const cached = localStorage.getItem("file_browser_active_library");
-    return cached ? parseInt(cached) : null;
+    return null; // 默认显示文件库列表
   });
 
   // 视图模式持久化
@@ -72,6 +75,15 @@ export function FileBrowserPage() {
 
   // 搜索对话框状态
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+
+  // 新建文件库对话框状态
+  const [newLibraryDialogOpen, setNewLibraryDialogOpen] = useState(false);
+
+  // 文件库配置对话框状态
+  const [libraryConfigDialog, setLibraryConfigDialog] = useState<{
+    open: boolean;
+    library: FileLibrary | null;
+  }>({ open: false, library: null });
 
   // 滚动容器引用，用于记忆滚动位置
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -142,9 +154,29 @@ export function FileBrowserPage() {
     }
   }, [entriesError]);
 
+  // 当前库对象
+  const activeLibrary = useMemo(
+    () => libraries.find((l) => l.id === activeLibraryId),
+    [libraries, activeLibraryId]
+  );
+
+  // 面包屑项：文件库名 + 祖先目录
   const breadcrumbItems = useMemo(() => {
-    return ancestors.map(a => ({ id: a.id, name: a.name }));
-  }, [ancestors]);
+    const items: BreadcrumbItem[] = [];
+    
+    // 如果在文件库内，添加文件库名作为第一项
+    if (activeLibrary) {
+      items.push({
+        id: `library-${activeLibrary.id}`, // 特殊 ID 标记文件库
+        name: activeLibrary.display_name || activeLibrary.root_path,
+      });
+    }
+    
+    // 添加祖先目录
+    items.push(...ancestors.map(a => ({ id: a.id, name: a.name })));
+    
+    return items;
+  }, [activeLibrary, ancestors]);
 
   const currentPathLabel = useMemo(() => {
     if (!activeLibraryId) return "";
@@ -161,27 +193,49 @@ export function FileBrowserPage() {
     }
   }, [parentIdParam]); // 这里不能依赖 currentParentId，否则会死循环，只依赖 URL 变化
 
-  // 当库列表加载完成后，如果没有选中库且有可用库，默认选中第一个
-  // 如果缓存的库 ID 不存在于当前库列表中，也重置为第一个
+  // 当库列表加载完成后，如果 URL 中的 libraryId 不存在于库列表中，重置为根目录
   useEffect(() => {
-    if (!libsLoading && libraries.length > 0) {
-      const libraryExists = activeLibraryId && libraries.some(l => l.id === activeLibraryId);
+    if (!libsLoading && activeLibraryId) {
+      const libraryExists = libraries.some(l => l.id === activeLibraryId);
       if (!libraryExists) {
-        const firstId = libraries[0].id;
-        setActiveLibraryId(firstId);
-        localStorage.setItem("file_browser_active_library", firstId.toString());
-        setSearchParams({ libraryId: firstId.toString() });
+        // 文件库不存在，返回根目录
+        setActiveLibraryId(null);
+        setSearchParams({});
+        setCurrentParentId(null);
       }
     }
   }, [libsLoading, libraries, activeLibraryId, setSearchParams]);
 
-  // 切换库时重置状态
-  const handleLibraryChange = (idStr: string) => {
-    const id = parseInt(idStr);
-    setActiveLibraryId(id);
-    localStorage.setItem("file_browser_active_library", idStr);
-    setSearchParams({ libraryId: idStr }); // 清除 parentId
+  // 进入文件库（从根目录点击文件库）
+  const handleEnterLibrary = (libraryId: number) => {
+    setActiveLibraryId(libraryId);
+    setSearchParams({ libraryId: libraryId.toString() });
     setCurrentParentId(null);
+  };
+
+  // 返回根目录（文件库列表）
+  const handleBackToRoot = () => {
+    setActiveLibraryId(null);
+    setSearchParams({});
+    setCurrentParentId(null);
+  };
+
+  // 文件库操作处理
+  const handleLibraryAction = (action: "config" | "delete" | "reindex", libraryId: number) => {
+    const library = libraries.find(l => l.id === libraryId);
+    if (!library) return;
+
+    if (action === "config") {
+      setLibraryConfigDialog({ open: true, library });
+    } else if (action === "reindex") {
+      // 直接触发重建索引
+      indexLibraryApi(libraryId, { forceReindex: true })
+        .then(() => toast.success("索引任务已创建，请在任务中心查看进度"))
+        .catch((err: any) => toast.error(err?.message || "创建索引任务失败"));
+    } else if (action === "delete") {
+      // 打开配置对话框，在里面删除
+      setLibraryConfigDialog({ open: true, library });
+    }
   };
 
   // 切换视图模式
@@ -244,40 +298,52 @@ export function FileBrowserPage() {
     });
   };
 
-  // 面包屑导航
+  // 面包屑导航 - 点击根目录图标
   const handleBreadcrumbRootClick = () => {
     saveScrollPosition();
-    setCurrentParentId(null);
-    setSearchParams({ libraryId: activeLibraryId!.toString() });
+    // 返回到文件库列表（真正的根目录）
+    handleBackToRoot();
   };
 
   // 返回上一级目录
   const handleGoUp = () => {
-    if (!currentParentId || breadcrumbItems.length === 0) {
-      // 已经在根目录
-      return;
-    }
     saveScrollPosition();
-    if (breadcrumbItems.length === 1) {
-      // 只有一级，返回根目录
-      setCurrentParentId(null);
-      setSearchParams({ libraryId: activeLibraryId!.toString() });
-    } else {
-      // 返回上一级（倒数第二个）
-      const parentItem = breadcrumbItems[breadcrumbItems.length - 2];
-      setCurrentParentId(parentItem.id);
-      setSearchParams({ 
-        libraryId: activeLibraryId!.toString(), 
-        parentId: parentItem.id 
-      });
+    
+    // 如果在文件库内部
+    if (activeLibraryId) {
+      if (!currentParentId || breadcrumbItems.length === 0) {
+        // 在文件库根目录，返回到文件库列表
+        handleBackToRoot();
+      } else if (breadcrumbItems.length === 1) {
+        // 只有一级，返回文件库根目录
+        setCurrentParentId(null);
+        setSearchParams({ libraryId: activeLibraryId.toString() });
+      } else {
+        // 返回上一级（倒数第二个）
+        const parentItem = breadcrumbItems[breadcrumbItems.length - 2];
+        setCurrentParentId(parentItem.id);
+        setSearchParams({ 
+          libraryId: activeLibraryId.toString(), 
+          parentId: parentItem.id 
+        });
+      }
     }
+    // 如果已经在根目录（文件库列表），不做任何事
   };
 
   const handleBreadcrumbItemClick = (item: BreadcrumbItem) => {
+    saveScrollPosition();
+    
+    // 如果点击的是文件库项（以 library- 开头），返回文件库根目录
+    if (item.id.startsWith("library-")) {
+      setCurrentParentId(null);
+      setSearchParams({ libraryId: activeLibraryId!.toString() });
+      return;
+    }
+    
     // 如果点击的是当前项，不做任何事
     if (item.id === currentParentId) return;
     
-    saveScrollPosition();
     setCurrentParentId(item.id);
     setSearchParams({ 
       libraryId: activeLibraryId!.toString(), 
@@ -351,12 +417,6 @@ export function FileBrowserPage() {
       console.error("索引触发失败", err);
     }
   };
-
-  // 当前库对象
-  const activeLibrary = useMemo(
-    () => libraries.find((l) => l.id === activeLibraryId),
-    [libraries, activeLibraryId]
-  );
 
   // 批量选择处理
   const handleBatchSelect = (entry: any, selected: boolean) => {
@@ -501,12 +561,9 @@ export function FileBrowserPage() {
     <PageContainer title="文件浏览" className="h-full flex flex-col relative">
       <div className="flex-none space-y-2 z-10 relative">
         <FileToolbar
-          libraries={libraries}
-          currentLibraryId={activeLibraryId}
-          onLibraryChange={handleLibraryChange}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          canGoUp={!!currentParentId}
+          canGoUp={!!activeLibraryId} // 只要在文件库内就可以返回上一级
           onGoUp={handleGoUp}
           filterSortState={activeLibraryId ? filterSortState : undefined}
           onFilterSortChange={activeLibraryId ? handleFilterSortChange : undefined}
@@ -517,7 +574,7 @@ export function FileBrowserPage() {
           onBatchCopy={handleBatchCopy}
           onBatchDelete={handleBatchDelete}
           onBatchTag={handleBatchTag}
-          totalCount={entries.length}
+          totalCount={activeLibraryId ? entries.length : libraries.length}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />
@@ -530,6 +587,7 @@ export function FileBrowserPage() {
             onSearch={activeLibraryId ? () => setSearchDialogOpen(true) : undefined}
             onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
             onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
+            onCreateLibrary={!activeLibraryId ? () => setNewLibraryDialogOpen(true) : undefined}
             onRefresh={reload}
             onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
             onBatchMode={activeLibraryId ? () => handleBatchModeChange(true) : undefined}
@@ -547,10 +605,52 @@ export function FileBrowserPage() {
           loading={libsLoading || (!!activeLibrary && entriesLoading)} 
           className="flex h-full items-center justify-center"
         >
-          {!activeLibrary ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              请选择一个文件库开始浏览
-            </div>
+          {/* 根目录：显示文件库列表 */}
+          {!activeLibraryId ? (
+            libraries.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4">
+                <p>暂无文件库</p>
+                <NewLibraryDialog onSuccess={reload} />
+              </div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
+                    : "space-y-2"
+                }
+              >
+                {libraries.map((lib) => {
+                  // 将文件库转换为虚拟 FileEntry
+                  const virtualEntry: FileEntry = {
+                    id: `library-${lib.id}`,
+                    library_id: lib.id,
+                    parent_id: null,
+                    is_directory: true,
+                    original_name: lib.display_name || lib.root_path,
+                    index_suffix: null,
+                    extension: null,
+                    size_bytes: 0,
+                    mime_type: null,
+                    is_deleted: false,
+                    deleted_at: null,
+                    created_at: lib.created_at,
+                    updated_at: lib.updated_at,
+                    _isLibraryEntry: true,
+                  };
+                  const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+                  return (
+                    <Component
+                      key={lib.id}
+                      entry={virtualEntry}
+                      onClick={() => handleEnterLibrary(lib.id)}
+                      onDoubleClick={() => handleEnterLibrary(lib.id)}
+                      onLibraryAction={handleLibraryAction}
+                    />
+                  );
+                })}
+              </div>
+            )
           ) : entriesError ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               加载失败
@@ -784,6 +884,25 @@ export function FileBrowserPage() {
           onSuccess={() => handleBatchModeChange(false)}
         />
       )}
+
+      {/* 文件库配置对话框 */}
+      {libraryConfigDialog.library && (
+        <LibraryConfigDialog
+          library={libraryConfigDialog.library}
+          open={libraryConfigDialog.open}
+          onOpenChange={(open) => setLibraryConfigDialog({ open, library: open ? libraryConfigDialog.library : null })}
+          onUpdated={reload}
+          onDeleted={reload}
+        />
+      )}
+
+      {/* 新建文件库对话框（受控模式） */}
+      <NewLibraryDialog
+        open={newLibraryDialogOpen}
+        onOpenChange={setNewLibraryDialogOpen}
+        onSuccess={reload}
+        showTrigger={false}
+      />
     </PageContainer>
   );
 }

@@ -1,6 +1,5 @@
 import { 
-  X, Move, Copy, Trash, ArrowLeft, Upload, FolderPlus,
-  ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search, Tag, Square, CheckSquare2
+  X, Move, Copy, Trash, ArrowLeft, Upload, FolderPlus, Plus, ChevronRight, Home, MoreHorizontal, RefreshCw, RotateCw, CheckSquare, Trash2, Grid, List, Search, Tag, Square, CheckSquare2
 } from "lucide-react";
 import { FilterSortMenu, type FilterSortState } from "./FilterSortMenu";
 
@@ -12,20 +11,12 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -38,12 +29,9 @@ export interface BreadcrumbItem {
 
 // ============================================================================
 // FileToolbar - 文件浏览器顶部工具栏
-// 包含：文件库选择、视图切换、上一级按钮、批量操作
+// 包含：视图切换、上一级按钮、筛选排序、批量操作
 // ============================================================================
 interface FileToolbarProps {
-  libraries: FileLibrary[];
-  currentLibraryId: number | null;
-  onLibraryChange: (id: string) => void;
   // 视图切换
   viewMode?: "grid" | "list";
   onViewModeChange?: (mode: "grid" | "list") => void;
@@ -68,9 +56,6 @@ interface FileToolbarProps {
 }
 
 export function FileToolbar({
-  libraries,
-  currentLibraryId,
-  onLibraryChange,
   viewMode,
   onViewModeChange,
   canGoUp = false,
@@ -168,26 +153,8 @@ export function FileToolbar({
 
   return (
     <GlassCard className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2">
-      {/* 左侧：文件库选择 */}
-      <Select
-        value={currentLibraryId?.toString() ?? ""}
-        onValueChange={onLibraryChange}
-      >
-        <SelectTrigger className="w-[140px] md:w-[180px] h-8 text-xs md:text-sm bg-background/50 border-transparent shadow-sm focus:ring-1">
-          <SelectValue placeholder="选择文件库" />
-        </SelectTrigger>
-        <SelectContent>
-          {libraries.map((lib) => (
-            <SelectItem key={lib.id} value={lib.id.toString()}>
-              {lib.display_name || lib.root_path}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* 右侧：上一级 + 筛选排序 + 视图切换 */}
+      {/* 左侧：上一级按钮 */}
       <div className="flex items-center gap-1">
-        {/* 上一级按钮 */}
         <Button
           variant="ghost"
           size="icon-sm"
@@ -198,7 +165,10 @@ export function FileToolbar({
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
+      </div>
 
+      {/* 右侧：筛选排序 + 视图切换 */}
+      <div className="flex items-center gap-1">
         {/* 筛选排序按钮 */}
         {filterSortState && onFilterSortChange && (
           <FilterSortMenu
@@ -248,6 +218,7 @@ interface FileBreadcrumbProps {
   onSearch?: () => void;
   onUpload?: () => void;
   onCreateFolder?: () => void;
+  onCreateLibrary?: () => void;  // 新建文件库（在根目录时显示）
   onRefresh?: () => void;
   onReindex?: () => void;
   onBatchMode?: () => void;
@@ -262,12 +233,13 @@ export function FileBreadcrumb({
   onSearch,
   onUpload,
   onCreateFolder,
+  onCreateLibrary,
   onRefresh,
   onReindex,
   onBatchMode,
   onOpenTrash,
 }: FileBreadcrumbProps) {
-  const hasActions = onSearch || onUpload || onCreateFolder || onRefresh || onReindex || onBatchMode || onOpenTrash;
+  const hasActions = onSearch || onUpload || onCreateFolder || onCreateLibrary || onRefresh || onReindex || onBatchMode || onOpenTrash;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -345,6 +317,19 @@ export function FileBreadcrumb({
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
             >
               <FolderPlus className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* 新建文件库（在根目录时显示） */}
+          {onCreateLibrary && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onCreateLibrary}
+              title="新建文件库"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="h-4 w-4" />
             </Button>
           )}
 
