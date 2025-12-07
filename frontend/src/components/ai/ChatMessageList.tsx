@@ -114,13 +114,18 @@ function AssistantMessage({
 
   return (
     <div className="flex flex-col w-full gap-2">
-      {/* 工具调用结果（上方：信息类） */}
+      {/* 工具调用结果（上方：信息类）- 每个工具单独气泡 */}
       {hasTopToolResults && (
         <div className="flex flex-col gap-2">
           {topToolResults.map((tr, idx) => (
-            <div 
+            <GlassCard
               key={`tool-top-${idx}`}
-              className="rounded-lg bg-muted/20 backdrop-blur-sm px-3 py-2 text-sm"
+              variant="lite"
+              className={cn(
+                "px-3 py-2.5 text-sm border-white/10",
+                DS.radius.lg,
+                "rounded-tl-sm"
+              )}
             >
               <ToolCallRenderer
                 result={tr.result}
@@ -128,7 +133,7 @@ function AssistantMessage({
                 onConfirm={onToolConfirm}
                 onCancel={onToolCancel}
               />
-            </div>
+            </GlassCard>
           ))}
         </div>
       )}
@@ -187,13 +192,18 @@ function AssistantMessage({
         </div>
       )}
 
-      {/* 工具调用结果（下方：用户交互类，如文件展示） */}
+      {/* 工具调用结果（下方：用户交互类，如文件展示）- 每个工具单独气泡 */}
       {hasBottomToolResults && (
         <div className="flex flex-col gap-2">
           {bottomToolResults.map((tr, idx) => (
-            <div 
+            <GlassCard
               key={`tool-bottom-${idx}`}
-              className="rounded-lg bg-muted/20 backdrop-blur-sm px-3 py-2 text-sm"
+              variant="lite"
+              className={cn(
+                "px-3 py-2.5 text-sm border-white/10",
+                DS.radius.lg,
+                "rounded-tl-sm"
+              )}
             >
               <ToolCallRenderer
                 result={tr.result}
@@ -201,7 +211,7 @@ function AssistantMessage({
                 onConfirm={onToolConfirm}
                 onCancel={onToolCancel}
               />
-            </div>
+            </GlassCard>
           ))}
         </div>
       )}

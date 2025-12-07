@@ -147,8 +147,8 @@ export function AiChatPage() {
           </div>
 
           {/* Floating Header Overlay */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 px-4 pt-3 z-20">
-            <div className="pointer-events-auto space-y-2">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-2 pt-3">
+            <div className="pointer-events-auto space-y-2 relative">
               <div className="flex items-center justify-center relative h-9">
                 {/* Left: Model Selector */}
                 {models && models.length > 0 && (
@@ -246,8 +246,8 @@ export function AiChatPage() {
           </div>
 
           {/* Floating Input Bar Overlay */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-6 pt-4 z-20">
-            <div className="pointer-events-auto">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-2 pb-4 pt-4">
+            <div className="pointer-events-auto relative">
               <ChatInputBar
                 sending={sending}
                 onSend={handleSendMessage}

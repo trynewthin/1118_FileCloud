@@ -85,7 +85,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
   const hasAttachments = attachments.length > 0;
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-4xl mx-auto px-2">
+    <div className="flex flex-col gap-2 w-full max-w-4xl mx-auto">
       {/* 附件预览区 */}
       {hasAttachments && (
         <div className="flex gap-2 flex-wrap px-2">
