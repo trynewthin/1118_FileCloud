@@ -13,7 +13,7 @@ import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
 import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
-import { SearchDialog } from "@/components/files/dialogs/SearchDialog";
+import { GlobalSearchDialog } from "@/components/files/dialogs/GlobalSearchDialog";
 import { EntryTagDialog, BatchTagDialog } from "@/components/tag";
 import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
 import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
@@ -56,6 +56,14 @@ export function FileBrowserPage() {
     return null; // 默认显示文件库列表
   });
 
+  // 同步 URL 中的 libraryId 到状态（处理跨库跳转场景）
+  useEffect(() => {
+    const newLibraryId = libraryIdParam ? parseInt(libraryIdParam) : null;
+    if (newLibraryId !== activeLibraryId) {
+      setActiveLibraryId(newLibraryId);
+    }
+  }, [libraryIdParam]); // 仅依赖 URL 参数变化
+
   // 视图模式持久化
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     return (localStorage.getItem("file_browser_view_mode") as "grid" | "list") || "grid";
@@ -73,8 +81,8 @@ export function FileBrowserPage() {
   // 新建文件夹对话框状态
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
 
-  // 搜索对话框状态
-  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  // 全局搜索对话框状态
+  const [globalSearchDialogOpen, setGlobalSearchDialogOpen] = useState(false);
 
   // 新建文件库对话框状态
   const [newLibraryDialogOpen, setNewLibraryDialogOpen] = useState(false);
@@ -565,6 +573,7 @@ export function FileBrowserPage() {
           onViewModeChange={handleViewModeChange}
           canGoUp={!!activeLibraryId} // 只要在文件库内就可以返回上一级
           onGoUp={handleGoUp}
+          onGlobalSearch={() => setGlobalSearchDialogOpen(true)}
           filterSortState={activeLibraryId ? filterSortState : undefined}
           onFilterSortChange={activeLibraryId ? handleFilterSortChange : undefined}
           batchMode={batchMode}
@@ -584,7 +593,6 @@ export function FileBrowserPage() {
             items={breadcrumbItems}
             onRootClick={handleBreadcrumbRootClick}
             onItemClick={handleBreadcrumbItemClick}
-            onSearch={activeLibraryId ? () => setSearchDialogOpen(true) : undefined}
             onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
             onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
             onCreateLibrary={!activeLibraryId ? () => setNewLibraryDialogOpen(true) : undefined}
@@ -856,14 +864,12 @@ export function FileBrowserPage() {
         />
       )}
 
-      {/* 搜索对话框 */}
-      {activeLibraryId && (
-        <SearchDialog
-          open={searchDialogOpen}
-          onOpenChange={setSearchDialogOpen}
-          libraryId={activeLibraryId}
-        />
-      )}
+      {/* 全局搜索对话框 */}
+      <GlobalSearchDialog
+        open={globalSearchDialogOpen}
+        onOpenChange={setGlobalSearchDialogOpen}
+        initialLibraryIds={activeLibraryId ? [activeLibraryId] : undefined}
+      />
 
       {/* 标签对话框 */}
       {tagDialogEntry && (

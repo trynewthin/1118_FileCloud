@@ -38,6 +38,8 @@ interface FileToolbarProps {
   // 上一级
   canGoUp?: boolean;
   onGoUp?: () => void;
+  // 全局搜索
+  onGlobalSearch?: () => void;
   // 筛选排序
   filterSortState?: FilterSortState;
   onFilterSortChange?: (state: FilterSortState) => void;
@@ -60,6 +62,7 @@ export function FileToolbar({
   onViewModeChange,
   canGoUp = false,
   onGoUp,
+  onGlobalSearch,
   filterSortState,
   onFilterSortChange,
   batchMode = false,
@@ -153,7 +156,30 @@ export function FileToolbar({
 
   return (
     <GlassCard className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2">
-      {/* 左侧：上一级按钮 */}
+      {/* 左侧：搜索按钮 + 筛选排序 */}
+      <div className="flex items-center gap-1">
+        {/* 全局搜索按钮 */}
+        {onGlobalSearch && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onGlobalSearch}
+            title="搜索"
+            className="text-muted-foreground hover:text-foreground h-8 w-8"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        )}
+        {/* 筛选排序按钮 */}
+        {filterSortState && onFilterSortChange && (
+          <FilterSortMenu
+            state={filterSortState}
+            onChange={onFilterSortChange}
+          />
+        )}
+      </div>
+
+      {/* 右侧：上一级按钮 + 视图切换 */}
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
@@ -165,17 +191,6 @@ export function FileToolbar({
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-      </div>
-
-      {/* 右侧：筛选排序 + 视图切换 */}
-      <div className="flex items-center gap-1">
-        {/* 筛选排序按钮 */}
-        {filterSortState && onFilterSortChange && (
-          <FilterSortMenu
-            state={filterSortState}
-            onChange={onFilterSortChange}
-          />
-        )}
 
         {/* 视图切换 */}
         {onViewModeChange && (
@@ -207,7 +222,8 @@ export function FileToolbar({
 
 // ============================================================================
 // FileBreadcrumb - 面包屑导航栏
-// 包含：路径导航、搜索、上传、新建文件夹、更多操作（刷新、重建索引、批量选择、回收站）
+// 包含：路径导航、上传、新建文件夹、更多操作（刷新、重建索引、批量选择、回收站）
+// 注意：搜索已移至 FileToolbar
 // ============================================================================
 interface FileBreadcrumbProps {
   items: BreadcrumbItem[];
@@ -215,7 +231,6 @@ interface FileBreadcrumbProps {
   onItemClick: (item: BreadcrumbItem, index: number) => void;
   className?: string;
   // 右侧操作
-  onSearch?: () => void;
   onUpload?: () => void;
   onCreateFolder?: () => void;
   onCreateLibrary?: () => void;  // 新建文件库（在根目录时显示）
@@ -230,7 +245,6 @@ export function FileBreadcrumb({
   onRootClick,
   onItemClick,
   className,
-  onSearch,
   onUpload,
   onCreateFolder,
   onCreateLibrary,
@@ -239,7 +253,7 @@ export function FileBreadcrumb({
   onBatchMode,
   onOpenTrash,
 }: FileBreadcrumbProps) {
-  const hasActions = onSearch || onUpload || onCreateFolder || onCreateLibrary || onRefresh || onReindex || onBatchMode || onOpenTrash;
+  const hasActions = onUpload || onCreateFolder || onCreateLibrary || onRefresh || onReindex || onBatchMode || onOpenTrash;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -294,19 +308,6 @@ export function FileBreadcrumb({
       {/* 右侧：操作按钮 */}
       {hasActions && (
         <div className="flex items-center gap-1 shrink-0">
-          {/* 搜索按钮 */}
-          {onSearch && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onSearch}
-              title="搜索"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-          )}
-
           {/* 新建文件夹 */}
           {onCreateFolder && (
             <Button
