@@ -82,6 +82,9 @@ interface AssistantMessageProps {
   loading?: boolean;
 }
 
+// 需要放在消息下方的工具结果类型（用户交互类）
+const BOTTOM_TOOL_TYPES = new Set(["file_display"]);
+
 function AssistantMessage({ 
   content, 
   toolResults = [], 
@@ -102,16 +105,21 @@ function AssistantMessage({
   }, [content]);
 
   const hasContent = content.trim().length > 0;
-  const hasToolResults = toolResults.length > 0;
+  
+  // 区分工具结果：上方显示（信息类）和下方显示（用户交互类）
+  const topToolResults = toolResults.filter(tr => !BOTTOM_TOOL_TYPES.has(tr.result?.type));
+  const bottomToolResults = toolResults.filter(tr => BOTTOM_TOOL_TYPES.has(tr.result?.type));
+  const hasTopToolResults = topToolResults.length > 0;
+  const hasBottomToolResults = bottomToolResults.length > 0;
 
   return (
     <div className="flex flex-col w-full gap-2">
-      {/* 工具调用结果 - 每个工具使用半透明背景 */}
-      {hasToolResults && (
+      {/* 工具调用结果（上方：信息类） */}
+      {hasTopToolResults && (
         <div className="flex flex-col gap-2">
-          {toolResults.map((tr, idx) => (
+          {topToolResults.map((tr, idx) => (
             <div 
-              key={`tool-${idx}`}
+              key={`tool-top-${idx}`}
               className="rounded-lg bg-muted/20 backdrop-blur-sm px-3 py-2 text-sm"
             >
               <ToolCallRenderer
@@ -144,7 +152,7 @@ function AssistantMessage({
       )}
 
       {/* 流式加载指示器 */}
-      {!hasContent && !hasToolResults && loading && (
+      {!hasContent && !hasTopToolResults && !hasBottomToolResults && loading && (
         <GlassCard
           variant="lite"
           className={cn(
@@ -178,6 +186,25 @@ function AssistantMessage({
           </button>
         </div>
       )}
+
+      {/* 工具调用结果（下方：用户交互类，如文件展示） */}
+      {hasBottomToolResults && (
+        <div className="flex flex-col gap-2">
+          {bottomToolResults.map((tr, idx) => (
+            <div 
+              key={`tool-bottom-${idx}`}
+              className="rounded-lg bg-muted/20 backdrop-blur-sm px-3 py-2 text-sm"
+            >
+              <ToolCallRenderer
+                result={tr.result}
+                pendingAction={tr.pendingAction}
+                onConfirm={onToolConfirm}
+                onCancel={onToolCancel}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -199,7 +226,9 @@ export function ChatMessageList({
   onToolConfirm,
   onToolCancel,
 }: ChatMessageListProps) {
-  // 预处理消息：将工具消息合并到前一个 AI 消息，并计算是否显示头像
+  // 预处理消息：将工具消息合并到 AI 消息，并计算是否显示头像
+  // - 普通工具结果：合并到前一个 AI 消息（显示在上方）
+  // - file_display 类型：合并到后一个 AI 消息（显示在下方）
   const processedMessages = useMemo(() => {
     const result: Array<{
       message: AiChatMessage;
@@ -207,21 +236,37 @@ export function ChatMessageList({
       showAvatar: boolean; // 是否显示头像
     }> = [];
     
+    // 第一遍：收集需要延迟合并的 file_display 工具结果
+    const pendingBottomTools: Array<{ result: any; pendingAction?: PendingAction }> = [];
+    
     for (let i = 0; i < messages.length; i++) {
       const m = messages[i];
       
       if (m.role === "tool" && m.payload) {
-        // 工具消息：合并到前一个 AI 消息
         const toolResult = m.payload as { result?: any; pendingAction?: PendingAction };
-        if (toolResult.result && result.length > 0) {
-          const lastItem = result[result.length - 1];
-          // 可以合并到 assistant 消息或之前的独立工具消息
-          if (lastItem.message.role === "assistant" || lastItem.message.role === "tool") {
-            lastItem.toolResults.push({
+        if (toolResult.result) {
+          // 判断是否是需要放在下方的工具类型
+          const isBottomType = BOTTOM_TOOL_TYPES.has(toolResult.result.type);
+          
+          if (isBottomType) {
+            // 延迟合并到下一个 AI 消息
+            pendingBottomTools.push({
               result: toolResult.result,
               pendingAction: toolResult.pendingAction,
             });
             continue;
+          }
+          
+          // 普通工具结果：合并到前一个 AI 消息
+          if (result.length > 0) {
+            const lastItem = result[result.length - 1];
+            if (lastItem.message.role === "assistant" || lastItem.message.role === "tool") {
+              lastItem.toolResults.push({
+                result: toolResult.result,
+                pendingAction: toolResult.pendingAction,
+              });
+              continue;
+            }
           }
         }
       }
@@ -239,11 +284,31 @@ export function ChatMessageList({
         showAvatar = false;
       }
       
-      result.push({
-        message: m,
-        toolResults: [],
-        showAvatar,
-      });
+      // 如果是 AI 消息，把之前积累的 pendingBottomTools 合并进来
+      if (m.role === "assistant" && pendingBottomTools.length > 0) {
+        result.push({
+          message: m,
+          toolResults: [...pendingBottomTools],
+          showAvatar,
+        });
+        pendingBottomTools.length = 0; // 清空
+      } else {
+        result.push({
+          message: m,
+          toolResults: [],
+          showAvatar,
+        });
+      }
+    }
+    
+    // 如果还有未合并的 pendingBottomTools，合并到最后一个 AI 消息
+    if (pendingBottomTools.length > 0 && result.length > 0) {
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (result[i].message.role === "assistant") {
+          result[i].toolResults.push(...pendingBottomTools);
+          break;
+        }
+      }
     }
     
     return result;

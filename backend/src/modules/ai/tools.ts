@@ -105,9 +105,11 @@ export const executeTool = async (
 // ============================================================================
 
 export const BUILTIN_AI_TOOLS: AiToolDefinition[] = [
+  { key: "list_libraries", type: "post" },
   { key: "list_directory", type: "post" },
   { key: "get_file_info", type: "post" },
   { key: "search_files", type: "post" },
+  { key: "show_files", type: "post" },
   { key: "rename_file", type: "post" },
   { key: "move_file", type: "post" },
   { key: "delete_file", type: "post" },
@@ -130,7 +132,36 @@ const getFileLibraries = () => {
 // 注册内置工具
 // ============================================================================
 
-// 1. 查看目录内容（不需要确认）
+// 1. 查看文件库列表（不需要确认）
+registerTool("list_libraries", {
+  definition: {
+    type: "function",
+    function: {
+      name: "list_libraries",
+      description: "获取所有可用的文件库列表。在搜索或浏览文件之前，可以先调用此工具查看有哪些文件库可用。",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  executor: async () => {
+    const libraries = getFileLibraries();
+    return {
+      success: true,
+      result: {
+        type: "library_list",
+        libraries: libraries.map(lib => ({
+          id: lib.id,
+          name: lib.display_name,
+        })),
+        message: `共有 ${libraries.length} 个可用的文件库`,
+      },
+    };
+  },
+});
+
+// 2. 查看目录内容（不需要确认）
 registerTool("list_directory", {
   definition: {
     type: "function",
@@ -194,7 +225,7 @@ registerTool("list_directory", {
   },
 });
 
-// 2. 查看文件详情（不需要确认）
+// 3. 查看文件详情（不需要确认）
 registerTool("get_file_info", {
   definition: {
     type: "function",
@@ -243,23 +274,23 @@ registerTool("get_file_info", {
   },
 });
 
-// 3. 搜索文件和目录（不需要确认）- 使用 FTS5 全文搜索
+// 4. 搜索文件和目录（不需要确认）- 支持跨库搜索
 registerTool("search_files", {
   definition: {
     type: "function",
     function: {
       name: "search_files",
-      description: "在指定文件库中搜索文件或目录。使用全文搜索引擎，支持中文分词和前缀匹配。",
+      description: "搜索文件或目录。支持跨文件库搜索，使用全文搜索引擎，支持中文分词和前缀匹配。",
       parameters: {
         type: "object",
         properties: {
-          library_id: {
-            type: "number",
-            description: "文件库 ID",
-          },
           keyword: {
             type: "string",
             description: "搜索关键词，支持中文和英文，会匹配文件名和路径",
+          },
+          library_id: {
+            type: "number",
+            description: "文件库 ID（可选）。如果不指定，将在所有文件库中搜索。",
           },
           type: {
             type: "string",
@@ -271,54 +302,104 @@ registerTool("search_files", {
             description: "按扩展名过滤（可选），例如 'mp4'、'jpg'、'pdf'",
           },
         },
-        required: ["library_id", "keyword"],
+        required: ["keyword"],
       },
     },
   },
   executor: async (args, _context) => {
-    const libraryId = args.library_id;
     const keyword = args.keyword;
+    const libraryId = args.library_id;
     const type = args.type || "all";
     const extension = args.extension;
 
-    if (!libraryId) {
-      return { success: false, error: "请提供文件库 ID" };
-    }
     if (!keyword || typeof keyword !== "string" || !keyword.trim()) {
       return { success: false, error: "请提供搜索关键词" };
     }
 
-    // 使用 FTS5 全文搜索
-    const results = searchByFts({
-      libraryId,
-      keyword,
-      type: type as "all" | "file" | "directory",
-      extension: extension || undefined,
-      limit: 30,
-    });
-
-    return {
-      success: true,
-      result: {
-        type: "search_results",
+    // 如果指定了文件库，在该库中搜索
+    if (libraryId) {
+      const results = searchByFts({
         libraryId,
         keyword,
-        searchType: type,
-        results: results.map((r) => ({
+        type: type as "all" | "file" | "directory",
+        extension: extension || undefined,
+        limit: 30,
+      });
+
+      return {
+        success: true,
+        result: {
+          type: "search_results",
+          libraryId,
+          keyword,
+          searchType: type,
+          results: results.map((r) => ({
+            id: r.id,
+            name: r.name,
+            path: r.path,
+            isDirectory: r.isDirectory,
+            size: r.size,
+            extension: r.extension,
+          })),
+          message: `在文件库 ${libraryId} 中搜索 "${keyword}" 找到 ${results.length} 个结果`,
+        },
+      };
+    }
+
+    // 跨库搜索：在所有启用的文件库中搜索
+    const libraries = getFileLibraries();
+    const allResults: Array<{
+      id: string;
+      name: string;
+      path: string;
+      isDirectory: boolean;
+      size: number;
+      extension: string | null;
+      libraryId: number;
+      libraryName: string;
+    }> = [];
+
+    for (const lib of libraries) {
+      const results = searchByFts({
+        libraryId: lib.id,
+        keyword,
+        type: type as "all" | "file" | "directory",
+        extension: extension || undefined,
+        limit: 30,
+      });
+
+      allResults.push(
+        ...results.map((r) => ({
           id: r.id,
           name: r.name,
           path: r.path,
           isDirectory: r.isDirectory,
           size: r.size,
           extension: r.extension,
-        })),
-        message: `搜索 "${keyword}" 找到 ${results.length} 个结果`,
+          libraryId: lib.id,
+          libraryName: lib.display_name,
+        }))
+      );
+    }
+
+    // 限制总结果数量
+    const limitedResults = allResults.slice(0, 50);
+
+    return {
+      success: true,
+      result: {
+        type: "search_results",
+        keyword,
+        searchType: type,
+        searchScope: "all_libraries",
+        results: limitedResults,
+        message: `在所有文件库中搜索 "${keyword}" 找到 ${allResults.length} 个结果${allResults.length > 50 ? "（仅显示前 50 个）" : ""}`,
       },
     };
   },
 });
 
-// 4. 重命名文件（需要确认）
+// 5. 重命名文件（需要确认）
 registerTool("rename_file", {
   definition: {
     type: "function",
@@ -378,7 +459,7 @@ registerTool("rename_file", {
   },
 });
 
-// 4. 移动文件（需要确认）
+// 6. 移动文件（需要确认）
 registerTool("move_file", {
   definition: {
     type: "function",
@@ -447,7 +528,7 @@ registerTool("move_file", {
   },
 });
 
-// 5. 删除文件（需要确认）
+// 7. 删除文件（需要确认）
 registerTool("delete_file", {
   definition: {
     type: "function",
@@ -500,7 +581,81 @@ registerTool("delete_file", {
   },
 });
 
-// 6. 获取当前时间（不需要确认）
+// 8. 展示文件给用户（不需要确认）
+registerTool("show_files", {
+  definition: {
+    type: "function",
+    function: {
+      name: "show_files",
+      description: "向用户展示一个或多个文件/文件夹，用户可以点击跳转查看。当搜索到文件或需要向用户推荐文件时使用此工具。",
+      parameters: {
+        type: "object",
+        properties: {
+          file_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "要展示的文件或文件夹 ID 列表",
+          },
+          title: {
+            type: "string",
+            description: "展示标题（可选），例如 '搜索结果'、'推荐文件' 等",
+          },
+        },
+        required: ["file_ids"],
+      },
+    },
+  },
+  executor: async (args, _context) => {
+    const fileIds = args.file_ids as string[];
+    const title = args.title as string | undefined;
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return { success: false, error: "请提供至少一个文件 ID" };
+    }
+
+    // 获取文件信息
+    const files: Array<{
+      id: string;
+      name: string;
+      isDirectory: boolean;
+      size: number;
+      extension: string | null;
+      mimeType: string | null;
+      libraryId: number;
+    }> = [];
+
+    for (const fileId of fileIds) {
+      const entry = getEntryById(fileId);
+      if (entry) {
+        files.push({
+          id: entry.id,
+          name: entry.original_name,
+          isDirectory: entry.is_directory,
+          size: entry.size_bytes,
+          extension: entry.extension,
+          mimeType: entry.mime_type,
+          libraryId: entry.library_id,
+        });
+      }
+    }
+
+    if (files.length === 0) {
+      return { success: false, error: "未找到任何有效的文件" };
+    }
+
+    return {
+      success: true,
+      result: {
+        type: "file_display",
+        title: title || "文件",
+        files,
+        message: `展示 ${files.length} 个文件`,
+      },
+    };
+  },
+});
+
+// 9. 获取当前时间（不需要确认）
 registerTool("get_current_time", {
   definition: {
     type: "function",

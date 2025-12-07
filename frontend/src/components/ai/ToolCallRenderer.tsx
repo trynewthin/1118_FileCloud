@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Folder, 
   File, 
@@ -13,9 +14,13 @@ import {
   Database,
   ChevronRight,
   Search,
+  ExternalLink,
+  Image as ImageIcon,
+  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassButton } from "@/components/common/GlassButton";
+import { buildApiUrl } from "@/lib/api/client";
 
 // 工具调用结果类型
 export interface ToolCallResult {
@@ -161,6 +166,9 @@ function TimeInfoRenderer({ result }: { result: ToolCallResult }) {
   );
 }
 
+// 判断是否支持缩略图
+const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
+
 // 搜索结果渲染
 function SearchResultsRenderer({ result }: { result: ToolCallResult }) {
   const results = result.results || [];
@@ -212,6 +220,119 @@ function SearchResultsRenderer({ result }: { result: ToolCallResult }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// 文件展示渲染（支持点击跳转）
+function FileDisplayRenderer({ result }: { result: ToolCallResult }) {
+  const navigate = useNavigate();
+  const files = result.files || [];
+  const title = result.title || "文件";
+  
+  const token = typeof window !== "undefined"
+    ? window.localStorage.getItem("filecloud_auth_token")
+    : null;
+  
+  // 点击文件跳转
+  const handleClick = (file: {
+    id: string;
+    name: string;
+    isDirectory: boolean;
+    libraryId: number;
+  }) => {
+    if (file.isDirectory) {
+      // 目录：跳转到文件浏览页面
+      navigate(`/files?libraryId=${file.libraryId}&parentId=${file.id}`);
+    } else {
+      // 文件：跳转到预览页面
+      navigate(`/preview/${file.id}`);
+    }
+  };
+  
+  // 获取缩略图 URL
+  const getThumbnailUrl = (file: { id: string; extension: string | null }) => {
+    const ext = file.extension?.toLowerCase() || "";
+    if (!THUMBNAIL_EXTS.has(ext)) return null;
+    return buildApiUrl(
+      token
+        ? `/file-content/${file.id}/thumbnail?token=${encodeURIComponent(token)}`
+        : `/file-content/${file.id}/thumbnail`
+    );
+  };
+  
+  // 获取文件图标
+  const getFileIcon = (file: { isDirectory: boolean; extension: string | null; mimeType: string | null }) => {
+    if (file.isDirectory) {
+      return <Folder className="h-5 w-5 text-amber-500" />;
+    }
+    const ext = file.extension?.toLowerCase() || "";
+    const mime = file.mimeType || "";
+    if (mime.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
+      return <ImageIcon className="h-5 w-5 text-green-500" />;
+    }
+    if (mime.startsWith("video/") || ["mp4", "webm", "mov", "mkv", "avi"].includes(ext)) {
+      return <Film className="h-5 w-5 text-purple-500" />;
+    }
+    return <File className="h-5 w-5 text-blue-500" />;
+  };
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+        <ExternalLink className="h-3.5 w-3.5" />
+        <span>{title}</span>
+        <span className="text-muted-foreground/60">(点击跳转)</span>
+      </div>
+      <div className="space-y-1.5">
+        {files.map((file: {
+          id: string;
+          name: string;
+          isDirectory: boolean;
+          size: number;
+          extension: string | null;
+          mimeType: string | null;
+          libraryId: number;
+        }) => {
+          const thumbnailUrl = getThumbnailUrl(file);
+          
+          return (
+            <div
+              key={file.id}
+              onClick={() => handleClick(file)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/60 cursor-pointer transition-colors group border border-transparent hover:border-primary/20"
+            >
+              {/* 缩略图或图标 */}
+              <div className="shrink-0 w-10 h-10 rounded-md overflow-hidden bg-muted/50 flex items-center justify-center">
+                {thumbnailUrl && !file.isDirectory ? (
+                  <img
+                    src={thumbnailUrl}
+                    alt={file.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // 缩略图加载失败时隐藏
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  getFileIcon(file)
+                )}
+              </div>
+              
+              {/* 文件信息 */}
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">{file.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {file.isDirectory ? "文件夹" : formatSize(file.size)}
+                </div>
+              </div>
+              
+              {/* 跳转指示 */}
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors shrink-0" />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -323,6 +444,8 @@ export function ToolCallRenderer({
         return <FileInfoRenderer result={result} />;
       case "search_results":
         return <SearchResultsRenderer result={result} />;
+      case "file_display":
+        return <FileDisplayRenderer result={result} />;
       case "time_info":
         return <TimeInfoRenderer result={result} />;
       case "pending_action":
