@@ -38,9 +38,7 @@ export function TasksPage() {
       </Tabs>
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
-        {loading && items.length === 0 ? (
-          <div className="text-center text-muted-foreground py-10">加载中...</div>
-        ) : items.length === 0 ? (
+        {items.length === 0 && !loading ? (
           <div className="text-center text-muted-foreground py-10">暂无任务记录</div>
         ) : (
           items.map((task) => <TaskItem key={task.id} task={task} onDeleted={reload} />)

@@ -43,7 +43,7 @@ export function ActivityLogsPage() {
             {items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  {loading ? "加载中..." : "暂无日志记录"}
+                  {loading ? "" : "暂无日志记录"}
                 </TableCell>
               </TableRow>
             ) : (

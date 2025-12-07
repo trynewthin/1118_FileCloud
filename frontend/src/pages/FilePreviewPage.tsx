@@ -211,9 +211,7 @@ export function FilePreviewPage() {
     <PageContainer title={pageTitle} showBack action={actionButtons} onBack={handleBack}>
       <div className="flex flex-col min-h-0">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            加载中...
-          </div>
+          <div className="flex-1 flex items-center justify-center" />
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             加载失败

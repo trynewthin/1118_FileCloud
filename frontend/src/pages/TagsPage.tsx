@@ -294,9 +294,7 @@ export const TagsPage = () => {
         ) : (
           // 文件夹模式
           loading || filesLoading ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              加载中...
-            </div>
+            <div className="flex items-center justify-center h-full" />
           ) : !currentTagId ? (
             // 根级：显示标签列表
             currentLevelTags.length === 0 ? (

@@ -18,6 +18,7 @@ import { EntryTagDialog, BatchTagDialog } from "@/components/tag";
 import { downloadEntry } from "@/lib/api/files";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { DelayedLoader } from "@/components/common/DelayedLoader";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -542,96 +543,93 @@ export function FileBrowserPage() {
         variant="ghost" 
         className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2 z-10"
       >
-        {libsLoading ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            加载文件库...
-          </div>
-        ) : !activeLibrary ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            请选择一个文件库开始浏览
-          </div>
-        ) : entriesLoading ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            加载文件列表...
-          </div>
-        ) : entriesError ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            加载失败
-          </div>
-        ) : filteredAndSortedEntries.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
-            {filterSortState.fileType !== "all" && entries.length > 0 ? (
-              <>
-                <p>没有符合筛选条件的文件</p>
-                <p className="text-xs opacity-70">当前筛选条件下无匹配结果，请调整筛选条件</p>
-                <GlassButton 
-                  onClick={() => handleFilterSortChange(defaultFilterSortState)}
-                  className="text-xs text-primary hover:underline mt-2"
-                  glassVariant="ghost"
-                >
-                  清除筛选条件
-                </GlassButton>
-              </>
-            ) : (
-              <>
-                <p>此文件夹为空</p>
-                <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
-                <GlassButton 
-                  onClick={() => setReindexDialogOpen(true)}
-                  className="text-xs text-primary hover:underline mt-2"
-                  glassVariant="ghost"
-                >
-                  手动触发索引
-                </GlassButton>
-              </>
-            )}
-          </div>
-        ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
-                : "space-y-2"
-            }
-          >
-            {filteredAndSortedEntries.map((entry) => {
-              const Component = viewMode === "grid" ? FileGridItem : FileListItem;
-              return (
-                <Component
-                  key={entry.id}
-                  entry={entry}
-                  onClick={() => {
-                    // 批量模式下点击切换选中状态
-                    if (batchMode) {
-                      handleBatchSelect(entry, !selectedIds.has(entry.id));
-                      return;
-                    }
-                    if (entry.is_directory) {
-                      handleEnterDirectory(entry);
-                    } else {
-                      saveScrollPosition();
-                      navigate(`/preview/${entry.id}`);
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    // 批量模式下双击不做任何事
-                    if (batchMode) return;
-                    if (entry.is_directory) {
-                      handleEnterDirectory(entry);
-                    } else {
-                      saveScrollPosition();
-                      navigate(`/preview/${entry.id}`);
-                    }
-                  }}
-                  onAction={handleFileAction}
-                  batchMode={batchMode}
-                  batchSelected={selectedIds.has(entry.id)}
-                  onBatchSelect={handleBatchSelect}
-                />
-              );
-            })}
-          </div>
-        )}
+        <DelayedLoader 
+          loading={libsLoading || (!!activeLibrary && entriesLoading)} 
+          className="flex h-full items-center justify-center"
+        >
+          {!activeLibrary ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              请选择一个文件库开始浏览
+            </div>
+          ) : entriesError ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              加载失败
+            </div>
+          ) : filteredAndSortedEntries.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
+              {filterSortState.fileType !== "all" && entries.length > 0 ? (
+                <>
+                  <p>没有符合筛选条件的文件</p>
+                  <p className="text-xs opacity-70">当前筛选条件下无匹配结果，请调整筛选条件</p>
+                  <GlassButton 
+                    onClick={() => handleFilterSortChange(defaultFilterSortState)}
+                    className="text-xs text-primary hover:underline mt-2"
+                    glassVariant="ghost"
+                  >
+                    清除筛选条件
+                  </GlassButton>
+                </>
+              ) : (
+                <>
+                  <p>此文件夹为空</p>
+                  <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
+                  <GlassButton 
+                    onClick={() => setReindexDialogOpen(true)}
+                    className="text-xs text-primary hover:underline mt-2"
+                    glassVariant="ghost"
+                  >
+                    手动触发索引
+                  </GlassButton>
+                </>
+              )}
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
+                  : "space-y-2"
+              }
+            >
+              {filteredAndSortedEntries.map((entry) => {
+                const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+                return (
+                  <Component
+                    key={entry.id}
+                    entry={entry}
+                    onClick={() => {
+                      // 批量模式下点击切换选中状态
+                      if (batchMode) {
+                        handleBatchSelect(entry, !selectedIds.has(entry.id));
+                        return;
+                      }
+                      if (entry.is_directory) {
+                        handleEnterDirectory(entry);
+                      } else {
+                        saveScrollPosition();
+                        navigate(`/preview/${entry.id}`);
+                      }
+                    }}
+                    onDoubleClick={() => {
+                      // 批量模式下双击不做任何事
+                      if (batchMode) return;
+                      if (entry.is_directory) {
+                        handleEnterDirectory(entry);
+                      } else {
+                        saveScrollPosition();
+                        navigate(`/preview/${entry.id}`);
+                      }
+                    }}
+                    onAction={handleFileAction}
+                    batchMode={batchMode}
+                    batchSelected={selectedIds.has(entry.id)}
+                    onBatchSelect={handleBatchSelect}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </DelayedLoader>
       </GlassCard>
 
       {/* 上传对话框 */}

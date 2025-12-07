@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppBottomNav } from "@/components/layout/AppBottomNav";
@@ -8,10 +8,12 @@ import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";
 import { AmbientGlow } from "@/components/common/AmbientGlow";
 import { useUiCompat } from "@/hooks/useUiCompat";
+import { motion } from "motion/react";
 
 const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 
 export function RootLayout() {
+  const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY);
@@ -62,7 +64,18 @@ export function RootLayout() {
             // 移动端底部导航适配
             "pb-[calc(4rem+env(safe-area-inset-bottom,20px))] md:pb-6"
           )}>
-            <Outlet />
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{
+                duration: 0.2,
+                ease: "easeOut"
+              }}
+              className="flex flex-1 flex-col h-full min-h-0"
+            >
+              <Outlet />
+            </motion.div>
           </main>
           <AppBottomNav />
         </div>
