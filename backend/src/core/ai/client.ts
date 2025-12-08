@@ -189,8 +189,10 @@ async function callOpenAiCompatible(
     const message = choice?.message;
     finish_reason = choice?.finish_reason;
 
-    // 解析内容
+    // 解析内容（支持 reasoning_content 字段，用于推理模型）
     const messageContent = message?.content ?? choice?.delta?.content;
+    const reasoningContent = message?.reasoning_content;
+    
     if (typeof messageContent === "string") {
       content = messageContent;
     } else if (Array.isArray(messageContent)) {
@@ -200,6 +202,12 @@ async function callOpenAiCompatible(
       content = textParts.join("\n\n");
     } else if (typeof messageContent === "object" && messageContent !== null && typeof messageContent.text === "string") {
       content = messageContent.text;
+    }
+    
+    // 如果 content 为空但有 reasoning_content，使用 reasoning_content
+    // 注意：reasoning_content 通常包含推理过程，需要提取最终答案
+    if (!content && typeof reasoningContent === "string" && reasoningContent.trim()) {
+      content = reasoningContent;
     }
 
     // 解析工具调用

@@ -34,6 +34,28 @@ export function AiSettingsPage() {
     await updateSetting("ai.chat.defaultModelId", next);
   };
 
+  // 智能重命名模型配置
+  const renameModelSetting = settings.find((s) => s.key === "ai.rename.defaultModelId");
+  const parsedRenameModelId = renameModelSetting ? Number(renameModelSetting.value) : NaN;
+  const renameModelId = Number.isInteger(parsedRenameModelId) && parsedRenameModelId > 0
+    ? parsedRenameModelId
+    : null;
+
+  const renameModelSelectValue = renameModelId ? String(renameModelId) : "none";
+
+  const handleChangeRenameModel = async (value: string) => {
+    const next = value === "none" ? "0" : value;
+    await updateSetting("ai.rename.defaultModelId", next);
+  };
+
+  // 智能重命名风格配置
+  const renameStyleSetting = settings.find((s) => s.key === "ai.rename.style");
+  const renameStyle = renameStyleSetting?.value || "auto";
+
+  const handleChangeRenameStyle = async (value: string) => {
+    await updateSetting("ai.rename.style", value);
+  };
+
   // 会话命名相关本地状态，用于编辑后统一保存
   const [namingContextLocal, setNamingContextLocal] = useState("1");
   const [namingPromptLocal, setNamingPromptLocal] = useState("");
@@ -93,6 +115,50 @@ export function AiSettingsPage() {
             <SettingsItemCard
               title="会话命名配置"
               onClick={() => setNamingDialogOpen(true)}
+            />
+          </SettingsGroup>
+        </div>
+
+        {/* 智能重命名配置 */}
+        <div className="mt-4">
+          <SettingsGroup title="智能重命名配置">
+            <SettingsItemCard
+              title="重命名模型"
+              description="用于智能重命名文件的 AI 模型"
+              action={
+                <Select value={renameModelSelectValue} onValueChange={handleChangeRenameModel}>
+                  <SelectTrigger className="h-9 w-[220px]">
+                    <SelectValue placeholder="请选择重命名模型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不设置重命名模型</SelectItem>
+                    {models
+                      .filter((m) => m.is_enabled)
+                      .map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.display_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              }
+            />
+
+            <SettingsItemCard
+              title="重命名风格"
+              description="控制智能重命名的命名风格"
+              action={
+                <Select value={renameStyle} onValueChange={handleChangeRenameStyle}>
+                  <SelectTrigger className="h-9 w-[220px]">
+                    <SelectValue placeholder="请选择重命名风格" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">自动（推荐）</SelectItem>
+                    <SelectItem value="structured">结构化</SelectItem>
+                    <SelectItem value="simplified">精简化</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
             />
           </SettingsGroup>
         </div>

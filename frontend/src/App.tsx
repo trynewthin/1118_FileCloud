@@ -14,7 +14,7 @@ export const App: FC = () => {
       <AuthProvider>
         <AppShell>
           <AppRouter />
-          <Toaster position="top-center" richColors closeButton />
+          <Toaster position="top-center" richColors />
         </AppShell>
       </AuthProvider>
     </BrowserRouter>

@@ -141,3 +141,23 @@ export const executeAiTool = async (
 ): Promise<ExecuteToolResponse> => {
   return apiClient.post<ExecuteToolResponse>("/ai/tools/execute", request);
 };
+
+// 智能重命名
+export interface SmartRenameRequest {
+  fileName: string;
+  fileExtension?: string;
+  modelId?: number;
+  entryId?: string;
+}
+
+export interface SmartRenameResponse {
+  suggestedName: string;
+  originalName: string;
+  extension: string | null;
+}
+
+export const smartRename = async (
+  request: SmartRenameRequest,
+): Promise<SmartRenameResponse> => {
+  return apiClient.post<SmartRenameResponse>("/ai/smart-rename", request);
+};

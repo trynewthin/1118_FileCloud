@@ -8,9 +8,7 @@ import {
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { cn } from "@/lib/utils"
-
-// 基础玻璃样式（与 GlassCard lite 一致）
-const glassBase = "bg-background/50 backdrop-blur-md shadow-md"
+import { DS } from "@/theme/design-system"
 
 // 状态强调色样式（与 GlassButton 类似的边框强调）
 const stateStyles = {
@@ -36,18 +34,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       toastOptions={{
         classNames: {
-          toast: cn(glassBase, "rounded-xl border border-white/10"),
+          // 使用全局设计系统的玻璃与圆角样式，并强制覆盖 richColors 默认背景
+          toast: cn(
+            "relative overflow-hidden",
+            DS.radius.lg,
+            DS.glass.lite,
+            "!bg-background/60"
+          ),
           title: "text-foreground font-medium text-sm",
           description: "text-muted-foreground text-xs",
           success: stateStyles.success,
           error: stateStyles.error,
           warning: stateStyles.warning,
           info: stateStyles.info,
-          closeButton: cn(
-            "bg-background/50 backdrop-blur-sm border-white/10",
-            "hover:bg-background/80 hover:border-white/20",
-            "transition-all duration-200"
-          ),
           actionButton: cn(
             "bg-primary/10 text-primary border-primary/20",
             "hover:bg-primary/20 transition-colors"
@@ -58,6 +57,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           ),
         },
       }}
+      closeButton={false}
       style={
         {
           "--normal-bg": "var(--background)",
