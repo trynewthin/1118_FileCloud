@@ -14,21 +14,20 @@ export function SettingsPage() {
     <PageContainer title="系统设置">
       {/* 主题设置 */}
       <div className="mt-2">
-        <ThemeSettings />
-      </div>
-
-      {/* UI 兼容模式 */}
-      <div className="mt-6">
-        <SettingsItemCard
-          title="兼容模式"
-          description="关闭动态背景动画，在部分安卓设备或低性能设备上减少闪烁和卡顿。"
-          action={
-            <Switch
-              checked={compatMode}
-              onCheckedChange={(value) => setCompatMode(value)}
-            />
-          }
-        />
+        <SettingsGroup title="外观与主题">
+          <ThemeSettings />
+          {/* UI 兼容模式 */}
+          <SettingsItemCard
+            title="兼容模式"
+            description="关闭动态背景动画，在部分安卓设备或低性能设备上减少闪烁和卡顿。"
+            action={
+              <Switch
+                checked={compatMode}
+                onCheckedChange={(value) => setCompatMode(value)}
+              />
+            }
+          />
+        </SettingsGroup>
       </div>
 
       {/* 系统页面 */}
