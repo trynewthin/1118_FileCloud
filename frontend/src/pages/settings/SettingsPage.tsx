@@ -1,6 +1,6 @@
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useNavigate } from "react-router-dom";
-import { ThemeSettings } from "@/components/settings/ThemeSettings";
+import { ThemeSettings } from "@/components/settings/theme/ThemeSettings";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsItemCard } from "@/components/settings/SettingsItemCard";
 import { Switch } from "@/components/ui/switch";
