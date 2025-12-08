@@ -3,18 +3,20 @@ import { toast } from "sonner";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { apiGetInitStatus } from "@/lib/api/init";
 import { useAuth } from "@/hooks/useAuth";
-import { RootLayout } from "@/pages/RootLayout";
-
-import { InitPage } from "@/pages/InitPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { FileBrowserPage } from "@/pages/FileBrowserPage";
-import { TasksPage } from "@/pages/TasksPage";
-import { ActivityLogsPage } from "@/pages/ActivityLogsPage";
-import { SettingsPage } from "@/pages/SettingsPage";
-import { FilePreviewPage } from "@/pages/FilePreviewPage";
-import { AiChatPage } from "@/pages/AiChatPage";
-import { AiSettingsPage } from "@/pages/AiSettingsPage";
-import { TagsPage } from "@/pages/TagsPage";
+import {
+  RootLayout,
+  FileBrowserPage,
+  FilePreviewPage,
+  AiChatPage,
+  TagsPage,
+  SettingsPage,
+  TasksPage,
+  ActivityLogsPage,
+  AiSettingsPage,
+  AiModelManagementPage,
+  InitPage,
+  LoginPage,
+} from "@/pages";
 
 export function AppRouter() {
   return <InitGate />;
@@ -94,6 +96,7 @@ function InitGate() {
         <Route path="/settings/tasks" element={<TasksPage />} />
         <Route path="/settings/logs" element={<ActivityLogsPage />} />
         <Route path="/settings/ai" element={<AiSettingsPage />} />
+        <Route path="/settings/ai/models" element={<AiModelManagementPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
