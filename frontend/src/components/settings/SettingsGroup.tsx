@@ -18,7 +18,7 @@ export const SettingsGroup: FC<SettingsGroupProps> = ({
 }) => {
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="text-sm font-medium text-muted-foreground">{title}</div>
+      <div className="text-sm font-medium text-foreground/80">{title}</div>
       <div className="space-y-2">{children}</div>
     </div>
   );

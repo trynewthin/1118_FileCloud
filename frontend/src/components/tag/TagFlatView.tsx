@@ -156,7 +156,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
   // 加载或无数据状态
   if (tagsLoading || flatLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
+      <div className="flex items-center justify-center h-full text-foreground/70">
         加载中...
       </div>
     );
@@ -166,9 +166,9 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
     if (tags.length === 0) {
       // 既没有文件也没有标签
       return (
-        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-          <Tag className="h-8 w-8" />
-          <p>暂无标签文件</p>
+        <div className="flex flex-col items-center justify-center h-full text-foreground/70 gap-2">
+          <Tag className="h-8 w-8 text-primary/80" />
+          <p className="text-sm">暂无标签文件</p>
           <GlassButton
             glassVariant="lite"
             onClick={onOpenManage}
@@ -181,9 +181,9 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
 
     // 有标签但分组尚未加载到（理论上不太会发生），兜底提示
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-        <Tag className="h-8 w-8" />
-        <p>正在加载标签文件...</p>
+      <div className="flex flex-col items-center justify-center h-full text-foreground/70 gap-2">
+        <Tag className="h-8 w-8 text-primary/80" />
+        <p className="text-sm">正在加载标签文件...</p>
       </div>
     );
   }
@@ -197,7 +197,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
           <div
             className={cn(
               "flex items-center gap-2 px-2 py-1 sticky top-0 z-10",
-              DS.glass.lite,
+              DS.glass.strong,
               DS.radius.lg
             )}
           >
@@ -208,11 +208,11 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
               }}
             />
             <span className="text-sm font-medium truncate text-foreground">{group.path}</span>
-            <span className="text-xs text-muted-foreground">({group.files.length})</span>
+            <span className="text-xs text-foreground/70">({group.files.length})</span>
 
             <button
               type="button"
-              className="ml-auto inline-flex items-center justify-center rounded-full w-6 h-6 bg-foreground/5 hover:bg-foreground/10 transition-colors"
+              className="ml-auto inline-flex items-center justify-center w-6 h-6 text-foreground/70 hover:text-foreground transition-colors"
               onClick={() => {
                 setCollapsedMap((prev) => {
                   const next: Record<number, boolean> = {
@@ -234,11 +234,11 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
               )}
             </button>
           </div>
-          {/* 文件网格或空提示 */}
+          {/* 文件网格或空提示：使用轻量容器包裹，与 FileGridItem 玻璃风格协调 */}
           {!collapsedMap[group.tag.id] && (
-            <div className="mt-1 rounded-lg bg-muted/40 border border-border/40 px-2 py-2">
+            <div className="mt-1 rounded-xl border border-white/10 bg-background/20 px-2 py-2">
               {group.files.length === 0 ? (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-foreground/70">
                   该标签下暂无文件
                 </div>
               ) : (

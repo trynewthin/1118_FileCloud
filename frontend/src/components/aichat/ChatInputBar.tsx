@@ -5,6 +5,7 @@ import { Send, Square, ImagePlus, X } from "lucide-react";
 import { GlassButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
+import { DS } from "@/theme/design-system";
 
 export interface ChatAttachment {
   id: string;           // 临时 ID
@@ -112,7 +113,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
       )}
 
       {/* 输入区 */}
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2">
         {/* 隐藏的文件输入 */}
         <input
           ref={fileInputRef}
@@ -129,10 +130,10 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           size="icon"
           glassVariant="lite"
           onClick={() => fileInputRef.current?.click()}
-          className="h-10 w-10 rounded-full shrink-0 mb-0.5"
+          className="h-11 w-11 rounded-full shrink-0"
           title="添加图片"
         >
-          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+          <ImagePlus className="h-4 w-4 text-foreground/80" />
         </GlassButton>
 
         {/* 输入框 */}
@@ -140,6 +141,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           variant="strong" 
           className={cn(
             "flex-1 p-0 transition-all duration-300 border-white/20 min-h-[48px]",
+            DS.radius.full,
             focused && "ring-2 ring-primary/20 border-primary/30 shadow-lg shadow-primary/5"
           )}
         >
@@ -153,9 +155,9 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder="输入消息..."
-              className="min-h-[24px] max-h-48 w-full resize-none border-0 bg-transparent px-0 py-0 text-sm shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+              className="min-h-[24px] max-h-48 w-full resize-none border-0 bg-transparent px-0 py-0 text-sm shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-foreground/40"
             />
-            <div className="absolute right-3 bottom-3 text-[10px] text-muted-foreground/40 pointer-events-none hidden md:block">
+            <div className="absolute right-3 bottom-3 text-[10px] text-foreground/60 pointer-events-none hidden md:block">
               Ctrl + Enter 发送
             </div>
           </div>
@@ -168,11 +170,11 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           glassVariant="lite"
           onClick={handleSend}
           disabled={sending || (!value.trim() && attachments.length === 0)}
-          className="h-10 w-10 rounded-full shrink-0 mb-0.5"
+          className="h-11 w-11 rounded-full shrink-0"
           aria-label="发送消息"
         >
           {sending ? (
-            <Square className="h-4 w-4 text-muted-foreground" />
+            <Square className="h-4 w-4 text-foreground/80" />
           ) : (
             <Send className="h-4 w-4 text-primary" />
           )}

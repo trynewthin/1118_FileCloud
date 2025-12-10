@@ -234,10 +234,10 @@ export function FileGridItem({
         </div>
 
         <div className="w-full mt-1 space-y-1 text-left">
-          <p className="truncate text-sm font-medium leading-none" title={entry.original_name}>
+          <p className="truncate text-sm font-medium leading-none text-foreground" title={entry.original_name}>
             {entry.original_name}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs font-normal text-foreground/70">
             {isLibrary ? "文件库" : isDir ? "文件夹" : formatSize(entry.size_bytes)}
           </p>
         </div>

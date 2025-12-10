@@ -144,10 +144,10 @@ export function FileListItem({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium" title={entry.original_name}>
+          <p className="truncate text-sm font-medium text-foreground" title={entry.original_name}>
             {entry.original_name}
           </p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs font-normal text-foreground/70">
             <span>{isLibrary ? "文件库" : isDir ? "文件夹" : formatSize(entry.size_bytes)}</span>
             <span>•</span>
             <span>{new Date(entry.updated_at).toLocaleString()}</span>

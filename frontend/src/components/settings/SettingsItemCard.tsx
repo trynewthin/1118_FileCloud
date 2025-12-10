@@ -40,11 +40,11 @@ export const SettingsItemCard: FC<SettingsItemCardProps> = ({
       tabIndex={isClickable ? 0 : undefined}
     >
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-foreground">
+        <div className="text-sm font-medium text-foreground">
           {typeof title === "string" ? title : title}
         </div>
         {description && (
-          <div className="text-xs text-muted-foreground/70 mt-0.5">
+          <div className="text-xs text-foreground/70 mt-0.5">
             {typeof description === "string" ? description : description}
           </div>
         )}
@@ -55,7 +55,7 @@ export const SettingsItemCard: FC<SettingsItemCardProps> = ({
       ) : isClickable ? (
         <button
           type="button"
-          className="inline-flex h-5 w-5 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex h-5 w-5 items-center justify-center text-foreground/70 hover:text-foreground transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             onClick();

@@ -112,9 +112,9 @@ export const defaultTheme: ThemeColors = {
     secondary: "oklch(0.96 0 0)",
     secondaryForeground: "oklch(0.20 0.01 240)",
     
-    // 静音色：中性灰
+    // 静音色：中性灰，mutedForeground 提高亮度以增强可读性
     muted: "oklch(0.96 0 0)",
-    mutedForeground: "oklch(0.55 0 0)",
+    mutedForeground: "oklch(0.40 0 0)",
     
     // 强调色：极淡的品牌色背景，用于 hover 状态
     accent: "oklch(0.96 0.01 255)",
@@ -179,9 +179,9 @@ export const defaultTheme: ThemeColors = {
     secondary: "oklch(0.25 0.01 240)",
     secondaryForeground: "oklch(0.98 0 0)",
     
-    // 静音色
+    // 静音色：mutedForeground 提高亮度以增强可读性
     muted: "oklch(0.25 0.01 240)",
-    mutedForeground: "oklch(0.65 0 0)",
+    mutedForeground: "oklch(0.75 0 0)",
     
     // 强调色：深蓝灰背景
     accent: "oklch(0.25 0.02 255)",

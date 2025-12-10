@@ -77,11 +77,19 @@ export const DS = {
   },
 
   // 5. 文本与排版
+  // 设计原则：文字统一使用 text-foreground（黑/白），通过字重区分主次，保证可读性
+  // 只在极少数提示性场景（placeholder、空状态）使用 text-muted-foreground
   text: {
+    // 标题：粗体
     heading: "font-semibold tracking-tight text-foreground",
-    subheading: "text-sm font-medium text-muted-foreground",
-    body: "text-sm text-foreground/90 leading-relaxed",
-    caption: "text-xs text-muted-foreground/80",
+    // 副标题：中等字重，正常颜色
+    subheading: "text-sm font-medium text-foreground",
+    // 正文：正常字重
+    body: "text-sm text-foreground leading-relaxed",
+    // 辅助说明：小字号 + 稍轻字重，仍用前景色保证可读
+    caption: "text-xs font-normal text-foreground/70",
+    // 仅用于 placeholder、空状态等极弱提示
+    muted: "text-muted-foreground",
   },
 
   // 6. 氛围光效 (Glow & Ambient)

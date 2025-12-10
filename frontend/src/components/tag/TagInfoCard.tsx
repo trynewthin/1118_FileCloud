@@ -63,7 +63,8 @@ export const TagInfoCard = ({ entryId, refreshKey }: TagInfoCardProps) => {
     if (!color) {
       return {
         backgroundColor: "hsl(var(--muted))",
-        color: "hsl(var(--muted-foreground))",
+        // 默认标签文字使用前景色的稍弱版本，保证可读性
+        color: "hsl(var(--foreground) / 0.8)",
       };
     }
     // 使用标签自带颜色作为背景，文字使用对比色
@@ -77,7 +78,7 @@ export const TagInfoCard = ({ entryId, refreshKey }: TagInfoCardProps) => {
     <DelayedLoader
       loading={loading}
       fallback={
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-foreground/70">
           <span className="w-4 h-4 border-2 border-muted-foreground/40 border-t-transparent rounded-full animate-spin" />
           加载标签中...
         </div>
