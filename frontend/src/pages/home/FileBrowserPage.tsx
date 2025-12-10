@@ -97,6 +97,10 @@ export function FileBrowserPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // 滚动位置缓存 key
   const SCROLL_CACHE_KEY = "file_browser_scroll_positions";
+  // 最近一次访问的库与目录缓存 key（用于跨页面返回保持层级）
+  const LAST_PATH_CACHE_KEY = "file_browser_last_path";
+  // 避免重复恢复上次路径
+  const hasRestoredLastPath = useRef(false);
 
   // 文件操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
@@ -214,6 +218,37 @@ export function FileBrowserPage() {
     }
   }, [libsLoading, libraries, activeLibraryId, setSearchParams]);
 
+  // 当 URL 未包含库与目录参数时，从缓存恢复上次访问的层级（组件首次渲染即触发）
+  useEffect(() => {
+    if (hasRestoredLastPath.current) return;
+    // 仅在 URL 无参数时尝试恢复，避免覆盖显式传入的链接
+    if (libraryIdParam || parentIdParam) return;
+
+    try {
+      const cached = localStorage.getItem(LAST_PATH_CACHE_KEY);
+      if (!cached) return;
+
+      const { libraryId: cachedLibraryId, parentId: cachedParentId } = JSON.parse(cached) as {
+        libraryId: number | null;
+        parentId: string | null;
+      };
+
+      if (cachedLibraryId) {
+        setActiveLibraryId(cachedLibraryId);
+        setCurrentParentId(cachedParentId || null);
+        // 同步到 URL，便于刷新或分享
+        if (cachedParentId) {
+          setSearchParams({ libraryId: cachedLibraryId.toString(), parentId: cachedParentId });
+        } else {
+          setSearchParams({ libraryId: cachedLibraryId.toString() });
+        }
+        hasRestoredLastPath.current = true;
+      }
+    } catch {
+      // 解析失败则忽略
+    }
+  }, [libraryIdParam, parentIdParam, setSearchParams]);
+
   // 进入文件库（从根目录点击文件库）
   const handleEnterLibrary = (libraryId: number) => {
     setActiveLibraryId(libraryId);
@@ -266,6 +301,20 @@ export function FileBrowserPage() {
       }
     }
   }, [activeLibraryId, currentParentId]);
+
+  // 记录最近访问的库与目录，便于跨页面返回时恢复
+  useEffect(() => {
+    if (libsLoading) return;
+    try {
+      const payload = {
+        libraryId: activeLibraryId,
+        parentId: currentParentId,
+      };
+      localStorage.setItem(LAST_PATH_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+      // localStorage 不可用时忽略
+    }
+  }, [libsLoading, activeLibraryId, currentParentId]);
 
   // 从 sessionStorage 恢复滚动位置
   const restoreScrollPosition = useCallback(() => {
