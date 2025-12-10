@@ -4,6 +4,7 @@ import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { Music, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { GlassButton } from "@/components/common/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 
 interface AudioPreviewProps {
   entry: FileEntry;
@@ -109,91 +110,96 @@ export function AudioPreview({ entry }: AudioPreviewProps) {
 
   return (
     <div className="w-full p-6">
-      {/* 隐藏的原生音频元素 */}
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <GlassCard
+        variant="lite"
+        className="w-full p-6 flex flex-col items-center gap-6"
+      >
+        {/* 隐藏的原生音频元素 */}
+        <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
-      {/* 封面区域 */}
-      <div className="flex flex-col items-center mb-6">
-        <div className="w-32 h-32 rounded-2xl flex items-center justify-center mb-4 shadow-lg overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
-          {hasCover ? (
-            <img
-              src={coverUrl}
-              alt="专辑封面"
-              className="w-full h-full object-cover"
-              onError={() => setHasCover(false)}
-            />
-          ) : (
-            <Music className="w-16 h-16 text-primary/60" />
-          )}
+        {/* 封面区域 */}
+        <div className="flex flex-col items-center">
+          <div className="w-32 h-32 rounded-2xl flex items-center justify-center mb-4 shadow-lg overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
+            {hasCover ? (
+              <img
+                src={coverUrl}
+                alt="专辑封面"
+                className="w-full h-full object-cover"
+                onError={() => setHasCover(false)}
+              />
+            ) : (
+              <Music className="w-16 h-16 text-primary/60" />
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-center truncate max-w-full px-4">
+            {entry.original_name}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {entry.mime_type || "音频文件"}
+          </p>
         </div>
-        <h3 className="text-lg font-semibold text-center truncate max-w-full px-4">
-          {entry.original_name}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {entry.mime_type || "音频文件"}
-        </p>
-      </div>
 
-      {error ? (
-        <div className="text-center text-destructive py-4">{error}</div>
-      ) : (
-        <>
-          {/* 进度条 */}
-          <div className="mb-4">
-            <Slider
-              value={[currentTime]}
-              max={duration || 100}
-              step={0.1}
-              onValueChange={handleSeek}
-              className="cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+        {error ? (
+          <div className="text-center text-destructive py-4 w-full">{error}</div>
+        ) : (
+          <>
+            {/* 进度条 */}
+            <div className="mb-4 w-full">
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={0.1}
+                onValueChange={handleSeek}
+                className="cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
             </div>
-          </div>
 
-          {/* 控制按钮 */}
-          <div className="flex items-center justify-center gap-4">
-            {/* 播放/暂停 */}
-            <GlassButton
-              glassVariant="lite"
-              size="icon"
-              className="h-14 w-14 rounded-full"
-              onClick={togglePlay}
-            >
-              {isPlaying ? (
-                <Pause className="h-6 w-6" />
-              ) : (
-                <Play className="h-6 w-6 ml-0.5" />
-              )}
-            </GlassButton>
-          </div>
+            {/* 控制按钮 */}
+            <div className="flex items-center justify-center gap-4">
+              {/* 播放/暂停 */}
+              <GlassButton
+                glassVariant="lite"
+                size="icon"
+                className="h-14 w-14 rounded-full"
+                onClick={togglePlay}
+              >
+                {isPlaying ? (
+                  <Pause className="h-6 w-6" />
+                ) : (
+                  <Play className="h-6 w-6 ml-0.5" />
+                )}
+              </GlassButton>
+            </div>
 
-          {/* 音量控制 */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <GlassButton
-              glassVariant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={toggleMute}
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="h-4 w-4" />
-              ) : (
-                <Volume2 className="h-4 w-4" />
-              )}
-            </GlassButton>
-            <Slider
-              value={[isMuted ? 0 : volume]}
-              max={1}
-              step={0.01}
-              onValueChange={handleVolumeChange}
-              className="w-24 cursor-pointer"
-            />
-          </div>
-        </>
-      )}
+            {/* 音量控制 */}
+            <div className="flex items-center justify-center gap-2 mt-6 w-full">
+              <GlassButton
+                glassVariant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={toggleMute}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="h-4 w-4" />
+                ) : (
+                  <Volume2 className="h-4 w-4" />
+                )}
+              </GlassButton>
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                max={1}
+                step={0.01}
+                onValueChange={handleVolumeChange}
+                className="w-24 cursor-pointer"
+              />
+            </div>
+          </>
+        )}
+      </GlassCard>
     </div>
   );
 }

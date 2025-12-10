@@ -18,6 +18,7 @@ import { systemModule } from "./system/module.ts";
 import { aiModule } from "./ai/module.ts";
 import { tagsModule } from "./tags/module.ts";
 import { entriesModule } from "./entries/module.ts";
+import { backgroundsModule } from "./backgrounds/module.ts";
 
 /**
  * 所有业务模块列表
@@ -38,4 +39,5 @@ export const allModules: ModuleDefinition[] = [
   aiModule,
   tagsModule,
   entriesModule,
+  backgroundsModule,
 ];

@@ -2,11 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 
 export type BackgroundMode = "glow" | "image";
 
+// 图片来源类型：url 为外部链接，local 为本地上传
+export type ImageSourceType = "url" | "local";
+
 export interface BackgroundSettings {
   // 背景模式：光晕 / 图片
   mode: BackgroundMode;
-  // 图片背景地址，仅在 image 模式生效
+  // 图片来源类型
+  imageSourceType: ImageSourceType;
+  // 图片背景地址（外部 URL），仅在 image 模式 + url 来源时生效
   imageUrl: string;
+  // 本地图片 ID（IndexedDB 中的 key），仅在 image 模式 + local 来源时生效
+  localImageId: string;
 }
 
 const STORAGE_KEY = "filecloud-background-settings";
@@ -17,11 +24,19 @@ let currentSettings: BackgroundSettings | null = null;
 type Listener = (settings: BackgroundSettings) => void;
 const listeners = new Set<Listener>();
 
+// 默认设置
+const defaultSettings: BackgroundSettings = {
+  mode: "glow",
+  imageSourceType: "url",
+  imageUrl: "",
+  localImageId: "",
+};
+
 // 从 localStorage 读取并初始化全局设置
 function loadInitialSettings(): BackgroundSettings {
   if (currentSettings) return currentSettings;
 
-  let next: BackgroundSettings = { mode: "glow", imageUrl: "" };
+  let next: BackgroundSettings = { ...defaultSettings };
 
   if (typeof window !== "undefined") {
     try {
@@ -29,8 +44,12 @@ function loadInitialSettings(): BackgroundSettings {
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<BackgroundSettings>;
         const mode: BackgroundMode = parsed.mode === "image" ? "image" : "glow";
+        const imageSourceType: ImageSourceType =
+          parsed.imageSourceType === "local" ? "local" : "url";
         const imageUrl = typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
-        next = { mode, imageUrl };
+        const localImageId =
+          typeof parsed.localImageId === "string" ? parsed.localImageId : "";
+        next = { mode, imageSourceType, imageUrl, localImageId };
       }
     } catch {
       // 忽略解析错误，回退到默认值
@@ -107,14 +126,27 @@ export function useBackgroundSettings() {
 
   const setImageUrl = useCallback(
     (imageUrl: string) => {
-      setSettings((prev) => ({ ...prev, imageUrl }));
+      setSettings((prev) => ({ ...prev, imageUrl, imageSourceType: "url" as ImageSourceType }));
+    },
+    [setSettings],
+  );
+
+  const setLocalImageId = useCallback(
+    (localImageId: string) => {
+      setSettings((prev) => ({ ...prev, localImageId, imageSourceType: "local" as ImageSourceType }));
+    },
+    [setSettings],
+  );
+
+  const setImageSourceType = useCallback(
+    (imageSourceType: ImageSourceType) => {
+      setSettings((prev) => ({ ...prev, imageSourceType }));
     },
     [setSettings],
   );
 
   const reset = useCallback(() => {
-    const next: BackgroundSettings = { mode: "glow", imageUrl: "" };
-    updateGlobalSettings(next);
+    updateGlobalSettings({ ...defaultSettings });
   }, []);
 
   return {
@@ -122,6 +154,8 @@ export function useBackgroundSettings() {
     setSettings,
     setMode,
     setImageUrl,
+    setLocalImageId,
+    setImageSourceType,
     reset,
   };
 }

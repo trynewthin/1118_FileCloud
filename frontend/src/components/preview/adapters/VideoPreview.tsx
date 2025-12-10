@@ -3,6 +3,7 @@ import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { VideoPlayer } from "@/components/preview/VideoPlayer";
 import { GlassButton } from "@/components/common/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 import { Loader2, RefreshCw, Play, AlertCircle } from "lucide-react";
 import {
   getTranscodeState,
@@ -192,14 +193,17 @@ export function VideoPreview({ entry }: VideoPreviewProps) {
   return (
     <div className="flex flex-col w-full">
       {/* 视频播放器 */}
-      <div className="overflow-hidden rounded-2xl border border-border shadow-lg">
+      <GlassCard
+        variant="lite"
+        className="overflow-hidden rounded-2xl border border-border/60 shadow-lg"
+      >
         <VideoPlayer
           src={url}
           title={entry.original_name}
           poster={thumbnailUrl}
           key={useTranscoded ? "transcoded" : "original"}
         />
-      </div>
+      </GlassCard>
       
       {/* 转码按钮：视频下方靠左对齐 */}
       {needsTranscode && (
