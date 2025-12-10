@@ -317,10 +317,14 @@ export const getTagsForEntry = (entryId: string): (FileTagEntry & { tag: FileTag
 };
 
 // 获取标签下的所有文件 ID
-export const getEntriesForTag = (tagId: number, includeChildren: boolean = false): string[] => {
+export const getEntriesForTag = (tagId: number, includeChildren: boolean = false, onlyPrimary: boolean = false): string[] => {
   if (!includeChildren) {
     const rows = db
-      .prepare("SELECT entry_id FROM file_tag_entries WHERE tag_id = ?")
+      .prepare(
+        onlyPrimary
+          ? "SELECT entry_id FROM file_tag_entries WHERE tag_id = ? AND is_primary = 1"
+          : "SELECT entry_id FROM file_tag_entries WHERE tag_id = ?"
+      )
       .all(tagId) as { entry_id: string }[];
     return rows.map((r) => r.entry_id);
   }
@@ -343,7 +347,11 @@ export const getEntriesForTag = (tagId: number, includeChildren: boolean = false
   const placeholders = allTagIds.map(() => "?").join(",");
   
   const rows = db
-    .prepare(`SELECT DISTINCT entry_id FROM file_tag_entries WHERE tag_id IN (${placeholders})`)
+    .prepare(
+      onlyPrimary
+        ? `SELECT DISTINCT entry_id FROM file_tag_entries WHERE tag_id IN (${placeholders}) AND is_primary = 1`
+        : `SELECT DISTINCT entry_id FROM file_tag_entries WHERE tag_id IN (${placeholders})`
+    )
     .all(...allTagIds) as { entry_id: string }[];
   
   return rows.map((r) => r.entry_id);

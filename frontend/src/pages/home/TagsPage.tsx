@@ -38,6 +38,12 @@ export const TagsPage = () => {
     return (localStorage.getItem("tag_browser_view_mode") as "folder" | "flat") || "folder";
   });
 
+  // 是否只按主标签展示文件，避免在多个标签下重复出现
+  const [onlyPrimary, setOnlyPrimary] = useState<boolean>(() => {
+    const raw = localStorage.getItem("tag_browser_only_primary");
+    return raw === "true";
+  });
+
   // 当前选中的标签 ID（null 表示根级）
   const [currentTagId, setCurrentTagId] = useState<number | null>(null);
 
@@ -97,8 +103,7 @@ export const TagsPage = () => {
     const loadFiles = async () => {
       setFilesLoading(true);
       try {
-        // 只获取当前标签直接关联的文件，不包含子标签
-        const entryIds = await getEntriesForTag(currentTagId, false);
+        const entryIds = await getEntriesForTag(currentTagId, false, onlyPrimary);
         if (cancelled) return;
         
         // 获取文件详情
@@ -132,7 +137,7 @@ export const TagsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentTagId]);
+  }, [currentTagId, onlyPrimary]);
 
   // 点击标签：进入该标签
   const handleTagClick = (tag: FileTag) => {
@@ -171,8 +176,7 @@ export const TagsPage = () => {
     if (!currentTagId) return;
     setFilesLoading(true);
     try {
-      // 只获取当前标签直接关联的文件
-      const entryIds = await getEntriesForTag(currentTagId, false);
+      const entryIds = await getEntriesForTag(currentTagId, false, onlyPrimary);
       const files = await Promise.all(
         entryIds.map(async (id) => {
           try {
@@ -247,6 +251,22 @@ export const TagsPage = () => {
 
         {/* 右侧：视图切换 + 设置按钮 */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* 主标签去重开关 */}
+          <GlassButton
+            glassVariant={onlyPrimary ? "lite" : "ghost"}
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => {
+              setOnlyPrimary((prev) => {
+                const next = !prev;
+                localStorage.setItem("tag_browser_only_primary", next ? "true" : "false");
+                return next;
+              });
+            }}
+          >
+            {onlyPrimary ? "主标签视图" : "全部标签视图"}
+          </GlassButton>
+
           {/* 视图切换 */}
           <div className="flex items-center p-0.5 gap-0.5 rounded-md bg-muted/50">
             <Button
@@ -290,6 +310,7 @@ export const TagsPage = () => {
             tagsLoading={loading}
             onOpenManage={() => setManageDialogOpen(true)}
             onFileAction={handleFileAction}
+            onlyPrimary={onlyPrimary}
           />
         ) : (
           // 文件夹模式

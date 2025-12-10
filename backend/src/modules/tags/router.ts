@@ -217,8 +217,8 @@ router.get(
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
-    const { includeChildren } = req.query as { includeChildren?: string };
-    const entryIds = getEntriesForTag(id, includeChildren === "true");
+    const { includeChildren, onlyPrimary } = req.query as { includeChildren?: string; onlyPrimary?: string };
+    const entryIds = getEntriesForTag(id, includeChildren === "true", onlyPrimary === "true");
     return res.json({ entryIds });
   }
 );

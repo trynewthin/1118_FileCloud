@@ -97,8 +97,14 @@ export const getTagsForEntry = async (entryId: string): Promise<FileTagEntry[]> 
 };
 
 // 获取标签下的所有文件 ID
-export const getEntriesForTag = async (tagId: number, includeChildren: boolean = false): Promise<string[]> => {
-  const res = await apiClient.get<{ entryIds: string[] }>(`/tags/${tagId}/entries?includeChildren=${includeChildren}`);
+export const getEntriesForTag = async (
+  tagId: number,
+  includeChildren: boolean = false,
+  onlyPrimary: boolean = false,
+): Promise<string[]> => {
+  const res = await apiClient.get<{ entryIds: string[] }>(
+    `/tags/${tagId}/entries?includeChildren=${includeChildren}&onlyPrimary=${onlyPrimary}`,
+  );
   return res.entryIds;
 };
 

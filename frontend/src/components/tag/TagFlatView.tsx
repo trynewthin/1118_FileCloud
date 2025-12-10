@@ -23,6 +23,8 @@ interface TagFlatViewProps {
   onOpenManage: () => void;
   // 文件点击及操作回调
   onFileAction: (action: string, entry: FileEntry) => void;
+  // 是否只显示主标签为当前标签的文件
+  onlyPrimary: boolean;
 }
 
 // 递归收集标签及其子标签（深度优先），返回带路径的标签列表
@@ -46,6 +48,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
   tagsLoading,
   onOpenManage,
   onFileAction,
+  onlyPrimary,
 }) => {
   const [flatGroups, setFlatGroups] = useState<FlatGroup[]>([]);
   const [flatLoading, setFlatLoading] = useState(false);
@@ -82,8 +85,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
 
       for (const { tag, path } of tagsWithPath) {
         try {
-          // 获取该标签直接关联的文件（不包含子标签）
-          const entryIds = await getEntriesForTag(tag.id, false);
+          const entryIds = await getEntriesForTag(tag.id, false, onlyPrimary);
 
           if (entryIds.length === 0) {
             // 没有文件也要展示标签分组，只是文件列表为空
@@ -119,7 +121,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
     } finally {
       setFlatLoading(false);
     }
-  }, [tags]);
+  }, [tags, onlyPrimary]);
 
   // 当标签数据变化或首次进入时加载数据
   useEffect(() => {
@@ -189,22 +191,22 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
     <div className="space-y-6">
       {flatGroups.map((group) => (
         <div key={group.tag.id} className="space-y-2">
-          {/* 分组标题：整行使用标签色背景，保持圆角和轻微玻璃感 */}
+          {/* 分组标题：整行使用接近页面背景的卡片色，跟随浅色/深色主题，仅用左侧小圆点体现标签颜色 */}
           <div
-            className="flex items-center gap-2 px-2 py-1 sticky top-0 z-10 rounded-lg shadow-sm backdrop-blur-sm"
-            style={{
-              backgroundColor: group.tag.color || "rgba(107, 114, 128, 0.85)",
-            }}
+            className="flex items-center gap-2 px-2 py-1 sticky top-0 z-10 rounded-lg shadow-sm backdrop-blur-sm bg-background/90 border border-border/60"
           >
             <span
-              className="w-3 h-3 rounded-full shrink-0 bg-white/80"
+              className="w-3 h-3 rounded-full shrink-0 border border-white/40"
+              style={{
+                backgroundColor: group.tag.color || "#6b7280",
+              }}
             />
-            <span className="text-sm font-medium truncate text-white/95">{group.path}</span>
-            <span className="text-xs text-white/80">({group.files.length})</span>
+            <span className="text-sm font-medium truncate text-foreground">{group.path}</span>
+            <span className="text-xs text-muted-foreground">({group.files.length})</span>
 
             <button
               type="button"
-              className="ml-auto inline-flex items-center justify-center rounded-full w-6 h-6 bg-white/15 hover:bg-white/25 transition-colors"
+              className="ml-auto inline-flex items-center justify-center rounded-full w-6 h-6 bg-foreground/5 hover:bg-foreground/10 transition-colors"
               onClick={() => {
                 setCollapsedMap((prev) => {
                   const next: Record<number, boolean> = {
@@ -220,30 +222,32 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
               }}
             >
               {collapsedMap[group.tag.id] ? (
-                <ChevronRight className="w-3 h-3 text-white/90" />
+                <ChevronRight className="w-3 h-3 text-foreground/80" />
               ) : (
-                <ChevronDown className="w-3 h-3 text-white/90" />
+                <ChevronDown className="w-3 h-3 text-foreground/80" />
               )}
             </button>
           </div>
           {/* 文件网格或空提示 */}
           {!collapsedMap[group.tag.id] && (
-            group.files.length === 0 ? (
-              <div className="px-2 py-3 text-xs text-muted-foreground">
-                该标签下暂无文件
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {group.files.map((file) => (
-                  <FileGridItem
-                    key={`${group.tag.id}-${file.id}`}
-                    entry={file}
-                    onClick={() => onFileAction("click", file)}
-                    onAction={onFileAction}
-                  />
-                ))}
-              </div>
-            )
+            <div className="mt-1 rounded-lg bg-muted/40 border border-border/40 px-2 py-2">
+              {group.files.length === 0 ? (
+                <div className="text-xs text-muted-foreground">
+                  该标签下暂无文件
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {group.files.map((file) => (
+                    <FileGridItem
+                      key={`${group.tag.id}-${file.id}`}
+                      entry={file}
+                      onClick={() => onFileAction("click", file)}
+                      onAction={onFileAction}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       ))}
