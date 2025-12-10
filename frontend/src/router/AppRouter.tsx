@@ -16,6 +16,7 @@ import {
   AiModelManagementPage,
   InitPage,
   LoginPage,
+  TestPlaygroundPage,
 } from "@/pages";
 
 export function AppRouter() {
@@ -84,8 +85,10 @@ function InitGate() {
   }
 
   // 3. 已登录 -> 正常路由
+  // 注意：/test 测试页面独立于 RootLayout，不纳入主布局体系
   return (
     <Routes>
+      <Route path="/test" element={<TestPlaygroundPage />} />
       <Route element={<RootLayout />}>
         <Route path="/" element={<Navigate to="/files" replace />} />
         <Route path="/tags" element={<TagsPage />} />

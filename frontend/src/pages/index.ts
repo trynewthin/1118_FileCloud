@@ -4,4 +4,5 @@
 export * from "./home";
 export * from "./settings";
 export * from "./init";
+export * from "./test";
 
