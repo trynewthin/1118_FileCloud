@@ -63,6 +63,7 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
     name: string;
     color: string | null;
     allowMultiple: boolean;
+    showAncestorChain: boolean;
     parentTagId: number | null;
   }) => {
     if (editingTag) {
@@ -70,6 +71,7 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
         name: data.name,
         color: data.color,
         allowMultiple: data.allowMultiple,
+        showAncestorChain: data.showAncestorChain,
       });
       toast.success("标签已更新");
     } else {
@@ -77,6 +79,7 @@ export const TagManageDialog = ({ open, onOpenChange }: TagManageDialogProps) =>
         name: data.name,
         color: data.color,
         allowMultiple: data.allowMultiple,
+        showAncestorChain: data.showAncestorChain,
         parentTagId: data.parentTagId,
       });
       toast.success("标签已创建");

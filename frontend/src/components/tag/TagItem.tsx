@@ -3,7 +3,6 @@ import { Plus, Pencil, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/common/GlassCard";
 import type { FileTag } from "@/lib/api/tags";
 
 interface TagItemProps {
@@ -26,11 +25,13 @@ export const TagItem = ({
   const canAddChild = tag.level < 3;
 
   return (
-    <div className={cn(level > 0 && "ml-7")}>    
-      <GlassCard
-        variant="lite"
-        hoverEffect
-        className="flex items-center gap-2 py-2 px-3 group"
+    <div className={cn(level > 0 && "ml-7")}>
+      <div
+        className={cn(
+          "flex items-center gap-2 py-2 px-3 rounded-2xl transition-all cursor-pointer group bg-background/60 border border-border shadow-sm",
+          expanded && hasChildren && "bg-muted/60",
+        )}
+        onClick={() => hasChildren && setExpanded(!expanded)}
       >
         {/* 展开/收起按钮 */}
         <button
@@ -38,7 +39,10 @@ export const TagItem = ({
             "w-5 h-5 flex items-center justify-center text-muted-foreground",
             !hasChildren && "invisible"
           )}
-          onClick={() => setExpanded(!expanded)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
         >
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
@@ -96,7 +100,7 @@ export const TagItem = ({
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </GlassCard>
+      </div>
 
       {/* 子标签 */}
       {hasChildren && expanded && (

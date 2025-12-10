@@ -12,6 +12,7 @@ export interface FileTag {
   level: number;
   color: string | null;
   allow_multiple: boolean;
+  show_ancestor_chain: boolean;  // 仅一级标签有效：子标签是否显示父级关系链
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -57,6 +58,7 @@ export interface CreateTagInput {
   parentTagId?: number | null;
   color?: string | null;
   allowMultiple?: boolean;
+  showAncestorChain?: boolean;  // 仅一级标签有效
   sortOrder?: number;
 }
 
@@ -70,6 +72,7 @@ export interface UpdateTagInput {
   name?: string;
   color?: string | null;
   allowMultiple?: boolean;
+  showAncestorChain?: boolean;  // 仅一级标签有效
   sortOrder?: number;
 }
 

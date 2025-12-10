@@ -15,7 +15,7 @@ import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
-import { EntryTagDialog } from "@/components/tag";
+import { EntryTagDialog, TagInfoCard } from "@/components/tag";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 
 export function FilePreviewPage() {
@@ -32,6 +32,8 @@ export function FilePreviewPage() {
 
   // 标签对话框状态
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  // 标签刷新标识
+  const [tagRefreshKey, setTagRefreshKey] = useState(0);
 
   // 使用 useFileBrowser 获取操作方法
   const { remove, move, copy } = useFileBrowser({ 
@@ -221,24 +223,16 @@ export function FilePreviewPage() {
             加载失败
           </div>
         ) : (
-          <GlassCard
-            variant="strong"
-            className="relative flex flex-col p-0 max-w-5xl w-full mx-auto"
-          >
-            {renderPreviewer()}
-          </GlassCard>
+          entry && (
+            <div className="flex flex-col gap-3 max-w-5xl w-full mx-auto">
+              <GlassCard variant="strong" className="relative flex flex-col p-0 w-full">
+                {renderPreviewer()}
+              </GlassCard>
+              <TagInfoCard entryId={entry.id} refreshKey={tagRefreshKey} />
+            </div>
+          )
         )}
       </div>
-
-      {/* 删除对话框 */}
-      {actionDialog.type === "delete" && entry && (
-        <DeleteDialog
-          entry={entry}
-          open={true}
-          onOpenChange={(open) => !open && setActionDialog({ type: null })}
-          onSubmit={handleDeleteSubmit}
-        />
-      )}
 
       {/* 移动/复制对话框 */}
       {(actionDialog.type === "move" || actionDialog.type === "copy") && entry && (
@@ -251,11 +245,27 @@ export function FilePreviewPage() {
         />
       )}
 
+      {/* 删除对话框 */}
+      {actionDialog.type === "delete" && entry && (
+        <DeleteDialog
+          entry={entry}
+          open={true}
+          onOpenChange={(open) => !open && setActionDialog({ type: null })}
+          onSubmit={handleDeleteSubmit}
+        />
+      )}
+
       {/* 标签对话框 */}
       {tagDialogOpen && entry && (
         <EntryTagDialog
           open={true}
-          onOpenChange={setTagDialogOpen}
+          onOpenChange={(open) => {
+            setTagDialogOpen(open);
+            // 对话框关闭时刷新标签卡片
+            if (!open) {
+              setTagRefreshKey((k) => k + 1);
+            }
+          }}
           entryId={entry.id}
         />
       )}

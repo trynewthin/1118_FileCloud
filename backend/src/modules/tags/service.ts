@@ -12,6 +12,7 @@ export interface FileTag {
   level: number;
   color: string | null;
   allow_multiple: boolean;  // 仅一级标签有效：是否允许多选
+  show_ancestor_chain: boolean;  // 仅一级标签有效：子标签是否显示父级关系链
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -41,6 +42,7 @@ const mapRowToTag = (row: any): FileTag => ({
   level: row.level,
   color: row.color ?? null,
   allow_multiple: Boolean(row.allow_multiple),
+  show_ancestor_chain: Boolean(row.show_ancestor_chain),
   sort_order: row.sort_order ?? 0,
   created_at: row.created_at,
   updated_at: row.updated_at,
@@ -131,11 +133,12 @@ export interface CreateTagInput {
   parentTagId?: number | null;
   color?: string | null;
   allowMultiple?: boolean;
+  showAncestorChain?: boolean;  // 仅一级标签有效
   sortOrder?: number;
 }
 
 export const createTag = (input: CreateTagInput): FileTag => {
-  const { userId, name, parentTagId, color, allowMultiple, sortOrder } = input;
+  const { userId, name, parentTagId, color, allowMultiple, showAncestorChain, sortOrder } = input;
   
   // 计算层级
   let level = 1;
@@ -166,7 +169,7 @@ export const createTag = (input: CreateTagInput): FileTag => {
   
   const result = db
     .prepare(
-      "INSERT INTO file_tags (user_id, name, parent_tag_id, level, color, allow_multiple, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO file_tags (user_id, name, parent_tag_id, level, color, allow_multiple, show_ancestor_chain, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       userId,
@@ -175,6 +178,7 @@ export const createTag = (input: CreateTagInput): FileTag => {
       level,
       color ?? null,
       level === 1 ? (allowMultiple ? 1 : 0) : 0, // 仅一级标签可设置 allow_multiple
+      level === 1 ? (showAncestorChain ? 1 : 0) : 0, // 仅一级标签可设置 show_ancestor_chain
       sortOrder ?? 0,
       now,
       now
@@ -188,6 +192,7 @@ export interface UpdateTagInput {
   name?: string;
   color?: string | null;
   allowMultiple?: boolean;
+  showAncestorChain?: boolean;  // 仅一级标签有效
   sortOrder?: number;
 }
 
@@ -197,7 +202,7 @@ export const updateTag = (id: number, userId: number, input: UpdateTagInput): Fi
     throw new Error("标签不存在");
   }
   
-  const { name, color, allowMultiple, sortOrder } = input;
+  const { name, color, allowMultiple, showAncestorChain, sortOrder } = input;
   
   // 如果修改名称，检查同用户同级同名
   if (name !== undefined && name.trim() !== tag.name) {
@@ -213,11 +218,12 @@ export const updateTag = (id: number, userId: number, input: UpdateTagInput): Fi
   const now = new Date().toISOString();
   
   db.prepare(
-    "UPDATE file_tags SET name = ?, color = ?, allow_multiple = ?, sort_order = ?, updated_at = ? WHERE id = ?"
+    "UPDATE file_tags SET name = ?, color = ?, allow_multiple = ?, show_ancestor_chain = ?, sort_order = ?, updated_at = ? WHERE id = ?"
   ).run(
     name !== undefined ? name.trim() : tag.name,
     color !== undefined ? color : tag.color,
     tag.level === 1 && allowMultiple !== undefined ? (allowMultiple ? 1 : 0) : (tag.allow_multiple ? 1 : 0),
+    tag.level === 1 && showAncestorChain !== undefined ? (showAncestorChain ? 1 : 0) : (tag.show_ancestor_chain ? 1 : 0),
     sortOrder !== undefined ? sortOrder : tag.sort_order,
     now,
     id
@@ -280,7 +286,7 @@ export const getRootAncestor = (tagId: number): FileTag | null => {
 export const getTagsForEntry = (entryId: string): (FileTagEntry & { tag: FileTag })[] => {
   const rows = db
     .prepare(
-      `SELECT fte.*, ft.user_id, ft.name, ft.parent_tag_id, ft.level, ft.color, ft.allow_multiple, ft.sort_order, ft.created_at as tag_created_at, ft.updated_at as tag_updated_at
+      `SELECT fte.*, ft.user_id, ft.name, ft.parent_tag_id, ft.level, ft.color, ft.allow_multiple, ft.show_ancestor_chain, ft.sort_order, ft.created_at as tag_created_at, ft.updated_at as tag_updated_at
        FROM file_tag_entries fte
        JOIN file_tags ft ON fte.tag_id = ft.id
        WHERE fte.entry_id = ?
@@ -302,6 +308,7 @@ export const getTagsForEntry = (entryId: string): (FileTagEntry & { tag: FileTag
       level: row.level,
       color: row.color ?? null,
       allow_multiple: Boolean(row.allow_multiple),
+      show_ancestor_chain: Boolean(row.show_ancestor_chain),
       sort_order: row.sort_order ?? 0,
       created_at: row.tag_created_at,
       updated_at: row.tag_updated_at,

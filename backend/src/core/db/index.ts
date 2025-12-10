@@ -234,6 +234,7 @@ const initDatabase = () => {
       "  level INTEGER NOT NULL DEFAULT 1,",      // 层级（1-3）
       "  color TEXT,",                            // 标签颜色（可选）
       "  allow_multiple INTEGER NOT NULL DEFAULT 0,", // 仅一级标签有效：是否允许多选（0=互斥单选，1=允许多选）
+      "  show_ancestor_chain INTEGER NOT NULL DEFAULT 0,", // 仅一级标签有效：子标签是否显示父级关系链
       "  sort_order INTEGER NOT NULL DEFAULT 0,", // 排序顺序
       "  created_at TEXT NOT NULL DEFAULT (datetime('now')),",
       "  updated_at TEXT NOT NULL DEFAULT (datetime('now'))",

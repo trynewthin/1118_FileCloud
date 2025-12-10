@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ToggleLeft, ToggleRight } from "lucide-react";
+import { ToggleLeft, ToggleRight, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ interface TagEditDialogProps {
     name: string;
     color: string | null;
     allowMultiple: boolean;
+    showAncestorChain: boolean;
     parentTagId: number | null;
   }) => Promise<void>;
 }
@@ -56,6 +57,7 @@ export const TagEditDialog = ({
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [showAncestorChain, setShowAncestorChain] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +82,9 @@ export const TagEditDialog = ({
     // 选择模式：编辑时沿用原配置，新建时默认互斥（单选）
     setAllowMultiple(tag?.allow_multiple || false);
 
+    // 显示祖先链：编辑时沿用原配置，新建时默认开启
+    setShowAncestorChain(tag?.show_ancestor_chain ?? true);
+
     setError(null);
   }, [open, tag]);
 
@@ -96,6 +101,7 @@ export const TagEditDialog = ({
         name: name.trim(),
         color,
         allowMultiple: isRootLevel ? allowMultiple : false,
+        showAncestorChain: isRootLevel ? showAncestorChain : false,
         parentTagId: isNew ? (parentTag?.id ?? null) : (tag?.parent_tag_id ?? null),
       });
       onOpenChange(false);
@@ -175,6 +181,28 @@ export const TagEditDialog = ({
                 {allowMultiple
                   ? "文件可以同时拥有此标签下的多个子标签"
                   : "文件在此标签下只能选择一个子标签（互斥）"}
+              </p>
+            </div>
+          )}
+
+          {/* 显示祖先链（仅一级标签） */}
+          {isRootLevel && (
+            <div className="space-y-2">
+              <Label>子标签显示父级关系链</Label>
+              <button
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors w-full",
+                  showAncestorChain ? "border-primary bg-primary/10" : "border-muted"
+                )}
+                onClick={() => setShowAncestorChain(!showAncestorChain)}
+              >
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm">{showAncestorChain ? "已开启" : "已关闭"}</span>
+              </button>
+              <p className="text-xs text-muted-foreground">
+                {showAncestorChain
+                  ? "子标签将显示完整的父级关系链，如“类型 / 动作”"
+                  : "子标签仅显示自身名称"}
               </p>
             </div>
           )}

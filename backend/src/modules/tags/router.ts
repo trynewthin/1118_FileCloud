@@ -98,11 +98,12 @@ router.post(
       return res.status(401).json({ message: "未登录" });
     }
     
-    const { name, parentTagId, color, allowMultiple, sortOrder } = req.body as {
+    const { name, parentTagId, color, allowMultiple, showAncestorChain, sortOrder } = req.body as {
       name?: string;
       parentTagId?: number | null;
       color?: string | null;
       allowMultiple?: boolean;
+      showAncestorChain?: boolean;
       sortOrder?: number;
     };
     
@@ -117,6 +118,7 @@ router.post(
         parentTagId,
         color,
         allowMultiple,
+        showAncestorChain,
         sortOrder,
       });
       return res.status(201).json({ tag });
@@ -142,15 +144,16 @@ router.put(
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
-    const { name, color, allowMultiple, sortOrder } = req.body as {
+    const { name, color, allowMultiple, showAncestorChain, sortOrder } = req.body as {
       name?: string;
       color?: string | null;
       allowMultiple?: boolean;
+      showAncestorChain?: boolean;
       sortOrder?: number;
     };
     
     try {
-      const tag = updateTag(id, userId, { name, color, allowMultiple, sortOrder });
+      const tag = updateTag(id, userId, { name, color, allowMultiple, showAncestorChain, sortOrder });
       return res.json({ tag });
     } catch (err: any) {
       return res.status(400).json({ message: err.message || "更新标签失败" });

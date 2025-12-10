@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
-import { listSettings, setSetting } from "./service.ts";
+import { listSettings, setSetting, getSetting } from "./service.ts";
 
 const router = express.Router();
 
@@ -37,6 +37,22 @@ router.put(
     setSetting(key, String(value));
 
     return res.status(204).send();
+  },
+);
+
+// 获取单个设置值（普通用户可读取）
+router.get(
+  "/:key",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  (req, res) => {
+    const { key } = req.params;
+    if (!key || typeof key !== "string") {
+      return res.status(400).json({ message: "设置键不合法" });
+    }
+
+    const value = getSetting(key);
+    return res.json({ key, value: value ?? null });
   },
 );
 
