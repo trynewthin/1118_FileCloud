@@ -10,7 +10,7 @@ interface GlassButtonProps extends ButtonProps {
 }
 
 export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, glassVariant = "lite", variant = "ghost", size, ...props }, ref) => {
+  ({ className, glassVariant = "strong", variant = "ghost", size, ...props }, ref) => {
     const glassClass = {
       strong: DS.glass.strong,
       lite: DS.glass.lite,

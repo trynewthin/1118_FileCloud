@@ -70,7 +70,10 @@ export function AppHeader() {
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className={DS.radius.lg}>
+              <DropdownMenuContent
+                align="end"
+                className={cn(DS.radius.lg, DS.glass.strong, "border-white/10 min-w-[180px] p-1")}
+              >
                 <DropdownMenuLabel>我的账户</DropdownMenuLabel>
                 <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate max-w-[150px]">
                   {user.username}

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { DS } from "@/theme/design-system";
 
 interface FileGridItemProps {
   entry: FileEntry;
@@ -80,7 +81,7 @@ export function FileGridItem({
   return (
     <GlassCard
       variant="ghost"
-      hoverEffect={!libraryOffline}
+      hoverEffect={false}
       className={cn(
         "group relative flex flex-col items-center justify-between p-2 text-center transition-all duration-300",
         selected && "ring-2 ring-primary/40",
@@ -133,7 +134,10 @@ export function FileGridItem({
               <MoreVertical className="h-4 w-4" />
             </GlassButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent
+            align="end"
+            className={cn("min-w-[160px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+          >
             {isLibrary ? (
               // 文件库操作菜单
               <>
@@ -199,8 +203,13 @@ export function FileGridItem({
       </div>
 
       <div className="flex flex-1 flex-col items-center gap-2 w-full">
-        {/* 统一的缩略图框架：固定比例 + 边框 */}
-        <div className="w-full max-h-24 aspect-4/3 rounded-xl bg-background/40 border border-white/10 overflow-hidden flex items-center justify-center shadow-sm">
+        {/* 统一的缩略图框架：固定比例 + 玻璃效果，仅图标区域使用强玻璃样式 */}
+        <div
+          className={cn(
+            "w-full max-h-24 aspect-4/3 rounded-xl overflow-hidden flex items-center justify-center shadow-sm",
+            DS.glass.strong
+          )}
+        >
           {hasThumbnail && !thumbnailError ? (
             <img
               src={thumbnailUrl}

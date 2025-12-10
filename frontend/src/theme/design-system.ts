@@ -51,16 +51,18 @@ export const DS = {
       "blur-mac:shadow-md",
       "blur-mac:supports-[backdrop-filter]:bg-background/10",
     ].join(" "),
-    // 弱模糊（内容区浮层）：在滚动容器内使用较高透明度背景
+    // lite 目前作为 strong 的视觉别名，保证所有使用 lite 的地方与 strong 一致
     lite: [
-      "border bg-background/60 backdrop-blur-md border-white/15 dark:border-white/10 shadow-sm",
-      // macOS 风格：更透明的背景
-      "blur-mac:bg-background/40",
-      "blur-mac:backdrop-blur-xl",
-      "blur-mac:backdrop-saturate-125",
-      "blur-mac:backdrop-contrast-110",
-      "blur-mac:border-white/20",
+      "border bg-background/70 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-sm supports-[backdrop-filter]:bg-background/60",
+      // macOS 风格
+      "blur-mac:bg-background/25",
+      "blur-mac:backdrop-blur-2xl",
+      "blur-mac:backdrop-saturate-150",
+      "blur-mac:backdrop-contrast-125",
+      "blur-mac:border-white/30",
       "blur-mac:dark:border-white/15",
+      "blur-mac:shadow-md",
+      "blur-mac:supports-[backdrop-filter]:bg-background/10",
     ].join(" "),
     // 纯卡片（不透明）：用于正文内容
     card: "bg-card text-card-foreground border border-border/40 shadow-sm",

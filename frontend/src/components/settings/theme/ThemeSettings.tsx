@@ -1,6 +1,7 @@
 import { Check, Plus } from "lucide-react";
 import { useColorTheme } from "@/hooks/useColorTheme";
 import { cn } from "@/lib/utils";
+import { DS } from "@/theme/design-system";
 import { SettingsItemCard } from "@/components/settings/SettingsItemCard";
 import {
   DropdownMenu,
@@ -82,8 +83,9 @@ export function ThemeSettings() {
                   <Plus className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              {/* 菜单：使用网格布局展示额外主题颜色 */}
-              <DropdownMenuContent className="w-40 p-1">
+              {/* 菜单：使用网格布局展示额外主题颜色，应用统一玻璃菜单样式 */}
+              <DropdownMenuContent className={cn("w-40 p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+              >
                 <div className="grid grid-cols-4 gap-2">
                   {extraThemes.map((theme) => {
                     const isGradient = theme.previewColor.startsWith("linear-gradient");

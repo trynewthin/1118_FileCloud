@@ -12,6 +12,7 @@ import {
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { DS } from "@/theme/design-system";
 
 // ============================================================================
 // 文件类型筛选枚举
@@ -148,7 +149,10 @@ export function FilterSortMenu({ state, onChange, className }: FilterSortMenuPro
           <Filter className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[160px]">
+      <DropdownMenuContent
+        align="end"
+        className={cn("min-w-[160px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+      >
         {/* 文件类型筛选子菜单 */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
@@ -161,7 +165,9 @@ export function FilterSortMenu({ state, onChange, className }: FilterSortMenuPro
             )}
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent className="min-w-[120px]">
+            <DropdownMenuSubContent
+              className={cn("min-w-[120px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+            >
               {(Object.keys(fileTypeLabels) as FileTypeFilter[]).map((type) => (
                 <DropdownMenuItem
                   key={type}
@@ -215,7 +221,9 @@ export function FilterSortMenu({ state, onChange, className }: FilterSortMenuPro
             </span>
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuSubContent className="min-w-[100px]">
+            <DropdownMenuSubContent
+              className={cn("min-w-[100px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+            >
               {(Object.keys(sortOrderLabels) as SortOrder[]).map((order) => (
                 <DropdownMenuItem
                   key={order}

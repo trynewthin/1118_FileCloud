@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { DS } from "@/theme/design-system";
 
 interface FileListItemProps {
   entry: FileEntry;
@@ -166,7 +167,10 @@ export function FileListItem({
             <MoreVertical className="h-4 w-4" />
           </GlassButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent
+          align="end"
+          className={cn("min-w-[160px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+        >
           {isLibrary ? (
             // 文件库操作菜单
             <>

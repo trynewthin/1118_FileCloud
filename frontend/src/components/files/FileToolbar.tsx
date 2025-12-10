@@ -10,6 +10,7 @@ export { defaultFilterSortState, getFileTypeCategory } from "./FilterSortMenu";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
+import { DS } from "@/theme/design-system";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -364,7 +365,10 @@ export function FileBreadcrumb({
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[140px]">
+            <DropdownMenuContent
+              align="end"
+              className={cn("min-w-[140px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+            >
               {onRefresh && (
                 <DropdownMenuItem onClick={onRefresh}>
                   <RefreshCw className="h-4 w-4 mr-2" />
