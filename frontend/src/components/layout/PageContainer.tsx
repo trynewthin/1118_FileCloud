@@ -36,7 +36,7 @@ export const PageContainer: FC<PageContainerProps> = ({
   }, [title, setConfig]);
 
   return (
-    <div className={cn("relative flex min-h-0 flex-col space-y-4 w-full h-full overflow-hidden pt-1", className)}>
+    <div className={cn("relative flex min-h-0 flex-col space-y-4 w-full h-full pt-1", className)}>
       {/* Header Area (Back button, Center content & Actions) */}
       {(showBack || action || headerCenter) && (
         <div className="flex items-center justify-between shrink-0 z-10 relative mt-1 px-4">

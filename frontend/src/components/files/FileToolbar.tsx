@@ -81,7 +81,10 @@ export function FileToolbar({
     const allSelected = totalCount > 0 && selectedCount === totalCount;
 
     return (
-      <GlassCard className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2">
+      <GlassCard
+        variant="strong"
+        className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2"
+      >
         {/* 左侧：取消 + 全选/全不选 + 已选数量 */}
         <div className="flex items-center gap-2 min-w-0">
           <Button
@@ -155,7 +158,10 @@ export function FileToolbar({
   }
 
   return (
-    <GlassCard className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2">
+    <GlassCard
+      variant="strong"
+      className="px-2 py-1.5 md:px-3 md:py-2 flex items-center justify-between gap-2"
+    >
       {/* 左侧：搜索按钮 + 筛选排序 */}
       <div className="flex items-center gap-1">
         {/* 全局搜索按钮 */}

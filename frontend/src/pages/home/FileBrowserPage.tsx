@@ -616,7 +616,7 @@ export function FileBrowserPage() {
 
   return (
     <PageContainer title="文件浏览" className="h-full flex flex-col relative">
-      <div className="flex-none space-y-2 z-10 relative">
+      <div className="flex-none space-y-2 relative">
         <FileToolbar
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
@@ -656,7 +656,7 @@ export function FileBrowserPage() {
       <GlassCard 
         ref={scrollContainerRef}
         variant="ghost" 
-        className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2 z-10"
+        className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2"
       >
         <DelayedLoader 
           loading={libsLoading || (!!activeLibrary && entriesLoading)} 

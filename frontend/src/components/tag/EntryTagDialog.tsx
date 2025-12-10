@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Check, Star, Search, X, Tag, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { DS } from "@/theme/design-system";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTagList, useEntryTags } from "@/hooks/useTags";
@@ -120,12 +121,14 @@ export const EntryTagDialog = ({
         <div key={tag.id} className={cn(level > 0 && "ml-7")}>
           <div
             className={cn(
-              "flex items-center gap-2 py-2 px-3 rounded-2xl transition-all cursor-default group bg-background/60 border border-border shadow-sm",
+              "flex items-center gap-2 py-2 px-3 transition-all cursor-default group",
+              DS.glass.lite,
+              DS.radius.xl,
               isPrimary
-                ? "bg-yellow-500/15 border border-yellow-400/70 shadow-sm"
+                ? "bg-yellow-500/15 border-yellow-400/70"
                 : isSelected
-                  ? "bg-primary/10 border border-primary/40"
-                  : "hover:bg-muted/50 border border-transparent"
+                  ? "bg-primary/10 border-primary/40"
+                  : "hover:bg-muted/50"
             )}
           >
             {/* 折叠/展开按钮 */}

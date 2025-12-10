@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/common/GlassCard";
 import type { FileTag } from "@/lib/api/tags";
 
 interface TagItemProps {
@@ -26,10 +27,12 @@ export const TagItem = ({
 
   return (
     <div className={cn(level > 0 && "ml-7")}>
-      <div
+      <GlassCard
+        variant="lite"
+        hoverEffect
         className={cn(
-          "flex items-center gap-2 py-2 px-3 rounded-2xl transition-all cursor-pointer group bg-background/60 border border-border shadow-sm",
-          expanded && hasChildren && "bg-muted/60",
+          "flex items-center gap-2 py-2 px-3 transition-all cursor-pointer group",
+          expanded && hasChildren && "bg-muted/40",
         )}
         onClick={() => hasChildren && setExpanded(!expanded)}
       >
@@ -100,7 +103,7 @@ export const TagItem = ({
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </div>
+      </GlassCard>
 
       {/* 子标签 */}
       {hasChildren && expanded && (

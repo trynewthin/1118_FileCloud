@@ -15,7 +15,8 @@ export const DS = {
     // 主内容区的内边距策略
     mainContent: "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] pb-6",
     // PageContainer 内部内容区域：负责撑满高度并预留统一底部留白
-    pageBody: "relative z-10 flex-1 min-h-0 h-full flex flex-col pb-4 md:pb-6 px-2 md:px-3",
+    // 注意：不要使用 z-10，否则会创建新的层叠上下文，导致 backdrop-filter 无法模糊外部背景
+    pageBody: "relative flex-1 min-h-0 h-full flex flex-col pb-4 md:pb-6 px-2 md:px-3",
   },
 
   // 2. 圆角系统 (Radius)
@@ -33,11 +34,34 @@ export const DS = {
   },
 
   // 3. 玻璃拟态与背景 (Glass & Surface)
+  // 注意：backdrop-filter 在嵌套的 overflow 容器中无法穿透到外部背景
+  // 因此在 main 滚动区内部的元素，backdrop-filter 只能模糊同层级的内容
+  // 为了保证视觉一致性，使用较高的背景透明度 + 边框 + 阴影来模拟玻璃效果
   glass: {
-    // 强模糊（侧边栏、顶栏）：高透 + 强模糊 + 细边框
-    strong: "bg-background/70 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-sm supports-[backdrop-filter]:bg-background/60",
-    // 弱模糊（内容区的浮层）：低透 + 弱模糊
-    lite: "bg-background/50 backdrop-blur-md border-white/10 shadow-sm",
+    // 强模糊（侧边栏、顶栏等不在滚动容器内的元素）
+    strong: [
+      "border bg-background/70 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-sm supports-[backdrop-filter]:bg-background/60",
+      // macOS 风格
+      "blur-mac:bg-background/25",
+      "blur-mac:backdrop-blur-2xl",
+      "blur-mac:backdrop-saturate-150",
+      "blur-mac:backdrop-contrast-125",
+      "blur-mac:border-white/30",
+      "blur-mac:dark:border-white/15",
+      "blur-mac:shadow-md",
+      "blur-mac:supports-[backdrop-filter]:bg-background/10",
+    ].join(" "),
+    // 弱模糊（内容区浮层）：在滚动容器内使用较高透明度背景
+    lite: [
+      "border bg-background/60 backdrop-blur-md border-white/15 dark:border-white/10 shadow-sm",
+      // macOS 风格：更透明的背景
+      "blur-mac:bg-background/40",
+      "blur-mac:backdrop-blur-xl",
+      "blur-mac:backdrop-saturate-125",
+      "blur-mac:backdrop-contrast-110",
+      "blur-mac:border-white/20",
+      "blur-mac:dark:border-white/15",
+    ].join(" "),
     // 纯卡片（不透明）：用于正文内容
     card: "bg-card text-card-foreground border border-border/40 shadow-sm",
   },

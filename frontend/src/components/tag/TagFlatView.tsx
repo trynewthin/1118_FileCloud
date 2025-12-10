@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Tag, ChevronDown, ChevronRight } from "lucide-react";
 import { GlassButton } from "@/components/common/GlassButton";
 import { FileGridItem } from "@/components/files/FileGridItem";
+import { DS } from "@/theme/design-system";
+import { cn } from "@/lib/utils";
 import type { FileTag } from "@/lib/api/tags";
 import type { FileEntry } from "@/lib/api/files";
 import { getEntriesForTag } from "@/lib/api/tags";
@@ -193,7 +195,11 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
         <div key={group.tag.id} className="space-y-2">
           {/* 分组标题：整行使用接近页面背景的卡片色，跟随浅色/深色主题，仅用左侧小圆点体现标签颜色 */}
           <div
-            className="flex items-center gap-2 px-2 py-1 sticky top-0 z-10 rounded-lg shadow-sm backdrop-blur-sm bg-background/90 border border-border/60"
+            className={cn(
+              "flex items-center gap-2 px-2 py-1 sticky top-0 z-10",
+              DS.glass.lite,
+              DS.radius.lg
+            )}
           >
             <span
               className="w-3 h-3 rounded-full shrink-0 border border-white/40"

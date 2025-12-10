@@ -22,10 +22,9 @@ export function AppBottomNav() {
       <div className="pointer-events-auto mx-auto mb-5 px-4">
         <div
           className={cn(
-            "flex h-16 items-center justify-around px-4 border shadow-sm",
+            "flex h-16 items-center justify-around px-4 border",
             DS.radius.full,
-            DS.glass.strong,
-            "bg-background/80"
+            DS.glass.strong
           )}
         >
           {navItems.map((item, index) => {

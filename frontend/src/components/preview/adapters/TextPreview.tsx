@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { FileText, AlertCircle } from "lucide-react";
+import { GlassCard } from "@/components/common/GlassCard";
+import { DS } from "@/theme/design-system";
+import { cn } from "@/lib/utils";
 
 interface TextPreviewProps {
   entry: FileEntry;
@@ -49,38 +52,38 @@ export function TextPreview({ entry }: TextPreviewProps) {
 
   if (loading) {
     return (
-      <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
+      <GlassCard variant="lite" className={cn("w-full overflow-hidden", DS.radius.xl)}>
         <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
           <FileText className="w-12 h-12 text-muted-foreground animate-pulse mb-4" />
           <p className="text-muted-foreground">加载中...</p>
         </div>
-      </div>
+      </GlassCard>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
+      <GlassCard variant="lite" className={cn("w-full overflow-hidden", DS.radius.xl)}>
         <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
           <AlertCircle className="w-12 h-12 text-destructive mb-4" />
           <p className="text-destructive">{error}</p>
         </div>
-      </div>
+      </GlassCard>
     );
   }
 
   return (
-    <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
+    <GlassCard variant="lite" className={cn("w-full overflow-hidden", DS.radius.xl)}>
       {/* 文件名标题 */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-muted/30">
         <FileText className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-medium truncate">{entry.original_name}</span>
       </div>
       
       {/* 文本内容 */}
-      <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words overflow-x-auto max-h-[70vh] overflow-y-auto bg-background/50">
+      <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words overflow-x-auto max-h-[70vh] overflow-y-auto">
         {content || "(空文件)"}
       </pre>
-    </div>
+    </GlassCard>
   );
 }
