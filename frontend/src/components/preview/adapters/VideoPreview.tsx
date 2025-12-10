@@ -192,16 +192,18 @@ export function VideoPreview({ entry }: VideoPreviewProps) {
   return (
     <div className="flex flex-col w-full">
       {/* 视频播放器 */}
-      <VideoPlayer
-        src={url}
-        title={entry.original_name}
-        poster={thumbnailUrl}
-        key={useTranscoded ? "transcoded" : "original"}
-      />
+      <div className="overflow-hidden rounded-2xl border border-border shadow-lg">
+        <VideoPlayer
+          src={url}
+          title={entry.original_name}
+          poster={thumbnailUrl}
+          key={useTranscoded ? "transcoded" : "original"}
+        />
+      </div>
       
-      {/* 转码按钮：视频下方居中 */}
+      {/* 转码按钮：视频下方靠左对齐 */}
       {needsTranscode && (
-        <div className="flex justify-center py-3">
+        <div className="flex justify-start py-3">
           {renderTranscodeButton()}
         </div>
       )}

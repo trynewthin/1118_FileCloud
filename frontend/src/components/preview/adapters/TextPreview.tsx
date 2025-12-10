@@ -49,24 +49,28 @@ export function TextPreview({ entry }: TextPreviewProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
-        <FileText className="w-12 h-12 text-muted-foreground animate-pulse mb-4" />
-        <p className="text-muted-foreground">加载中...</p>
+      <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
+        <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
+          <FileText className="w-12 h-12 text-muted-foreground animate-pulse mb-4" />
+          <p className="text-muted-foreground">加载中...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
-        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
-        <p className="text-destructive">{error}</p>
+      <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
+        <div className="flex flex-col items-center justify-center w-full min-h-[300px] p-8">
+          <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+          <p className="text-destructive">{error}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full rounded-2xl border border-border shadow-lg overflow-hidden bg-background/60">
       {/* 文件名标题 */}
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
         <FileText className="w-4 h-4 text-muted-foreground" />

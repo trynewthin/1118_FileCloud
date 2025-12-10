@@ -275,8 +275,8 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
   return (
     <div
       className={
-        "flex flex-col items-center justify-center w-full h-full bg-black/90 " +
-        (isFullscreen ? "p-0" : "p-4")
+        "flex flex-col items-center justify-center w-full h-full " +
+        (isFullscreen ? "bg-black" : "")
       }
     >
       <div
@@ -286,7 +286,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
       >
         <div
           className={cn(
-            "relative w-full bg-black overflow-hidden shadow-lg",
+            "relative w-full overflow-hidden",
             isFullscreen ? "h-full" : "aspect-video"
           )}
           onMouseMove={handleUserInteract}
@@ -296,7 +296,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
           {/* 视频层 */}
           <video
             ref={videoRef}
-            className="w-full h-full object-contain bg-black"
+            className="w-full h-full object-contain"
             src={src}
             poster={poster}
             preload="metadata"
@@ -354,26 +354,23 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
                 (showControls ? "opacity-100" : "opacity-0")
               }
             >
-              {title && (
-                <div className="max-w-5xl mx-auto truncate" title={title}>
-                  {title}
-                </div>
-              )}
-            </div>
-          )}
+              <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 pointer-events-auto">
+                {title && (
+                  <div className="truncate" title={title}>
+                    {title}
+                  </div>
+                )}
 
-          {/* 顶层右上角静音按钮，仅保留图标（仅在开始播放后出现） */}
-          {hasStarted && (
-            <button
-              type="button"
-              onClick={toggleMute}
-              className={
-                "pointer-events-auto absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center text-white transition-opacity duration-200 " +
-                (showControls ? "opacity-100" : "opacity-0")
-              }
-            >
-              {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
+                {/* 静音按钮：与标题同行垂直居中 */}
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-white"
+                >
+                  {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           )}
 
           {/* 浮动操作层：底部控制条（仅在开始播放后出现） */}
@@ -409,11 +406,11 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
                       onPointerLeave={handleSeekCancel}
                     >
                       <div
-                        className="absolute inset-y-0 left-0 bg-white"
+                        className="absolute inset-y-0 left-0 bg-primary"
                         style={{ width: `${displayPercent}%` }}
                       />
                       <div
-                        className="absolute -top-1.5 h-3 w-3 rounded-full bg-white shadow-md"
+                        className="absolute -top-1.5 h-3 w-3 rounded-full bg-primary shadow-md"
                         style={{ left: `${displayPercent}%`, transform: "translateX(-50%)" }}
                       />
                     </div>

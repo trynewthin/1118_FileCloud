@@ -11,7 +11,6 @@ import { ImagePreview } from "@/components/preview/adapters/ImagePreview";
 import { TextPreview } from "@/components/preview/adapters/TextPreview";
 import { PdfPreview } from "@/components/preview/adapters/PdfPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
-import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
 import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
@@ -225,9 +224,9 @@ export function FilePreviewPage() {
         ) : (
           entry && (
             <div className="flex flex-col gap-3 max-w-5xl w-full mx-auto">
-              <GlassCard variant="strong" className="relative flex flex-col p-0 w-full">
+              <div className="relative flex flex-col p-0 w-full">
                 {renderPreviewer()}
-              </GlassCard>
+              </div>
               <TagInfoCard entryId={entry.id} refreshKey={tagRefreshKey} />
             </div>
           )
