@@ -1,8 +1,26 @@
 import { useState } from "react";
-import { File, Folder, MoreVertical, Image as ImageIcon, Film, Check, Tag, Download, Pencil, Move, Copy, Trash2, CloudOff, HardDrive } from "lucide-react";
+import {
+  Folder,
+  MoreVertical,
+  Check,
+  Tag,
+  Download,
+  Pencil,
+  Move,
+  Copy,
+  Trash2,
+  CloudOff,
+  HardDrive,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
+import {
+  THUMBNAIL_EXTS,
+  getFileIconGroup,
+  FILE_ICON_COMPONENTS,
+  FILE_ICON_DEFAULT_COMPONENT,
+} from "@/configs/fileTypeIcons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +45,6 @@ interface FileListItemProps {
   // 文件库操作回调（仅当 entry._isLibraryEntry 为 true 时使用）
   onLibraryAction?: (action: "config" | "delete" | "reindex", libraryId: number) => void;
 }
-
-const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
 
 export function FileListItem({
   entry,
@@ -117,13 +133,11 @@ export function FileListItem({
                 <HardDrive className="h-8 w-8" />
               ) : isDir ? (
                 <Folder className="h-8 w-8" />
-              ) : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? (
-                <ImageIcon className="h-8 w-8" />
-              ) : ["mp4", "webm", "mov", "avi", "mkv"].includes(ext) ? (
-                <Film className="h-8 w-8" />
-              ) : (
-                <File className="h-8 w-8" />
-              )}
+              ) : (() => {
+                const group = getFileIconGroup(ext);
+                const Icon = group ? FILE_ICON_COMPONENTS[group] : FILE_ICON_DEFAULT_COMPONENT;
+                return <Icon className="h-8 w-8" />;
+              })()}
             </div>
           )}
         </div>

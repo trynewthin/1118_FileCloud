@@ -15,12 +15,16 @@ import {
   ChevronRight,
   Search,
   ExternalLink,
-  Image as ImageIcon,
-  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassButton } from "@/components/common/GlassButton";
 import { buildApiUrl } from "@/lib/api/client";
+import {
+  THUMBNAIL_EXTS,
+  getFileIconGroup,
+  FILE_ICON_COMPONENTS,
+  FILE_ICON_DEFAULT_COMPONENT,
+} from "@/configs/fileTypeIcons";
 
 // 工具调用结果类型
 export interface ToolCallResult {
@@ -166,9 +170,6 @@ function TimeInfoRenderer({ result }: { result: ToolCallResult }) {
   );
 }
 
-// 判断是否支持缩略图
-const THUMBNAIL_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mov", "mkv", "avi"]);
-
 // 搜索结果渲染
 function SearchResultsRenderer({ result }: { result: ToolCallResult }) {
   const results = result.results || [];
@@ -194,9 +195,11 @@ function SearchResultsRenderer({ result }: { result: ToolCallResult }) {
             >
               {item.isDirectory ? (
                 <Folder className="h-4 w-4 text-primary shrink-0" />
-              ) : (
-                <File className="h-4 w-4 text-muted-foreground shrink-0" />
-              )}
+              ) : (() => {
+                const group = getFileIconGroup(item.extension || "");
+                const Icon = group ? FILE_ICON_COMPONENTS[group] : FILE_ICON_DEFAULT_COMPONENT;
+                return <Icon className="h-4 w-4 text-muted-foreground shrink-0" />;
+              })()}
               <div className="flex-1 min-w-0">
                 <div className="text-sm truncate">{item.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{item.path}</div>
@@ -261,20 +264,15 @@ function FileDisplayRenderer({ result }: { result: ToolCallResult }) {
     );
   };
   
-  // 获取文件图标
+  // 获取文件图标（统一使用 fileTypeIcons 配置）
   const getFileIcon = (file: { isDirectory: boolean; extension: string | null; mimeType: string | null }) => {
     if (file.isDirectory) {
       return <Folder className="h-5 w-5 text-amber-500" />;
     }
     const ext = file.extension?.toLowerCase() || "";
-    const mime = file.mimeType || "";
-    if (mime.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
-      return <ImageIcon className="h-5 w-5 text-green-500" />;
-    }
-    if (mime.startsWith("video/") || ["mp4", "webm", "mov", "mkv", "avi"].includes(ext)) {
-      return <Film className="h-5 w-5 text-purple-500" />;
-    }
-    return <File className="h-5 w-5 text-blue-500" />;
+    const group = getFileIconGroup(ext);
+    const Icon = group ? FILE_ICON_COMPONENTS[group] : FILE_ICON_DEFAULT_COMPONENT;
+    return <Icon className="h-5 w-5 text-blue-500" />;
   };
   
   return (
