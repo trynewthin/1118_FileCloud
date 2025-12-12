@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { Button } from "@/components/ui/button";
 import { useTagList } from "@/hooks/useTags";
 import { TagItem } from "@/components/tag/TagItem";
 import { TagEditDialog } from "@/components/tag/TagEditDialog";
@@ -12,6 +13,34 @@ import type { FileTag } from "@/lib/api/tags";
 
 export const TagsManagePage = () => {
   const { tags, loading, error, create, update, remove } = useTagList();
+
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tags_manage_action_visibility");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { showAddChild?: boolean; showEdit?: boolean; showDelete?: boolean };
+      if (typeof parsed.showAddChild === "boolean") setShowAddChild(parsed.showAddChild);
+      if (typeof parsed.showEdit === "boolean") setShowEdit(parsed.showEdit);
+      if (typeof parsed.showDelete === "boolean") setShowDelete(parsed.showDelete);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "tags_manage_action_visibility",
+        JSON.stringify({ showAddChild, showEdit, showDelete })
+      );
+    } catch {
+      // ignore
+    }
+  }, [showAddChild, showEdit, showDelete]);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<FileTag | null>(null);
@@ -77,20 +106,54 @@ export const TagsManagePage = () => {
   };
 
   return (
-    <PageContainer title="标签管理" className="h-full flex flex-col relative">
-      <GlassCard className="px-3 py-2 flex items-center">
-        <div className="flex-1 text-sm text-foreground/80">管理你的标签结构</div>
-        <GlassButton
-          glassVariant="lite"
-          size="icon"
-          onClick={handleAddRoot}
-          title="新建标签"
-        >
-          <Plus className="h-4 w-4" />
-        </GlassButton>
-      </GlassCard>
+    <PageContainer
+      title="标签管理"
+      className="h-full flex flex-col relative"
+      action={
+        <div className="flex items-center gap-2">
+          <GlassButton
+            glassVariant="lite"
+            className="h-8 px-3 text-sm justify-start min-w-[96px]"
+            onClick={handleAddRoot}
+            title="添加标签"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="ml-1">添加标签</span>
+          </GlassButton>
 
-      <GlassCard variant="ghost" className="flex-1 mt-4 min-h-0 overflow-y-auto px-2 py-2">
+          <GlassCard variant="lite" className="flex items-center p-0.5 gap-0.5">
+            <Button
+              variant={showAddChild ? "secondary" : "ghost"}
+              size="icon-sm"
+              className={showAddChild ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+              onClick={() => setShowAddChild((v) => !v)}
+              title={showAddChild ? "隐藏新增子标签按钮" : "显示新增子标签按钮"}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={showEdit ? "secondary" : "ghost"}
+              size="icon-sm"
+              className={showEdit ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+              onClick={() => setShowEdit((v) => !v)}
+              title={showEdit ? "隐藏编辑按钮" : "显示编辑按钮"}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={showDelete ? "secondary" : "ghost"}
+              size="icon-sm"
+              className={showDelete ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+              onClick={() => setShowDelete((v) => !v)}
+              title={showDelete ? "隐藏删除按钮" : "显示删除按钮"}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </GlassCard>
+        </div>
+      }
+    >
+      <GlassCard variant="ghost" className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
         {loading ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>
         ) : error ? (
@@ -109,6 +172,9 @@ export const TagsManagePage = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onAddChild={handleAddChild}
+                showAddChild={showAddChild}
+                showEdit={showEdit}
+                showDelete={showDelete}
               />
             ))}
           </div>

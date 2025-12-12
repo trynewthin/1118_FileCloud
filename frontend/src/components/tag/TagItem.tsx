@@ -12,6 +12,9 @@ interface TagItemProps {
   onEdit: (tag: FileTag) => void;
   onDelete: (tag: FileTag) => void;
   onAddChild: (parentTag: FileTag) => void;
+  showAddChild?: boolean;
+  showEdit?: boolean;
+  showDelete?: boolean;
 }
 
 export const TagItem = ({
@@ -20,10 +23,18 @@ export const TagItem = ({
   onEdit,
   onDelete,
   onAddChild,
+  showAddChild = true,
+  showEdit = true,
+  showDelete = true,
 }: TagItemProps) => {
   const [expanded, setExpanded] = useState(false);
   const hasChildren = tag.children && tag.children.length > 0;
   const canAddChild = tag.level < 3;
+
+  const areChildrenAllLeaf = (t: FileTag) => {
+    if (!t.children || t.children.length === 0) return false;
+    return t.children.every((c) => !c.children || c.children.length === 0);
+  };
 
   return (
     <div className={cn(level > 0 && "ml-7")}>
@@ -36,20 +47,6 @@ export const TagItem = ({
         )}
         onClick={() => hasChildren && setExpanded(!expanded)}
       >
-        {/* 展开/收起按钮 */}
-        <button
-          className={cn(
-            "w-5 h-5 flex items-center justify-center text-muted-foreground",
-            !hasChildren && "invisible"
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-        >
-          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-
         {/* 颜色标记 */}
         <div
           className="w-3 h-3 rounded-full shrink-0"
@@ -57,7 +54,7 @@ export const TagItem = ({
         />
 
         {/* 标签名称 */}
-        <span className={cn("flex-1 text-sm", DS.text.body)}>{tag.name}</span>
+        <span className={cn("flex-1 min-w-0 truncate text-sm", DS.text.body)}>{tag.name}</span>
 
         {/* 互斥/多选标记（仅一级标签） */}
         {tag.level === 1 && (
@@ -72,53 +69,163 @@ export const TagItem = ({
         )}
 
         {/* 操作按钮 */}
-        <div className="flex items-center gap-1">
-          {canAddChild && (
+        <div className="flex items-center justify-end gap-1 min-h-7">
+          {showDelete && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(tag);
+              }}
+              title="删除"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {showEdit && (
             <Button
               variant="ghost"
               size="icon-sm"
               className="h-7 w-7"
-              onClick={() => onAddChild(tag)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(tag);
+              }}
+              title="编辑"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {showAddChild && canAddChild && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild(tag);
+              }}
               title="添加子标签"
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={() => onEdit(tag)}
-            title="编辑"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDelete(tag)}
-            title="删除"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
         </div>
+
+        {/* 展开/收起按钮（移动到最右侧） */}
+        <button
+          className={cn(
+            "w-5 h-5 flex items-center justify-center text-muted-foreground",
+            !hasChildren && "invisible"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+        >
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
       </GlassCard>
 
       {/* 子标签 */}
       {hasChildren && expanded && (
-        <div className="mt-2 space-y-1.5">
-          {tag.children!.map((child) => (
-            <TagItem
-              key={child.id}
-              tag={child}
-              level={level + 1}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onAddChild={onAddChild}
-            />
-          ))}
-        </div>
+        areChildrenAllLeaf(tag) ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {tag.children!.map((child) => {
+              const childCanAdd = child.level < 3;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-lg",
+                    DS.glass.lite,
+                    DS.radius.lg,
+                    "border border-white/10 hover:bg-muted/50"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (showEdit) {
+                      onEdit(child);
+                    }
+                  }}
+                  title={showEdit ? "编辑" : child.name}
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: child.color || "#6b7280" }}
+                  />
+                  <span className={cn("max-w-[160px] truncate text-sm", DS.text.body)}>{child.name}</span>
+
+                  {(showAddChild || showEdit || showDelete) && (
+                    <span className="flex items-center gap-0.5 ml-1">
+                      {showAddChild && childCanAdd && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-6 w-6"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            onAddChild(child);
+                          }}
+                          title="添加子标签"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {showEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-6 w-6"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            onEdit(child);
+                          }}
+                          title="编辑"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {showDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            onDelete(child);
+                          }}
+                          title="删除"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-2 space-y-1.5">
+            {tag.children!.map((child) => (
+              <TagItem
+                key={child.id}
+                tag={child}
+                level={level + 1}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onAddChild={onAddChild}
+                showAddChild={showAddChild}
+                showEdit={showEdit}
+                showDelete={showDelete}
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );
