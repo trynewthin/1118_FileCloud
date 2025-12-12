@@ -8,7 +8,6 @@ import {
   FileBrowserPage,
   FilePreviewPage,
   AiChatPage,
-  TagsBrowsePage,
   TagsManagePage,
   SettingsPage,
   TasksPage,
@@ -86,18 +85,17 @@ function InitGate() {
   }
 
   // 3. 已登录 -> 正常路由
-  // 注意：/test 测试页面独立于 RootLayout，不纳入主布局体系
   return (
     <Routes>
-      <Route path="/test" element={<TestPlaygroundPage />} />
       <Route element={<RootLayout />}>
         <Route path="/" element={<Navigate to="/files" replace />} />
+        <Route path="/test" element={<Navigate to="/settings/test" replace />} />
         <Route path="/tags" element={<TagsManagePage />} />
-        <Route path="/tags/browse" element={<TagsBrowsePage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
         <Route path="/preview/:id" element={<FilePreviewPage />} />
         <Route path="/ai" element={<AiChatPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/test" element={<TestPlaygroundPage />} />
         <Route path="/settings/tasks" element={<TasksPage />} />
         <Route path="/settings/logs" element={<ActivityLogsPage />} />
         <Route path="/settings/ai" element={<AiSettingsPage />} />

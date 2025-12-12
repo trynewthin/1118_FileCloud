@@ -93,6 +93,10 @@ export function SettingsPage() {
             title="AI 设置"
             onClick={() => navigate("/settings/ai")}
           />
+          <SettingsItemCard
+            title="测试页面"
+            onClick={() => navigate("/settings/test")}
+          />
         </SettingsGroup>
       </div>
     </PageContainer>
