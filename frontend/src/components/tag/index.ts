@@ -10,3 +10,4 @@ export { EntryTagDialog } from "./EntryTagDialog";
 export { BatchTagDialog } from "./BatchTagDialog";
 export { TagManageDialog } from "./TagManageDialog";
 export { TagInfoCard } from "./TagInfoCard";
+export { TagsBrowseView } from "./TagsBrowseView";

@@ -14,7 +14,7 @@ import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
 import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
 import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
 import { GlobalSearchDialog } from "@/components/files/dialogs/GlobalSearchDialog";
-import { EntryTagDialog, BatchTagDialog } from "@/components/tag";
+import { EntryTagDialog, BatchTagDialog, TagsBrowseView } from "@/components/tag";
 import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
 import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
 import { LibraryConfigDialog } from "@/components/file-libraries/LibraryConfigDialog";
@@ -22,6 +22,8 @@ import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DelayedLoader } from "@/components/common/DelayedLoader";
+import { Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -44,12 +46,15 @@ export function FileBrowserPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const libraryIdParam = searchParams.get("libraryId");
   const parentIdParam = searchParams.get("parentId");
+  const virtualParam = searchParams.get("virtual");
+  const isVirtualTags = virtualParam === "tags";
   
   const { items: libraries, loading: libsLoading } = useFileLibraries();
   
   // 当前选中的文件库 ID（从 URL 读取，不再使用 localStorage 缓存）
   // null 表示在根目录（文件库列表）
   const [activeLibraryId, setActiveLibraryId] = useState<number | null>(() => {
+    if (virtualParam) return null;
     if (libraryIdParam) {
       return parseInt(libraryIdParam);
     }
@@ -58,15 +63,26 @@ export function FileBrowserPage() {
 
   // 同步 URL 中的 libraryId 到状态（处理跨库跳转场景）
   useEffect(() => {
+    if (virtualParam) {
+      if (activeLibraryId !== null) {
+        setActiveLibraryId(null);
+      }
+      return;
+    }
     const newLibraryId = libraryIdParam ? parseInt(libraryIdParam) : null;
     if (newLibraryId !== activeLibraryId) {
       setActiveLibraryId(newLibraryId);
     }
-  }, [libraryIdParam]); // 仅依赖 URL 参数变化
+  }, [libraryIdParam, virtualParam]); // 仅依赖 URL 参数变化
 
   // 视图模式持久化
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     return (localStorage.getItem("file_browser_view_mode") as "grid" | "list") || "grid";
+  });
+
+  const [tagBrowseOnlyPrimary, setTagBrowseOnlyPrimary] = useState<boolean>(() => {
+    const raw = localStorage.getItem("tag_browser_only_primary");
+    return raw === "true";
   });
 
   // 重建索引对话框状态
@@ -175,7 +191,13 @@ export function FileBrowserPage() {
   // 面包屑项：文件库名 + 祖先目录
   const breadcrumbItems = useMemo(() => {
     const items: BreadcrumbItem[] = [];
-    
+
+    // 虚拟文件库：标签浏览
+    if (isVirtualTags) {
+      items.push({ id: "virtual-tags", name: "标签浏览" });
+      return items;
+    }
+
     // 如果在文件库内，添加文件库名作为第一项
     if (activeLibrary) {
       items.push({
@@ -191,15 +213,17 @@ export function FileBrowserPage() {
   }, [activeLibrary, ancestors]);
 
   const currentPathLabel = useMemo(() => {
+    if (isVirtualTags) return "标签浏览";
     if (!activeLibraryId) return "";
     if (!currentParentId || breadcrumbItems.length === 0) {
       return "当前文件库根目录";
     }
     return breadcrumbItems.map((b) => b.name).join(" / ");
-  }, [activeLibraryId, currentParentId, breadcrumbItems]);
+  }, [isVirtualTags, activeLibraryId, currentParentId, breadcrumbItems]);
 
   // 初始化同步：如果 URL 有 parentId，设置给 hook
   useEffect(() => {
+    if (virtualParam) return;
     if (parentIdParam && parentIdParam !== currentParentId) {
       setCurrentParentId(parentIdParam);
     }
@@ -220,6 +244,7 @@ export function FileBrowserPage() {
 
   // 当 URL 未包含库与目录参数时，从缓存恢复上次访问的层级（组件首次渲染即触发）
   useEffect(() => {
+    if (virtualParam) return;
     if (hasRestoredLastPath.current) return;
     // 仅在 URL 无参数时尝试恢复，避免覆盖显式传入的链接
     if (libraryIdParam || parentIdParam) return;
@@ -256,6 +281,12 @@ export function FileBrowserPage() {
     setCurrentParentId(null);
   };
 
+  const handleEnterVirtualTags = () => {
+    setActiveLibraryId(null);
+    setCurrentParentId(null);
+    setSearchParams({ virtual: "tags" });
+  };
+
   // 返回根目录（文件库列表）
   const handleBackToRoot = () => {
     setActiveLibraryId(null);
@@ -286,6 +317,8 @@ export function FileBrowserPage() {
     setViewMode(mode);
     localStorage.setItem("file_browser_view_mode", mode);
   };
+
+  const tagBrowseViewMode: "folder" | "flat" = viewMode === "grid" ? "folder" : "flat";
 
   // 保存当前滚动位置到 sessionStorage
   const saveScrollPosition = useCallback(() => {
@@ -365,6 +398,12 @@ export function FileBrowserPage() {
   // 返回上一级目录
   const handleGoUp = () => {
     saveScrollPosition();
+
+    // 虚拟文件库：返回根目录
+    if (isVirtualTags) {
+      handleBackToRoot();
+      return;
+    }
     
     // 如果在文件库内部
     if (activeLibraryId) {
@@ -390,6 +429,12 @@ export function FileBrowserPage() {
 
   const handleBreadcrumbItemClick = (item: BreadcrumbItem) => {
     saveScrollPosition();
+
+    // 虚拟文件库：点击唯一项等同返回根目录
+    if (isVirtualTags) {
+      handleBackToRoot();
+      return;
+    }
     
     // 如果点击的是文件库项（以 library- 开头），返回文件库根目录
     if (item.id.startsWith("library-")) {
@@ -620,7 +665,7 @@ export function FileBrowserPage() {
         <FileToolbar
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          canGoUp={!!activeLibraryId} // 只要在文件库内就可以返回上一级
+          canGoUp={!!activeLibraryId || isVirtualTags} // 虚拟库也允许返回
           onGoUp={handleGoUp}
           onGlobalSearch={() => setGlobalSearchDialogOpen(true)}
           filterSortState={activeLibraryId ? filterSortState : undefined}
@@ -642,10 +687,33 @@ export function FileBrowserPage() {
             items={breadcrumbItems}
             onRootClick={handleBreadcrumbRootClick}
             onItemClick={handleBreadcrumbItemClick}
+            rightExtra={
+              isVirtualTags ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setTagBrowseOnlyPrimary((prev) => {
+                        const next = !prev;
+                        localStorage.setItem("tag_browser_only_primary", next ? "true" : "false");
+                        return next;
+                      });
+                    }}
+                    title={tagBrowseOnlyPrimary ? "主标签视图" : "全部标签视图"}
+                  >
+                    <Star
+                      className={tagBrowseOnlyPrimary ? "h-4 w-4 text-yellow-500 fill-yellow-500" : "h-4 w-4 text-muted-foreground"}
+                    />
+                  </Button>
+                </>
+              ) : null
+            }
             onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
             onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
-            onCreateLibrary={!activeLibraryId ? () => setNewLibraryDialogOpen(true) : undefined}
-            onRefresh={reload}
+            onCreateLibrary={!activeLibraryId && !isVirtualTags ? () => setNewLibraryDialogOpen(true) : undefined}
+            onRefresh={!isVirtualTags ? reload : undefined}
             onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
             onBatchMode={activeLibraryId ? () => handleBatchModeChange(true) : undefined}
             onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
@@ -663,7 +731,7 @@ export function FileBrowserPage() {
           className="flex h-full items-center justify-center"
         >
           {/* 根目录：显示文件库列表 */}
-          {!activeLibraryId ? (
+          {!activeLibraryId && !isVirtualTags ? (
             libraries.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4">
                 <p>暂无文件库</p>
@@ -694,6 +762,7 @@ export function FileBrowserPage() {
                     created_at: lib.created_at,
                     updated_at: lib.updated_at,
                     _isLibraryEntry: true,
+                    _virtualType: "library",
                   };
                   const Component = viewMode === "grid" ? FileGridItem : FileListItem;
                   return (
@@ -706,8 +775,49 @@ export function FileBrowserPage() {
                     />
                   );
                 })}
+
+                {(() => {
+                  const now = new Date().toISOString();
+                  const tagsBrowseEntry: FileEntry = {
+                    id: "virtual-tags-browse",
+                    library_id: 0,
+                    parent_id: null,
+                    is_directory: true,
+                    original_name: "标签浏览",
+                    index_suffix: null,
+                    extension: null,
+                    size_bytes: 0,
+                    mime_type: null,
+                    is_deleted: false,
+                    deleted_at: null,
+                    created_at: now,
+                    updated_at: now,
+                    _virtualType: "tags",
+                  };
+                  const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+                  return (
+                    <Component
+                      key={tagsBrowseEntry.id}
+                      entry={tagsBrowseEntry}
+                      onClick={handleEnterVirtualTags}
+                      onDoubleClick={handleEnterVirtualTags}
+                    />
+                  );
+                })()}
               </div>
             )
+          ) : isVirtualTags ? (
+            <TagsBrowseView
+              onOpenEntry={(entryId) => navigate(`/preview/${entryId}`)}
+              onOpenEntryTagDialog={(entry) => setTagDialogEntry(entry)}
+              onOpenRename={(entry) => setActionDialog({ type: "rename", entry })}
+              onOpenMove={(entry) => setActionDialog({ type: "move", entry })}
+              onOpenCopy={(entry) => setActionDialog({ type: "copy", entry })}
+              onOpenDelete={(entry) => setActionDialog({ type: "delete", entry })}
+              viewMode={viewMode}
+              tagViewMode={tagBrowseViewMode}
+              onlyPrimary={tagBrowseOnlyPrimary}
+            />
           ) : entriesError ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               加载失败

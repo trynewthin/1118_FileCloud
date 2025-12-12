@@ -205,7 +205,7 @@ export function FileToolbar({
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon-sm"
-              className={cn("h-7 w-7 shadow-none", viewMode === "grid" && "bg-background shadow-sm")}
+              className={cn("h-7 w-7 shadow-none border-none", viewMode === "grid" && "bg-background")}
               onClick={() => onViewModeChange("grid")}
               title="网格视图"
             >
@@ -214,7 +214,7 @@ export function FileToolbar({
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon-sm"
-              className={cn("h-7 w-7 shadow-none", viewMode === "list" && "bg-background shadow-sm")}
+              className={cn("h-7 w-7 shadow-none border-none", viewMode === "list" && "bg-background")}
               onClick={() => onViewModeChange("list")}
               title="列表视图"
             >
@@ -237,6 +237,7 @@ interface FileBreadcrumbProps {
   onRootClick: () => void;
   onItemClick: (item: BreadcrumbItem, index: number) => void;
   className?: string;
+  rightExtra?: React.ReactNode;
   // 右侧操作
   onUpload?: () => void;
   onCreateFolder?: () => void;
@@ -252,6 +253,7 @@ export function FileBreadcrumb({
   onRootClick,
   onItemClick,
   className,
+  rightExtra,
   onUpload,
   onCreateFolder,
   onCreateLibrary,
@@ -260,7 +262,17 @@ export function FileBreadcrumb({
   onBatchMode,
   onOpenTrash,
 }: FileBreadcrumbProps) {
-  const hasActions = onUpload || onCreateFolder || onCreateLibrary || onRefresh || onReindex || onBatchMode || onOpenTrash;
+  const hasActions =
+    !!rightExtra ||
+    onUpload ||
+    onCreateFolder ||
+    onCreateLibrary ||
+    onRefresh ||
+    onReindex ||
+    onBatchMode ||
+    onOpenTrash;
+
+  const hasMenuItems = !!onRefresh || !!onReindex || !!onBatchMode || !!onOpenTrash;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -315,6 +327,8 @@ export function FileBreadcrumb({
       {/* 右侧：操作按钮 */}
       {hasActions && (
         <div className="flex items-center gap-1 shrink-0">
+          {rightExtra}
+
           {/* 新建文件夹 */}
           {onCreateFolder && (
             <Button
@@ -355,49 +369,51 @@ export function FileBreadcrumb({
           )}
 
           {/* 更多操作下拉菜单 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          {hasMenuItems && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className={cn("min-w-[140px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
               >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className={cn("min-w-[140px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
-            >
-              {onRefresh && (
-                <DropdownMenuItem onClick={onRefresh}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  刷新
-                </DropdownMenuItem>
-              )}
-              {onReindex && (
-                <DropdownMenuItem onClick={onReindex}>
-                  <RotateCw className="h-4 w-4 mr-2" />
-                  重建索引
-                </DropdownMenuItem>
-              )}
-              {onBatchMode && (
-                <DropdownMenuItem onClick={onBatchMode}>
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  批量选择
-                </DropdownMenuItem>
-              )}
-              {onOpenTrash && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onOpenTrash} className="text-destructive focus:text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    回收站
+                {onRefresh && (
+                  <DropdownMenuItem onClick={onRefresh}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    刷新
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+                {onReindex && (
+                  <DropdownMenuItem onClick={onReindex}>
+                    <RotateCw className="h-4 w-4 mr-2" />
+                    重建索引
+                  </DropdownMenuItem>
+                )}
+                {onBatchMode && (
+                  <DropdownMenuItem onClick={onBatchMode}>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    批量选择
+                  </DropdownMenuItem>
+                )}
+                {onOpenTrash && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onOpenTrash} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      回收站
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
     </div>

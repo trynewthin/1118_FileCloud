@@ -10,13 +10,13 @@ export const navItems = [
     title: "文件",
     href: "/files",
     icon: FolderOpen,
-    match: /^\/(files|preview)/,
+    match: /^\/(files|preview|tags\/browse)/,
   },
   {
     title: "标签",
     href: "/tags",
     icon: Tag,
-    match: /^\/tags/,
+    match: /^\/tags(?!\/browse)/,
   },
   {
     title: "AI 助手",

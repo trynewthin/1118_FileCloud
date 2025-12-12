@@ -5,4 +5,5 @@ export { RootLayout } from "./RootLayout";
 export { FileBrowserPage } from "./FileBrowserPage";
 export { FilePreviewPage } from "./FilePreviewPage";
 export { AiChatPage } from "./AiChatPage";
-export { TagsPage } from "./TagsPage";
+export { TagsBrowsePage } from "./TagsBrowsePage";
+export { TagsManagePage } from "./TagsManagePage";

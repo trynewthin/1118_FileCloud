@@ -8,7 +8,8 @@ import {
   FileBrowserPage,
   FilePreviewPage,
   AiChatPage,
-  TagsPage,
+  TagsBrowsePage,
+  TagsManagePage,
   SettingsPage,
   TasksPage,
   ActivityLogsPage,
@@ -91,7 +92,8 @@ function InitGate() {
       <Route path="/test" element={<TestPlaygroundPage />} />
       <Route element={<RootLayout />}>
         <Route path="/" element={<Navigate to="/files" replace />} />
-        <Route path="/tags" element={<TagsPage />} />
+        <Route path="/tags" element={<TagsManagePage />} />
+        <Route path="/tags/browse" element={<TagsBrowsePage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
         <Route path="/preview/:id" element={<FilePreviewPage />} />
         <Route path="/ai" element={<AiChatPage />} />
