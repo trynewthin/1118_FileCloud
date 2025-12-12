@@ -191,72 +191,76 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
   // 正常分组展示
   return (
     <div className="space-y-6">
-      {flatGroups.map((group) => (
-        <div key={group.tag.id} className="space-y-2">
-          {/* 分组标题：整行使用接近页面背景的卡片色，跟随浅色/深色主题，仅用左侧小圆点体现标签颜色 */}
-          <div
-            className={cn(
-              "flex items-center gap-2 px-2 py-1 sticky top-0 z-10",
-              DS.glass.strong,
-              DS.radius.lg
-            )}
-          >
-            <span
-              className="w-3 h-3 rounded-full shrink-0 border border-white/40"
-              style={{
-                backgroundColor: group.tag.color || "#6b7280",
-              }}
-            />
-            <span className="text-sm font-medium truncate text-foreground">{group.path}</span>
-            <span className="text-xs text-foreground/70">({group.files.length})</span>
-
-            <button
-              type="button"
-              className="ml-auto inline-flex items-center justify-center w-6 h-6 text-foreground/70 hover:text-foreground transition-colors"
-              onClick={() => {
-                setCollapsedMap((prev) => {
-                  const next: Record<number, boolean> = {
-                    ...prev,
-                    [group.tag.id]: !prev[group.tag.id],
-                  };
-                  // 切换时同步保存到本地
-                  if (typeof window !== "undefined") {
-                    window.localStorage.setItem(COLLAPSE_STATE_KEY, JSON.stringify(next));
-                  }
-                  return next;
-                });
-              }}
+      {flatGroups.map((group) => {
+        const isCollapsed = collapsedMap[group.tag.id] ?? true;
+        return (
+          <div key={group.tag.id} className="space-y-2">
+            {/* 分组标题：整行使用接近页面背景的卡片色，跟随浅色/深色主题，仅用左侧小圆点体现标签颜色 */}
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-1 sticky top-0 z-10",
+                DS.glass.strong,
+                DS.radius.lg
+              )}
             >
-              {collapsedMap[group.tag.id] ? (
-                <ChevronRight className="w-3 h-3 text-foreground/80" />
-              ) : (
-                <ChevronDown className="w-3 h-3 text-foreground/80" />
-              )}
-            </button>
-          </div>
-          {/* 文件网格或空提示：使用轻量容器包裹，与 FileGridItem 玻璃风格协调 */}
-          {!collapsedMap[group.tag.id] && (
-            <div className="mt-1 rounded-xl border border-white/10 bg-background/20 px-2 py-2">
-              {group.files.length === 0 ? (
-                <div className="text-xs text-foreground/70">
-                  该标签下暂无文件
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {group.files.map((file) => (
-                    <FileGridItem
-                      key={`${group.tag.id}-${file.id}`}
-                      entry={file}
-                      onClick={() => onFileAction("click", file)}
-                      onAction={onFileAction}
-                    />
-                  ))}
-                </div>
-              )}
+              <span
+                className="w-3 h-3 rounded-full shrink-0 border border-white/40"
+                style={{
+                  backgroundColor: group.tag.color || "#6b7280",
+                }}
+              />
+              <span className="text-sm font-medium truncate text-foreground">{group.path}</span>
+              <span className="text-xs text-foreground/70">({group.files.length})</span>
+
+              <button
+                type="button"
+                className="ml-auto inline-flex items-center justify-center w-6 h-6 text-foreground/70 hover:text-foreground transition-colors"
+                onClick={() => {
+                  setCollapsedMap((prev) => {
+                    const current = prev[group.tag.id] ?? true;
+                    const next: Record<number, boolean> = {
+                      ...prev,
+                      [group.tag.id]: !current,
+                    };
+                    // 切换时同步保存到本地
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem(COLLAPSE_STATE_KEY, JSON.stringify(next));
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="w-3 h-3 text-foreground/80" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 text-foreground/80" />
+                )}
+              </button>
             </div>
-          )}
-        </div>
-      ))}
+            {/* 文件网格或空提示：使用轻量容器包裹，与 FileGridItem 玻璃风格协调 */}
+            {!isCollapsed && (
+              <div className="mt-1 rounded-xl border border-white/10 bg-background/20 px-2 py-2">
+                {group.files.length === 0 ? (
+                  <div className="text-xs text-foreground/70">
+                    该标签下暂无文件
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {group.files.map((file) => (
+                      <FileGridItem
+                        key={`${group.tag.id}-${file.id}`}
+                        entry={file}
+                        onClick={() => onFileAction("click", file)}
+                        onAction={onFileAction}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
