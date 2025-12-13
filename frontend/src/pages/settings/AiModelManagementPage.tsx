@@ -10,6 +10,7 @@ import { AiModelList } from "@/components/settings/aisetting/AiModelList";
 import { AiModelFormDialog } from "@/components/settings/aisetting/AiModelFormDialog";
 import { AiPromptList } from "@/components/settings/aisetting/AiPromptList";
 import { AiPromptFormDialog } from "@/components/settings/aisetting/AiPromptFormDialog";
+import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 import type { AiProvider, AiChatModel, AiChatPrompt } from "@/lib/api/aiConfig";
 import { GlassButton } from "@/components/common/GlassButton";
 
@@ -138,7 +139,12 @@ export function AiModelManagementPage() {
             <TabsTrigger value="prompts">提示词</TabsTrigger>
           </TabsList>
         }
-        action={renderActionButton()}
+        action={
+          <div className="flex items-center gap-2">
+            {renderActionButton()}
+            <SettingsTopBarActions />
+          </div>
+        }
       >
         <div className="flex-1 min-h-0 flex flex-col">
           <TabsContent value="providers" className="mt-0">

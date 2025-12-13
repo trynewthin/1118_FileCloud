@@ -4,6 +4,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TaskItem } from "@/components/tasks/TaskItem";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 
 export function TasksPage() {
   const { items, loading, error, status, setStatus, reload } = useTasks({
@@ -22,6 +23,7 @@ export function TasksPage() {
     <PageContainer
       title="任务中心"
       showBack
+      action={<SettingsTopBarActions />}
     >
       <Tabs
         defaultValue="ALL"

@@ -4,6 +4,7 @@ import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
 import { User, Activity } from "lucide-react";
+import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ export function ActivityLogsPage() {
     <PageContainer
       title="操作日志"
       showBack
+      action={<SettingsTopBarActions />}
     >
       <GlassCard variant="lite" className="p-0 border-white/10 overflow-hidden">
         <Table>
