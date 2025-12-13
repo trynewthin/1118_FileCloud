@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Folder, XIcon, Check, AlertTriangle } from "lucide-react";
-import { FolderPickerDialog } from "@/components/files/dialogs/FolderPickerDialog";
+import { FolderPickerDialog } from "@/components/filebrowsepage";
 
 interface NewLibraryDialogProps {
   onSuccess?: () => void;
@@ -44,19 +44,19 @@ const isDriveRoot = (path: string): boolean => {
   return /^[A-Za-z]:\\?$/.test(path.trim());
 };
 
-export function NewLibraryDialog({ 
-  onSuccess, 
-  open: controlledOpen, 
+export function NewLibraryDialog({
+  onSuccess,
+  open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   showTrigger = true,
 }: NewLibraryDialogProps) {
   // 内部状态（非受控模式）
   const [internalOpen, setInternalOpen] = useState(false);
-  
+
   // 判断是否为受控模式
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled 
+  const setOpen = isControlled
     ? (value: boolean) => controlledOnOpenChange?.(value)
     : setInternalOpen;
 
@@ -76,7 +76,7 @@ export function NewLibraryDialog({
       setError("请选择文件库根路径");
       return;
     }
-    
+
     setError("");
     try {
       await create({ rootPath, displayName: displayName || undefined });
@@ -128,9 +128,7 @@ export function NewLibraryDialog({
                 </button>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="displayName">
-                  显示名称
-                </Label>
+                <Label htmlFor="displayName">显示名称</Label>
                 <Input
                   id="displayName"
                   value={displayName}
@@ -143,13 +141,16 @@ export function NewLibraryDialog({
             {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
             <DialogFooter
               leftButtonIcon={<XIcon className="h-4 w-4" />}
-              onLeftButtonClick={() => { if (!loading) setOpen(false); }}
+              onLeftButtonClick={() => {
+                if (!loading) setOpen(false);
+              }}
               leftButtonGlassVariant="ghost"
               rightButtonIcon={<Check className="h-4 w-4" />}
-              onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
+              onRightButtonClick={() => {
+                if (!loading) handleSubmit(null);
+              }}
               rightButtonGlassVariant="lite"
-            >
-            </DialogFooter>
+            ></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -183,7 +184,8 @@ export function NewLibraryDialog({
             <AlertDialogDescription>
               您选择的是盘符根目录 <span className="font-mono font-semibold">{pendingPath}</span>，
               这将索引整个磁盘的所有文件，可能包含系统文件和大量数据。
-              <br /><br />
+              <br />
+              <br />
               建议选择一个具体的子目录作为文件库根路径。确定要继续吗？
             </AlertDialogDescription>
           </AlertDialogHeader>

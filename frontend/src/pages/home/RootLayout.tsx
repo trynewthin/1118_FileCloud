@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { AppHeader } from "@/components/layout/AppHeader";
 import { AppBottomNav } from "@/components/layout/AppBottomNav";
 import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
 import { LayoutBackground } from "@/components/layout/LayoutBackground";
@@ -59,7 +58,7 @@ export function RootLayout() {
         {/* 背景层：z-0 */}
         <LayoutBackground />
 
-        {/* 内容层：z-10，flex 布局 */}
+        {/* 中间层（页面层）：z-10，提供路由页面的完整视口空间 */}
         <div className="absolute inset-0 z-10 flex">
           {/* 侧边栏：直接在这一层，能正确模糊背景 */}
           <AppSidebar
@@ -67,24 +66,21 @@ export function RootLayout() {
             onToggleSidebar={toggleSidebar}
           />
           
-          {/* 主内容区 */}
+          {/* 页面层：路由页面显示区域（滚动由各页面内部自行管理） */}
           <div className="relative flex flex-1 flex-col h-full min-w-0">
-            {/* 顶栏：absolute 定位 */}
-            <AppHeader />
-            
             {/* 主内容：不设 overflow，让页面自己管理滚动；关闭页面切换动画 */}
             <main className={cn(
               "relative flex flex-1 h-full min-h-0 flex-col",
-              DS.layout.mainContent,
-              // 移动端底部导航适配
-              "pb-[calc(4rem+env(safe-area-inset-bottom,20px))] md:pb-6"
+              "px-4 md:pr-8 md:pl-0",
+              "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom,20px))] md:pb-6"
             )}>
               <div className="relative flex flex-1 flex-col h-full min-h-0">
-                <Outlet />
+                <div className="w-full md:max-w-5xl mx-auto flex flex-1 flex-col h-full min-h-0">
+                  <Outlet />
+                </div>
               </div>
             </main>
-            
-            {/* 底部导航 */}
+
             <AppBottomNav />
           </div>
         </div>

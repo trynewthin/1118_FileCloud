@@ -9,6 +9,9 @@ import { DS } from "@/theme/design-system";
 
 interface PageContainerProps extends PropsWithChildren {
   title?: string;
+  /** 左侧操作区（返回按钮之后） */
+  leftAction?: ReactNode;
+  /** 右侧操作区 */
   action?: ReactNode;
   showBack?: boolean;
   className?: string;
@@ -18,6 +21,7 @@ interface PageContainerProps extends PropsWithChildren {
 
 export const PageContainer: FC<PageContainerProps> = ({
   title,
+  leftAction,
   action,
   showBack = false,
   children,
@@ -38,7 +42,7 @@ export const PageContainer: FC<PageContainerProps> = ({
   return (
     <div className={cn("relative flex min-h-0 flex-col space-y-4 w-full h-full pt-1", className)}>
       {/* Header Area (Back button, Center content & Actions) */}
-      {(showBack || action || headerCenter) && (
+      {(showBack || leftAction || action || headerCenter) && (
         <div className="flex items-center justify-between shrink-0 z-10 relative mt-1 px-4">
           <div className="flex items-center gap-2">
             {showBack && (
@@ -56,6 +60,7 @@ export const PageContainer: FC<PageContainerProps> = ({
                 <ArrowLeft className="h-5 w-5" />
               </GlassIconButton>
             )}
+            {leftAction}
           </div>
 
           {headerCenter && (

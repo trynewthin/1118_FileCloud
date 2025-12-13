@@ -94,7 +94,7 @@ export function LibraryConfigDialog({
     if (loading) return;
     setLoading(true);
     setError("");
-    
+
     try {
       await update(library.id, {
         displayName: displayName.trim() || undefined,
@@ -114,7 +114,7 @@ export function LibraryConfigDialog({
   const handleDelete = async () => {
     if (loading) return;
     setLoading(true);
-    
+
     try {
       await remove(library.id);
       setDeleteConfirmOpen(false);
@@ -131,7 +131,7 @@ export function LibraryConfigDialog({
   const handleRefresh = async () => {
     if (loading) return;
     setLoading(true);
-    
+
     try {
       await refresh(library.id);
       await loadStats();
@@ -148,7 +148,7 @@ export function LibraryConfigDialog({
   const handleReindex = async () => {
     if (loading) return;
     setLoading(true);
-    
+
     try {
       await reindex(library.id);
     } catch (err: any) {
@@ -167,9 +167,7 @@ export function LibraryConfigDialog({
               <Settings className="h-5 w-5" />
               文件库配置
             </DialogTitle>
-            <DialogDescription>
-              管理文件库 "{library.display_name}" 的配置
-            </DialogDescription>
+            <DialogDescription>管理文件库 "{library.display_name}" 的配置</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 py-4">
@@ -199,10 +197,7 @@ export function LibraryConfigDialog({
                   <Label>启用状态</Label>
                   <p className="text-xs text-muted-foreground">禁用后将无法浏览此文件库</p>
                 </div>
-                <Switch
-                  checked={isEnabled}
-                  onCheckedChange={setIsEnabled}
-                />
+                <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
               </div>
             </div>
 
@@ -217,10 +212,10 @@ export function LibraryConfigDialog({
                   onClick={handleRefresh}
                   disabled={loading || statsLoading}
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${statsLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 ${statsLoading ? "animate-spin" : ""}`} />
                 </GlassButton>
               </div>
-              
+
               {statsLoading ? (
                 <div className="text-sm text-muted-foreground">加载中...</div>
               ) : stats ? (
@@ -278,7 +273,9 @@ export function LibraryConfigDialog({
 
           <DialogFooter
             leftButtonIcon={<XIcon className="h-4 w-4" />}
-            onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
+            onLeftButtonClick={() => {
+              if (!loading) onOpenChange(false);
+            }}
             leftButtonGlassVariant="ghost"
             rightButtonIcon={<Check className="h-4 w-4" />}
             onRightButtonClick={handleSave}
@@ -294,7 +291,8 @@ export function LibraryConfigDialog({
             <AlertDialogTitle>确认删除文件库？</AlertDialogTitle>
             <AlertDialogDescription>
               删除文件库 "{library.display_name}" 将移除所有索引记录。
-              <br /><br />
+              <br />
+              <br />
               <strong>注意：</strong>这不会删除磁盘上的实际文件，只会移除 FileCloud 中的索引。
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -4,26 +4,32 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { FileToolbar, FileBreadcrumb } from "@/components/files/FileToolbar";
-import { FileGridItem } from "@/components/files/FileGridItem";
-import { FileListItem } from "@/components/files/FileListItem";
-import { RenameDialog } from "@/components/files/dialogs/RenameDialog";
-import { DeleteDialog } from "@/components/files/dialogs/DeleteDialog";
-import { MoveCopyDialog } from "@/components/files/dialogs/MoveCopyDialog";
-import { RecycleBinDialog } from "@/components/files/dialogs/RecycleBinDialog";
-import { UploadDialog } from "@/components/files/dialogs/UploadDialog";
-import { CreateFolderDialog } from "@/components/files/dialogs/CreateFolderDialog";
-import { GlobalSearchDialog } from "@/components/files/dialogs/GlobalSearchDialog";
+import {
+  FileBreadcrumb,
+  FileBrowserLeftHeaderActions,
+  FileBrowserRightHeaderActions,
+  FileGridItem,
+  FileListItem,
+  RenameDialog,
+  DeleteDialog,
+  MoveCopyDialog,
+  RecycleBinDialog,
+  UploadDialog,
+  CreateFolderDialog,
+  GlobalSearchDialog,
+  NewLibraryDialog,
+  LibraryConfigDialog,
+  type BreadcrumbItem,
+  type FilterSortState,
+  defaultFilterSortState,
+  getFileTypeCategory,
+} from "@/components/filebrowsepage";
 import { EntryTagDialog, BatchTagDialog, TagsBrowseView } from "@/components/tag";
 import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
-import { NewLibraryDialog } from "@/components/file-libraries/NewLibraryDialog";
-import { LibraryConfigDialog } from "@/components/file-libraries/LibraryConfigDialog";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
 import { DelayedLoader } from "@/components/common/DelayedLoader";
-import { Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -33,12 +39,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { BreadcrumbItem } from "@/components/files/FileToolbar";
-import {
-  type FilterSortState,
-  defaultFilterSortState,
-  getFileTypeCategory,
-} from "@/components/files/FileToolbar";
 
 export function FileBrowserPage() {
   const navigate = useNavigate();
@@ -659,66 +659,70 @@ export function FileBrowserPage() {
     }
   };
 
+  // 计算总数
+  const totalCount = activeLibraryId ? entries.length : libraries.length;
+  const allSelected = totalCount > 0 && selectedIds.size === totalCount;
+
+  const leftToolbar = (
+    <FileBrowserLeftHeaderActions
+      batchMode={batchMode}
+      selectedCount={selectedIds.size}
+      totalCount={totalCount}
+      allSelected={allSelected}
+      canGoUp={!!activeLibraryId || isVirtualTags}
+      onGoUp={handleGoUp}
+      onGlobalSearch={() => setGlobalSearchDialogOpen(true)}
+      filterSortState={activeLibraryId ? filterSortState : undefined}
+      onFilterSortChange={activeLibraryId ? handleFilterSortChange : undefined}
+      onCancelBatchMode={() => handleBatchModeChange(false)}
+      onSelectAll={handleSelectAll}
+      onDeselectAll={handleDeselectAll}
+    />
+  );
+
+  const rightToolbar = (
+    <FileBrowserRightHeaderActions
+      batchMode={batchMode}
+      selectedCount={selectedIds.size}
+      viewMode={viewMode}
+      onViewModeChange={handleViewModeChange}
+      isVirtualTags={isVirtualTags}
+      tagBrowseOnlyPrimary={tagBrowseOnlyPrimary}
+      onToggleTagBrowseOnlyPrimary={() => {
+        setTagBrowseOnlyPrimary((prev) => {
+          const next = !prev;
+          localStorage.setItem("tag_browser_only_primary", next ? "true" : "false");
+          return next;
+        });
+      }}
+      onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
+      onCreateLibrary={!activeLibraryId && !isVirtualTags ? () => setNewLibraryDialogOpen(true) : undefined}
+      onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
+      onRefresh={!isVirtualTags ? reload : undefined}
+      onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
+      onEnterBatchMode={activeLibraryId ? () => handleBatchModeChange(true) : undefined}
+      onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
+      onBatchMove={handleBatchMove}
+      onBatchCopy={handleBatchCopy}
+      onBatchTag={handleBatchTag}
+      onBatchDelete={handleBatchDelete}
+    />
+  );
+
   return (
-    <PageContainer title="文件浏览" className="h-full flex flex-col relative">
-      <div className="flex-none space-y-2 relative">
-        <FileToolbar
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          canGoUp={!!activeLibraryId || isVirtualTags} // 虚拟库也允许返回
-          onGoUp={handleGoUp}
-          onGlobalSearch={() => setGlobalSearchDialogOpen(true)}
-          filterSortState={activeLibraryId ? filterSortState : undefined}
-          onFilterSortChange={activeLibraryId ? handleFilterSortChange : undefined}
-          batchMode={batchMode}
-          onBatchModeChange={handleBatchModeChange}
-          selectedCount={selectedIds.size}
-          onBatchMove={handleBatchMove}
-          onBatchCopy={handleBatchCopy}
-          onBatchDelete={handleBatchDelete}
-          onBatchTag={handleBatchTag}
-          totalCount={activeLibraryId ? entries.length : libraries.length}
-          onSelectAll={handleSelectAll}
-          onDeselectAll={handleDeselectAll}
+    <PageContainer
+      title="文件浏览"
+      className="h-full flex flex-col relative"
+      leftAction={leftToolbar}
+      action={rightToolbar}
+    >
+      {/* 面包屑行 */}
+      <div className="flex-none px-1 -mt-2">
+        <FileBreadcrumb
+          items={breadcrumbItems}
+          onRootClick={handleBreadcrumbRootClick}
+          onItemClick={handleBreadcrumbItemClick}
         />
-        
-        <div className="px-1">
-          <FileBreadcrumb 
-            items={breadcrumbItems}
-            onRootClick={handleBreadcrumbRootClick}
-            onItemClick={handleBreadcrumbItemClick}
-            rightExtra={
-              isVirtualTags ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      setTagBrowseOnlyPrimary((prev) => {
-                        const next = !prev;
-                        localStorage.setItem("tag_browser_only_primary", next ? "true" : "false");
-                        return next;
-                      });
-                    }}
-                    title={tagBrowseOnlyPrimary ? "主标签视图" : "全部标签视图"}
-                  >
-                    <Star
-                      className={tagBrowseOnlyPrimary ? "h-4 w-4 text-yellow-500 fill-yellow-500" : "h-4 w-4 text-muted-foreground"}
-                    />
-                  </Button>
-                </>
-              ) : null
-            }
-            onUpload={activeLibraryId ? () => setUploadDialogOpen(true) : undefined}
-            onCreateFolder={activeLibraryId ? () => setCreateFolderDialogOpen(true) : undefined}
-            onCreateLibrary={!activeLibraryId && !isVirtualTags ? () => setNewLibraryDialogOpen(true) : undefined}
-            onRefresh={!isVirtualTags ? reload : undefined}
-            onReindex={activeLibraryId ? () => setReindexDialogOpen(true) : undefined}
-            onBatchMode={activeLibraryId ? () => handleBatchModeChange(true) : undefined}
-            onOpenTrash={activeLibraryId ? () => setRecycleDialogOpen(true) : undefined}
-          />
-        </div>
       </div>
 
       <GlassCard 

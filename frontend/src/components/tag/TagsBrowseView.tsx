@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tag as TagIcon } from "lucide-react";
-import { FileGridItem } from "@/components/files/FileGridItem";
-import { FileListItem } from "@/components/files/FileListItem";
+import { FileGridItem, FileListItem } from "@/components/filebrowsepage";
 import { TagGridItem, TagFlatView } from "@/components/tag";
 import { useTagList } from "@/hooks/useTags";
 import { getEntriesForTag } from "@/lib/api/tags";

@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Loader2, HardDrive, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { FileListItem } from "@/components/files/FileListItem";
+import { FileListItem } from "../items";
 import {
   Dialog,
   DialogContent,

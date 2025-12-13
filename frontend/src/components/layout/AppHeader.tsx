@@ -24,12 +24,12 @@ export function AppHeader() {
   return (
     // 修改定位策略：使用 absolute 定位于父容器（Main Area）的顶部
     // z-20 确保在内容之上
-    <header className="absolute top-0 left-0 right-0 z-20 flex justify-center pt-[calc(1rem+env(safe-area-inset-top))] px-4 md:px-8 pointer-events-none">
+    <header className="absolute top-0 left-0 right-0 z-20 flex justify-center pt-[calc(1rem+env(safe-area-inset-top))] px-4 md:pl-0 md:pr-8 pointer-events-none">
       <GlassCard
         variant="strong"
         className={cn(
           // Header Bar 本体
-          "pointer-events-auto h-14 flex items-center gap-4 px-2 pr-2 w-full",
+          "pointer-events-auto h-14 flex items-center gap-4 px-2 pr-2 w-full md:max-w-5xl",
           "transition-all duration-300"
         )}
       >
