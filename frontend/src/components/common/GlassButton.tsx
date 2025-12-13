@@ -47,7 +47,7 @@ export const GlassIconButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
       <GlassButton
         ref={ref}
         size={size ?? "icon-sm"}
-        className={cn("h-8 w-8", className)}
+        className={cn("h-9 w-9", className)}
         {...props}
       >
         <span className="inline-flex items-center justify-center [&>svg]:text-foreground!">

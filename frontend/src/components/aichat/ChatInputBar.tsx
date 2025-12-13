@@ -129,7 +129,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           type="button"
           glassVariant="lite"
           onClick={() => fileInputRef.current?.click()}
-          className="h-11 w-11 shrink-0"
+          className="shrink-0"
           title="添加图片"
         >
           <ImagePlus className="h-4 w-4" />
@@ -139,12 +139,12 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
         <GlassCard 
           variant="strong" 
           className={cn(
-            "flex-1 p-0 transition-all duration-300 border-white/20 min-h-11",
+            "flex-1 p-0 transition-all duration-300 border-white/20 min-h-9",
             cn(DS.radius.full, "button-rect:rounded-xl"),
             focused && "ring-2 ring-primary/20 border-primary/30 shadow-lg shadow-primary/5"
           )}
         >
-          <div className="relative w-full px-3 py-2 flex items-end">
+          <div className="relative w-full px-3 py-1.5 flex items-end">
             <Textarea
               ref={textareaRef}
               rows={1}
@@ -156,7 +156,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
               placeholder="输入消息..."
               className="min-h-[24px] max-h-48 w-full resize-none border-0 bg-transparent px-0 py-0 text-sm shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-foreground/40"
             />
-            <div className="absolute right-3 bottom-2 text-[10px] text-foreground/60 pointer-events-none hidden md:block">
+            <div className="absolute right-3 bottom-1.5 text-[10px] text-foreground/60 pointer-events-none hidden md:block">
               Ctrl + Enter 发送
             </div>
           </div>
@@ -168,7 +168,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           glassVariant="lite"
           onClick={handleSend}
           disabled={sending || (!value.trim() && attachments.length === 0)}
-          className="h-11 w-11 shrink-0"
+          className="shrink-0"
           aria-label="发送消息"
         >
           {sending ? (

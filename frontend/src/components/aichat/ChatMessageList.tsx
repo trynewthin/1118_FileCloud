@@ -4,6 +4,7 @@ import { Bot, User, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
+import { GlassIconButton } from "@/components/common/GlassButton";
 import { ToolCallRenderer, type PendingAction } from "./ToolCallRenderer";
 import { buildApiUrl } from "@/lib/api/client";
 import { getAuthToken } from "@/lib/api/client";
@@ -177,18 +178,19 @@ function AssistantMessage({
       {/* 操作按钮区域 */}
       {hasContent && (
         <div className="flex items-center gap-1 ml-2">
-          <button
+          <GlassIconButton
             type="button"
+            glassVariant="lite"
             onClick={handleCopy}
             className={cn(
-              "h-6 w-6 rounded-md flex items-center justify-center transition-colors",
-              "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/30",
-              copied && "text-green-500"
+              "h-6! w-6!",
+              cn(DS.radius.full, "button-rect:rounded-md"),
+              copied && "border-primary/30 ring-2 ring-primary/15"
             )}
             title={copied ? "已复制" : "复制内容"}
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
+          </GlassIconButton>
         </div>
       )}
 
