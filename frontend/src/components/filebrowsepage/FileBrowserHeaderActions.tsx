@@ -113,12 +113,12 @@ export function FileBrowserLeftHeaderActions({
 >) {
   return batchMode ? (
     <div className="flex items-center gap-2">
-      <GlassButtonGroup glassVariant="lite">
-        <GlassIconButton glassVariant="ghost" onClick={onCancelBatchMode} title="取消">
+      <GlassButtonGroup glassVariant="lite" className="py-0">
+        <GlassIconButton glassVariant="lite" onClick={onCancelBatchMode} title="取消">
           <X className="h-4 w-4" />
         </GlassIconButton>
         <GlassIconButton
-          glassVariant="ghost"
+          glassVariant="lite"
           onClick={allSelected ? onDeselectAll : onSelectAll}
           title={allSelected ? "全不选" : "全选"}
         >
@@ -130,13 +130,17 @@ export function FileBrowserLeftHeaderActions({
       </span>
     </div>
   ) : (
-    <GlassButtonGroup glassVariant="lite">
-      <GlassIconButton glassVariant="ghost" onClick={onGlobalSearch} title="搜索">
+    <GlassButtonGroup glassVariant="lite" className="py-0" wrapNonIconChildren={false}>
+      <GlassIconButton glassVariant="lite" onClick={onGlobalSearch} title="搜索">
         <Search className="h-4 w-4" />
       </GlassIconButton>
 
       {filterSortState && onFilterSortChange && (
-        <FilterSortMenu state={filterSortState} onChange={onFilterSortChange} />
+        <FilterSortMenu
+          state={filterSortState}
+          onChange={onFilterSortChange}
+          className="h-7! w-7!"
+        />
       )}
 
       <GlassIconButton glassVariant="ghost" disabled={!canGoUp} onClick={onGoUp} title="上一级">
@@ -188,18 +192,18 @@ export function FileBrowserRightHeaderActions({
 >) {
   if (batchMode) {
     return (
-      <GlassButtonGroup glassVariant="lite">
-        <GlassIconButton glassVariant="ghost" disabled={selectedCount === 0} onClick={onBatchMove} title="移动">
+      <GlassButtonGroup glassVariant="lite" className="py-0">
+        <GlassIconButton glassVariant="lite" disabled={selectedCount === 0} onClick={onBatchMove} title="移动">
           <Move className="h-4 w-4" />
         </GlassIconButton>
-        <GlassIconButton glassVariant="ghost" disabled={selectedCount === 0} onClick={onBatchCopy} title="复制">
+        <GlassIconButton glassVariant="lite" disabled={selectedCount === 0} onClick={onBatchCopy} title="复制">
           <Copy className="h-4 w-4" />
         </GlassIconButton>
-        <GlassIconButton glassVariant="ghost" disabled={selectedCount === 0} onClick={onBatchTag} title="标签">
+        <GlassIconButton glassVariant="lite" disabled={selectedCount === 0} onClick={onBatchTag} title="标签">
           <Tag className="h-4 w-4" />
         </GlassIconButton>
         <GlassIconButton
-          glassVariant="ghost"
+          glassVariant="lite"
           disabled={selectedCount === 0}
           onClick={onBatchDelete}
           title="删除"
@@ -226,10 +230,10 @@ export function FileBrowserRightHeaderActions({
         ]}
       />
 
-      <GlassButtonGroup glassVariant="lite">
+      <GlassButtonGroup glassVariant="lite" className="py-0" wrapNonIconChildren={false}>
         {isVirtualTags && (
           <GlassIconButton
-            glassVariant="ghost"
+            glassVariant="lite"
             onClick={onToggleTagBrowseOnlyPrimary}
             title={tagBrowseOnlyPrimary ? "主标签视图" : "全部标签视图"}
           >
@@ -238,19 +242,19 @@ export function FileBrowserRightHeaderActions({
         )}
 
         {onCreateFolder && (
-          <GlassIconButton glassVariant="ghost" onClick={onCreateFolder} title="新建文件夹">
+          <GlassIconButton glassVariant="lite" onClick={onCreateFolder} title="新建文件夹">
             <FolderPlus className="h-4 w-4" />
           </GlassIconButton>
         )}
 
         {onCreateLibrary && (
-          <GlassIconButton glassVariant="ghost" onClick={onCreateLibrary} title="新建文件库">
+          <GlassIconButton glassVariant="lite" onClick={onCreateLibrary} title="新建文件库">
             <Plus className="h-4 w-4" />
           </GlassIconButton>
         )}
 
         {onUpload && (
-          <GlassIconButton glassVariant="ghost" onClick={onUpload} title="上传">
+          <GlassIconButton glassVariant="lite" onClick={onUpload} title="上传">
             <Upload className="h-4 w-4" />
           </GlassIconButton>
         )}
@@ -258,7 +262,7 @@ export function FileBrowserRightHeaderActions({
         {hasMenuItems && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <GlassIconButton glassVariant="ghost" title="更多操作">
+              <GlassIconButton glassVariant="lite" title="更多操作" className="h-7! w-7!">
                 <MoreHorizontal className="h-4 w-4" />
               </GlassIconButton>
             </DropdownMenuTrigger>

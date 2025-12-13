@@ -1,5 +1,5 @@
 import { Filter, ArrowUpDown, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GlassIconButton } from "@/components/common/GlassButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,28 +130,22 @@ interface FilterSortMenuProps {
 }
 
 export function FilterSortMenu({ state, onChange, className }: FilterSortMenuProps) {
-  // 判断是否有激活的筛选/排序（非默认状态）
   const isActive = state.fileType !== "all" || state.sortField !== "name" || state.sortOrder !== "asc";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={cn(
-            "h-7 w-7 text-muted-foreground hover:text-foreground",
-            isActive && "text-primary",
-            className
-          )}
+        <GlassIconButton
+          glassVariant="lite"
+          className={cn("h-8 w-8", className)}
           title="筛选与排序"
         >
           <Filter className="h-4 w-4" />
-        </Button>
+        </GlassIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
-        className={cn("min-w-[160px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
+        align="start"
+        className={cn("min-w-[220px] p-1", DS.glass.strong, DS.radius.lg, "border-white/10")}
       >
         {/* 文件类型筛选子菜单 */}
         <DropdownMenuSub>

@@ -109,18 +109,19 @@ export const TagsManagePage = () => {
     <PageContainer
       title="标签管理"
       className="h-full flex flex-col relative"
+      leftAction={
+        <GlassButton
+          glassVariant="lite"
+          className="h-9 px-3 text-sm justify-start min-w-[96px]"
+          onClick={handleAddRoot}
+          title="添加标签"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="ml-1">添加标签</span>
+        </GlassButton>
+      }
       action={
         <div className="flex items-center gap-2">
-          <GlassButton
-            glassVariant="lite"
-            className="h-9 px-3 text-sm justify-start min-w-[96px]"
-            onClick={handleAddRoot}
-            title="添加标签"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="ml-1">添加标签</span>
-          </GlassButton>
-
           <GlassButtonGroup glassVariant="lite" className="py-0">
             <GlassIconButton
               type="button"

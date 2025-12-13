@@ -1,11 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/configs/nav";
-import { Button } from "@/components/ui/button";
 import { PanelLeft, PanelLeftOpen } from "lucide-react";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassIconButton } from "@/components/common/GlassButton";
+import { GlassButton, GlassIconButton } from "@/components/common/GlassButton";
 
 interface AppSidebarProps {
   collapsed?: boolean;
@@ -21,7 +20,7 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
       className={cn(
         "hidden md:flex flex-col text-card-foreground transition-all duration-300 ease-out",
         "m-4 h-[calc(100vh-2rem)]",
-        collapsed ? "w-[72px]" : "w-64"
+        collapsed ? "w-[72px]" : "w-56"
       )}
     >
       {/* Header Area */}
@@ -57,32 +56,39 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
           {navItems.map((item, index) => {
             const isActive = item.match.test(location.pathname);
             return (
-              <Button
+              <GlassButton
                 key={index}
                 variant="ghost"
+                glassVariant={collapsed ? "ghost" : isActive ? "lite" : "ghost"}
                 className={cn(
                   "group relative h-11 transition-all duration-200",
-                  collapsed ? "justify-center px-0 w-11 mx-auto" : "justify-start px-3 w-full",
-                  DS.radius.lg,
-                  isActive 
-                    ? "bg-primary/5 font-medium" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  collapsed ? "justify-center px-0 w-11 mx-auto" : "justify-start px-2.5 w-full",
+                  // 统一圆角规范（与全局玻璃卡片/按钮一致）
+                  cn(DS.radius.xl, "button-rect:rounded-xl"),
+                  // 文字颜色与 hover
+                  isActive ? "font-medium" : "text-muted-foreground hover:text-foreground",
+                  // 折叠态不显示外层玻璃/边缘，避免样式啰嗦：只保留图标容器高亮
+                  collapsed && "bg-transparent hover:bg-transparent shadow-none hover:shadow-none"
                 )}
                 asChild
               >
                 <Link to={item.href}>
                   <div className={cn(
-                    "shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-300",
-                    isActive 
-                      ? "bg-primary text-primary-foreground shadow-sm scale-105" 
-                      : "bg-muted/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                    "shrink-0 h-8 w-8 flex items-center justify-center transition-all duration-200",
+                    // 图标容器也遵循玻璃/圆角
+                    cn(DS.radius.full, "button-rect:rounded-xl"),
+                    DS.glass.lite,
+                    "border border-border/20 shadow-sm",
+                    isActive
+                      ? "bg-background/80 text-foreground"
+                      : "bg-transparent text-muted-foreground group-hover:bg-background/70 group-hover:text-foreground"
                   )}>
                     <item.icon className="h-4 w-4" />
                   </div>
                   {!collapsed && (
                     <span className={cn(
                       "ml-3 text-sm transition-colors",
-                      isActive ? "text-primary" : "text-foreground/80 group-hover:text-foreground"
+                      isActive ? "text-foreground" : "text-foreground/80 group-hover:text-foreground"
                     )}>
                       {item.title}
                     </span>
@@ -93,7 +99,7 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 h-8 w-1 rounded-r-full bg-primary opacity-0" /> 
                   )}
                 </Link>
-              </Button>
+              </GlassButton>
             );
           })}
         </nav>

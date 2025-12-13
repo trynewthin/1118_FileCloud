@@ -5,10 +5,16 @@ import { GlassIconButton } from "./GlassButton";
 
 interface GlassButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   glassVariant?: "strong" | "lite" | "ghost";
+  /**
+   * 是否自动将非 GlassIconButton 子节点包裹成 GlassIconButton。
+   * 某些子节点（如 DropdownMenu / FilterSortMenu）内部会自己渲染触发按钮，
+   * 若再次包裹会造成双层按钮边缘/焦点圈叠加。
+   */
+  wrapNonIconChildren?: boolean;
 }
 
 export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps>(
-  ({ className, glassVariant = "strong", children, ...props }, ref) => {
+  ({ className, glassVariant = "strong", wrapNonIconChildren = true, children, ...props }, ref) => {
     const glassClass = {
       strong: DS.glass.strong,
       lite: DS.glass.lite,
@@ -42,6 +48,10 @@ export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps
             return React.cloneElement(el, {
               className: cn(groupButtonClassName, el.props?.className),
             });
+          }
+
+          if (!wrapNonIconChildren) {
+            return child;
           }
 
           return (
