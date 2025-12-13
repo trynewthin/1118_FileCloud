@@ -10,6 +10,7 @@ export { defaultFilterSortState, getFileTypeCategory } from "./FilterSortMenu";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/common/GlassCard";
+import { GlassSegmentedSwitch } from "@/components/common";
 import { DS } from "@/theme/design-system";
 import {
   DropdownMenu,
@@ -201,26 +202,16 @@ export function FileToolbar({
 
         {/* 视图切换 */}
         {onViewModeChange && (
-          <div className="flex items-center p-0.5 gap-0.5 rounded-md bg-muted/50">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon-sm"
-              className={cn("h-7 w-7 shadow-none border-none", viewMode === "grid" && "bg-background")}
-              onClick={() => onViewModeChange("grid")}
-              title="网格视图"
-            >
-              <Grid className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon-sm"
-              className={cn("h-7 w-7 shadow-none border-none", viewMode === "list" && "bg-background")}
-              onClick={() => onViewModeChange("list")}
-              title="列表视图"
-            >
-              <List className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <GlassSegmentedSwitch
+            glassVariant="lite"
+            size="sm"
+            value={viewMode ?? "grid"}
+            onValueChange={(mode) => onViewModeChange(mode)}
+            options={[
+              { value: "grid", label: "网格视图", icon: <Grid className="h-3.5 w-3.5" /> },
+              { value: "list", label: "列表视图", icon: <List className="h-3.5 w-3.5" /> },
+            ]}
+          />
         )}
       </div>
     </GlassCard>

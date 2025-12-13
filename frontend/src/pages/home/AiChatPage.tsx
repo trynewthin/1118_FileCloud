@@ -7,7 +7,7 @@ import { AiMobileConversationManager } from "@/components/aichat/AiMobileConvers
 import { ChatMessageList } from "@/components/aichat/ChatMessageList";
 import { ChatInputBar } from "@/components/aichat/ChatInputBar";
 import { GlassIconButton } from "@/components/common/GlassButton";
-import { GlassCard } from "@/components/common/GlassCard";
+import { GlassLabel } from "@/components/common/label/GlassLabel";
 import { MessageCircle, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
@@ -188,19 +188,21 @@ export function AiChatPage() {
 
                 {/* Center: Title Capsule */}
                 <div className="min-w-0 max-w-[60%] flex justify-center">
-                  <GlassCard 
-                    variant="lite" 
-                    className={cn(
-                      "inline-flex items-center px-6 py-2 max-w-full shadow-sm border-primary/20",
-                      DS.radius.full
-                    )}
+                  <GlassLabel
+                    glassVariant="lite"
+                    className={cn("h-9 px-6 max-w-full", DS.text.heading)}
+                    title={
+                      currentConversation
+                        ? currentConversation.title || `会话 #${currentConversation.id}`
+                        : "新会话"
+                    }
                   >
-                    <span className={cn("truncate text-sm text-primary", DS.text.heading)}>
+                    <span className="truncate text-sm text-foreground">
                       {currentConversation
                         ? currentConversation.title || `会话 #${currentConversation.id}`
                         : "新会话"}
                     </span>
-                  </GlassCard>
+                  </GlassLabel>
                 </div>
 
                 {/* Right: History Toggle */}

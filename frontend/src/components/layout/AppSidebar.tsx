@@ -4,6 +4,8 @@ import { navItems } from "@/configs/nav";
 import { Button } from "@/components/ui/button";
 import { PanelLeft, PanelLeftOpen } from "lucide-react";
 import { DS } from "@/theme/design-system";
+import { GlassCard } from "@/components/common/GlassCard";
+import { GlassIconButton } from "@/components/common/GlassButton";
 
 interface AppSidebarProps {
   collapsed?: boolean;
@@ -14,13 +16,12 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
   const location = useLocation();
 
   return (
-    <div
+    <GlassCard
+      variant="strong"
       className={cn(
         "hidden md:flex flex-col text-card-foreground transition-all duration-300 ease-out",
-        "m-4 h-[calc(100vh-2rem)] border",
-        DS.radius.xl,
-        DS.glass.strong,
-        collapsed ? "w-[72px]" : "w-64",
+        "m-4 h-[calc(100vh-2rem)]",
+        collapsed ? "w-[72px]" : "w-64"
       )}
     >
       {/* Header Area */}
@@ -34,22 +35,19 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
           </div>
         )}
         {onToggleSidebar && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-8 w-8", 
-              DS.radius.full,
-              "text-muted-foreground hover:text-foreground"
-            )}
+          <GlassIconButton
+            type="button"
+            glassVariant="lite"
+            className="h-8! w-8! text-muted-foreground hover:text-foreground"
             onClick={onToggleSidebar}
+            title={collapsed ? "展开侧边栏" : "收起侧边栏"}
           >
             {collapsed ? (
               <PanelLeftOpen className="h-5 w-5" />
             ) : (
               <PanelLeft className="h-5 w-5" />
             )}
-          </Button>
+          </GlassIconButton>
         )}
       </div>
 
@@ -109,6 +107,6 @@ export function AppSidebar({ collapsed = false, onToggleSidebar }: AppSidebarPro
           </div>
         )}
       </div>
-    </div>
+    </GlassCard>
   );
 }

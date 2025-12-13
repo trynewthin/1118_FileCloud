@@ -20,7 +20,9 @@ export const SettingsLinkCard: FC<SettingsLinkCardProps> = ({
     <GlassCard
       variant="lite"
       className={cn(
-        "flex items-center justify-between px-4 py-3 cursor-pointer border-white/10 hover:bg-primary/5 transition-colors",
+        "flex items-center justify-between px-4 py-3 cursor-pointer transition-colors",
+        // classic：更克制；mac：更强调
+        "hover:bg-accent/30 blur-mac:hover:bg-primary/5",
         className,
       )}
       onClick={onClick}

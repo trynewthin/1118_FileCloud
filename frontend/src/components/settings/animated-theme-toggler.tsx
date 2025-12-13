@@ -3,6 +3,7 @@ import { Moon, Sun } from "lucide-react"
 import { flushSync } from "react-dom"
 
 import { cn } from "@/lib/utils"
+import { GlassIconButton } from "@/components/common/GlassButton"
 
 interface AnimatedThemeTogglerProps
   extends React.ComponentPropsWithoutRef<"button"> {
@@ -70,14 +71,16 @@ export const AnimatedThemeToggler = ({
   }, [isDark, duration])
 
   return (
-    <button
+    <GlassIconButton
       ref={buttonRef}
+      type="button"
+      glassVariant="lite"
       onClick={toggleTheme}
       className={cn(className)}
       {...props}
     >
-      {isDark ? <Sun /> : <Moon />}
-      <span className="sr-only">Toggle theme</span>
-    </button>
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <span className="sr-only">切换主题</span>
+    </GlassIconButton>
   )
 }

@@ -26,12 +26,13 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           "transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
           // 移除默认的 ghost hover，由 glass 效果接管
           glassVariant !== "ghost" && "hover:bg-background/80 border-border/20",
-          // 只有图标时，默认用 full 圆角，否则用 lg
-          (size === "icon" || size === "icon-sm" || size === "icon-lg")
-            ? cn(DS.radius.full, "button-rect:rounded-xl")
-            : cn(DS.radius.lg, "button-rect:rounded-xl"),
+          // 圆角规范：图标按钮更圆；普通按钮更大圆角；矩形模式由 button-rect 变体统一覆盖
+          cn(DS.radius.full, "button-rect:rounded-xl"),
+          // 高度规范：icon/icon-sm 默认统一为 h-9 w-9（可通过 className 覆盖）
+          (size === "icon" || size === "icon-sm") && "h-9 w-9",
           glassClass,
-          "shadow-sm hover:shadow-md hover:scale-[1.04] active:scale-[0.96]",
+          // classic：更克制；mac：更强的阴影与缩放
+          "shadow-sm hover:shadow-sm hover:scale-[1.01] blur-mac:hover:shadow-md blur-mac:hover:scale-[1.04] active:scale-[0.96]",
           className
         )}
         {...props}

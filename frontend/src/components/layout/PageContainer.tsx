@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { usePageHeader } from "@/components/layout/PageHeaderContext";
 import { ArrowLeft } from "lucide-react";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassIconButton } from "@/components/common/GlassButton";
 import { DS } from "@/theme/design-system";
 
 interface PageContainerProps extends PropsWithChildren {
@@ -42,10 +42,8 @@ export const PageContainer: FC<PageContainerProps> = ({
         <div className="flex items-center justify-between shrink-0 z-10 relative mt-1 px-4">
           <div className="flex items-center gap-2">
             {showBack && (
-              <GlassButton
+              <GlassIconButton
                 glassVariant="lite"
-                size="icon"
-                className="h-9 w-9 rounded-full text-foreground hover:text-primary"
                 onClick={() => {
                   if (onBack) {
                     onBack();
@@ -56,7 +54,7 @@ export const PageContainer: FC<PageContainerProps> = ({
                 title="返回"
               >
                 <ArrowLeft className="h-5 w-5" />
-              </GlassButton>
+              </GlassIconButton>
             )}
           </div>
 

@@ -3,9 +3,8 @@ import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton, GlassIconButton } from "@/components/common/GlassButton";
 import { GlassButtonGroup } from "@/components/common/GlassButtonGroup";
-import { Button } from "@/components/ui/button";
 import { useTagList } from "@/hooks/useTags";
 import { TagItem } from "@/components/tag/TagItem";
 import { TagEditDialog } from "@/components/tag/TagEditDialog";
@@ -114,7 +113,7 @@ export const TagsManagePage = () => {
         <div className="flex items-center gap-2">
           <GlassButton
             glassVariant="lite"
-            className="h-8 px-3 text-sm justify-start min-w-[96px]"
+            className="h-9 px-3 text-sm justify-start min-w-[96px]"
             onClick={handleAddRoot}
             title="添加标签"
           >
@@ -122,34 +121,34 @@ export const TagsManagePage = () => {
             <span className="ml-1">添加标签</span>
           </GlassButton>
 
-          <GlassButtonGroup glassVariant="lite" className="p-0.5 gap-0.5">
-            <Button
-              variant={showAddChild ? "secondary" : "ghost"}
-              size="icon-sm"
-              className={showAddChild ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+          <GlassButtonGroup glassVariant="lite" className="py-0">
+            <GlassIconButton
+              type="button"
+              glassVariant="lite"
+              className={showAddChild ? "border-primary/30 bg-primary/10" : ""}
               onClick={() => setShowAddChild((v) => !v)}
               title={showAddChild ? "隐藏新增子标签按钮" : "显示新增子标签按钮"}
             >
               <Plus className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={showEdit ? "secondary" : "ghost"}
-              size="icon-sm"
-              className={showEdit ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+            </GlassIconButton>
+            <GlassIconButton
+              type="button"
+              glassVariant="lite"
+              className={showEdit ? "border-primary/30 bg-primary/10" : ""}
               onClick={() => setShowEdit((v) => !v)}
               title={showEdit ? "隐藏编辑按钮" : "显示编辑按钮"}
             >
               <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={showDelete ? "secondary" : "ghost"}
-              size="icon-sm"
-              className={showDelete ? "h-8 w-8 text-foreground" : "h-8 w-8 text-muted-foreground"}
+            </GlassIconButton>
+            <GlassIconButton
+              type="button"
+              glassVariant="lite"
+              className={showDelete ? "border-primary/30 bg-primary/10" : ""}
               onClick={() => setShowDelete((v) => !v)}
               title={showDelete ? "隐藏删除按钮" : "显示删除按钮"}
             >
               <Trash2 className="h-4 w-4" />
-            </Button>
+            </GlassIconButton>
           </GlassButtonGroup>
         </div>
       }

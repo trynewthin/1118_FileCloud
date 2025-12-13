@@ -20,7 +20,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         ref={ref}
         className={cn(
           "relative overflow-hidden", // 防止内部内容溢出圆角
-          DS.radius.lg,
+          cn("rounded-3xl", "button-rect:rounded-xl"),
           variantClass,
           hoverEffect && DS.interactive.hoverCard,
           className

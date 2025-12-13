@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { Tag as TagIcon } from "lucide-react";
 import { DelayedLoader } from "@/components/common";
+import { GlassLabel } from "@/components/common";
 import { useEntryTags, useTagList, getTagPath, flattenTags } from "@/hooks/useTags";
 import type { FileTag } from "@/lib/api/tags";
 
@@ -63,14 +64,13 @@ export const TagInfoCard = ({ entryId, refreshKey }: TagInfoCardProps) => {
     if (!color) {
       return {
         backgroundColor: "hsl(var(--muted))",
-        // 默认标签文字使用前景色的稍弱版本，保证可读性
-        color: "hsl(var(--foreground) / 0.8)",
+        borderColor: "hsl(var(--border) / 0.6)",
       };
     }
-    // 使用标签自带颜色作为背景，文字使用对比色
+    // 使用标签自带颜色进行背景/边框混色，文字保持默认前景色保证可读性
     return {
       backgroundColor: `${color}20`, // 20% 透明度
-      color: color,
+      borderColor: `${color}55`, // 约 33% 透明度，增强矩形/边界可见
     };
   };
 
@@ -93,14 +93,16 @@ export const TagInfoCard = ({ entryId, refreshKey }: TagInfoCardProps) => {
           {tags.map((et) => {
             const colors = getTagColors(et.tag.color);
             return (
-              <span
+              <GlassLabel
                 key={et.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
+                glassVariant="lite"
+                className="h-7 px-3 text-sm button-rect:rounded-md"
+                icon={<TagIcon className="w-3 h-3" />}
                 style={colors}
+                title={getTagDisplayText(et.tag)}
               >
-                <TagIcon className="w-3 h-3" />
                 {getTagDisplayText(et.tag)}
-              </span>
+              </GlassLabel>
             );
           })}
         </div>

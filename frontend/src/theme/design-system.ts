@@ -71,7 +71,7 @@ export const DS = {
   // 4. 交互与动效 (Interaction)
   interactive: {
     // 通用 Hover 效果：轻微上浮 + 阴影加深
-    hoverCard: "transition-all duration-300 hover:shadow-md hover:-translate-y-[1px]",
+    hoverCard: "transition-all duration-300 hover:shadow-sm hover:-translate-y-[1px] blur-mac:hover:shadow-md",
     // 按钮点击缩放反馈
     activePress: "active:scale-95 transition-transform",
   },
