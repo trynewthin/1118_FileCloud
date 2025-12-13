@@ -8,12 +8,14 @@ import { SettingsItemCard } from "@/components/settings/SettingsItemCard";
 import { Switch } from "@/components/ui/switch";
 import { useUiCompat } from "@/hooks/useUiCompat";
 import { useBlurTheme } from "@/hooks/useBlurTheme";
+import { useButtonShape } from "@/hooks/useButtonShape";
 import { cn } from "@/lib/utils";
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const { compatMode, setCompatMode } = useUiCompat();
   const { blurTheme, setBlurTheme } = useBlurTheme();
+  const { buttonShape, setButtonShape } = useButtonShape();
   const [backgroundDialogOpen, setBackgroundDialogOpen] = useState(false);
 
   return (
@@ -61,6 +63,38 @@ export function SettingsPage() {
                   )}
                 >
                   <span>macOS 风格</span>
+                </button>
+              </div>
+            }
+          />
+          <SettingsItemCard
+            title="按钮形状"
+            description="全局控制玻璃按钮的圆角风格（圆形/矩形）。"
+            action={
+              <div className="inline-flex items-center gap-1 rounded-full bg-muted/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => setButtonShape("round")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-all",
+                    buttonShape === "round"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span>圆形</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setButtonShape("rect")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-all",
+                    buttonShape === "rect"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span>矩形</span>
                 </button>
               </div>
             }

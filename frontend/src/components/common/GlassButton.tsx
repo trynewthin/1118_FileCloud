@@ -23,15 +23,15 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
         variant={variant}
         size={size}
         className={cn(
-          "transition-all duration-300",
+          "transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
           // 移除默认的 ghost hover，由 glass 效果接管
           glassVariant !== "ghost" && "hover:bg-background/80 border-border/20",
           // 只有图标时，默认用 full 圆角，否则用 lg
           (size === "icon" || size === "icon-sm" || size === "icon-lg")
-            ? DS.radius.full
-            : DS.radius.lg,
+            ? cn(DS.radius.full, "button-rect:rounded-xl")
+            : cn(DS.radius.lg, "button-rect:rounded-xl"),
           glassClass,
-          "shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95",
+          "shadow-sm hover:shadow-md hover:scale-[1.04] active:scale-[0.96]",
           className
         )}
         {...props}
@@ -40,3 +40,21 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
   }
 );
 GlassButton.displayName = "GlassButton";
+
+export const GlassIconButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
+  ({ className, size, children, ...props }, ref) => {
+    return (
+      <GlassButton
+        ref={ref}
+        size={size ?? "icon-sm"}
+        className={cn("h-8 w-8", className)}
+        {...props}
+      >
+        <span className="inline-flex items-center justify-center [&>svg]:text-foreground!">
+          {children}
+        </span>
+      </GlassButton>
+    );
+  }
+);
+GlassIconButton.displayName = "GlassIconButton";

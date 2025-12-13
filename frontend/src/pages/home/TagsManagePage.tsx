@@ -4,6 +4,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButtonGroup } from "@/components/common/GlassButtonGroup";
 import { Button } from "@/components/ui/button";
 import { useTagList } from "@/hooks/useTags";
 import { TagItem } from "@/components/tag/TagItem";
@@ -121,7 +122,7 @@ export const TagsManagePage = () => {
             <span className="ml-1">添加标签</span>
           </GlassButton>
 
-          <GlassCard variant="lite" className="flex items-center p-0.5 gap-0.5">
+          <GlassButtonGroup glassVariant="lite" className="p-0.5 gap-0.5">
             <Button
               variant={showAddChild ? "secondary" : "ghost"}
               size="icon-sm"
@@ -149,7 +150,7 @@ export const TagsManagePage = () => {
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-          </GlassCard>
+          </GlassButtonGroup>
         </div>
       }
     >

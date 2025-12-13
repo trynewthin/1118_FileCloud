@@ -4,6 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant blur-mac (&:is(html[data-blur-theme="mac"] *));
+@custom-variant button-rect (&:is(html[data-button-shape="rect"] *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

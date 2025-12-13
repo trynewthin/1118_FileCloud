@@ -6,7 +6,7 @@ import { useAiConfig } from "@/hooks/useAiConfig";
 import { AiMobileConversationManager } from "@/components/aichat/AiMobileConversationManager";
 import { ChatMessageList } from "@/components/aichat/ChatMessageList";
 import { ChatInputBar } from "@/components/aichat/ChatInputBar";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassIconButton } from "@/components/common/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { MessageCircle, Sparkles } from "lucide-react";
 import {
@@ -155,15 +155,13 @@ export function AiChatPage() {
                   <div className="absolute left-0 top-0 flex items-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <GlassButton
+                        <GlassIconButton
                           type="button"
-                          size="icon"
                           glassVariant="lite"
-                          className="h-9 w-9 rounded-full shadow-sm"
                           title={`切换模型 (${currentModel?.display_name ?? "未设置"})`}
                         >
-                          <Sparkles className="h-5 w-5 text-primary" />
-                        </GlassButton>
+                          <Sparkles className="h-5 w-5" />
+                        </GlassIconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className={cn("w-56", DS.glass.strong, "border-white/10")}>
                         <DropdownMenuLabel className="text-xs">
@@ -207,19 +205,18 @@ export function AiChatPage() {
 
                 {/* Right: History Toggle */}
                 <div className="absolute right-0 top-0 flex items-center">
-                  <GlassButton
+                  <GlassIconButton
                     glassVariant="lite"
-                    size="icon"
                     className={cn(
-                      "h-9 w-9 rounded-full shadow-sm",
+                      "h-9 w-9",
                       conversationPanelOpen && "border-primary/30 bg-primary/10"
                     )}
                     onClick={() => setConversationPanelOpen((open) => !open)}
                     disabled={loadingConversations}
                     title="切换会话"
                   >
-                    <MessageCircle className={cn("h-5 w-5", conversationPanelOpen ? "text-primary" : "text-muted-foreground")} />
-                  </GlassButton>
+                    <MessageCircle className="h-5 w-5" />
+                  </GlassIconButton>
                 </div>
               </div>
 

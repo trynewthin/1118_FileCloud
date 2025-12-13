@@ -8,6 +8,7 @@ import { LayoutBackground } from "@/components/layout/LayoutBackground";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { useBlurTheme } from "@/hooks/useBlurTheme";
+import { useButtonShape } from "@/hooks/useButtonShape";
 
 const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 
@@ -32,6 +33,7 @@ const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 export function RootLayout() {
   // 确保应用初始化时根据存储的配置同步毛玻璃主题
   useBlurTheme();
+  useButtonShape();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY);
