@@ -13,7 +13,6 @@ import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsItemCard } from "@/components/settings/SettingsItemCard";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { XIcon, ChevronRight } from "lucide-react";
-import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 
 export function AiSettingsPage() {
   const navigate = useNavigate();
@@ -78,7 +77,7 @@ export function AiSettingsPage() {
   };
 
   return (
-    <PageContainer title="AI 设置" showBack action={<SettingsTopBarActions />}>
+    <PageContainer title="AI 设置" showBack>
       <div className="flex-1 min-h-0 flex flex-col space-y-4">
         {/* 模型管理入口 */}
         <SettingsItemCard

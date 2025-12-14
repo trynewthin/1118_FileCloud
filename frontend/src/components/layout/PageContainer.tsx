@@ -2,7 +2,6 @@ import type { FC, PropsWithChildren, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { usePageHeader } from "@/components/layout/PageHeaderContext";
 import { DS } from "@/theme/design-system";
 import { FolderGridMenu } from "@/components/layout/header/FolderGridMenu";
 import { PageContainerHeader } from "@/components/layout/header/PageContainerHeader";
@@ -29,7 +28,6 @@ export const PageContainer: FC<PageContainerProps> = ({
   headerCenter,
   onBack,
 }) => {
-  const { setConfig } = usePageHeader();
   const navigate = useNavigate();
   const location = useLocation();
   const [folderOpen, setFolderOpen] = useState(false);
@@ -49,13 +47,6 @@ export const PageContainer: FC<PageContainerProps> = ({
 
     navigate("/");
   };
-
-  useEffect(() => {
-    setConfig({ title });
-    return () => {
-      setConfig({ title: undefined });
-    };
-  }, [title, setConfig]);
 
   useEffect(() => {
     const path = location.pathname;

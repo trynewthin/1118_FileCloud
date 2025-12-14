@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
 import { LayoutBackground } from "@/components/layout/LayoutBackground";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
@@ -30,31 +29,28 @@ export function RootLayout() {
   useButtonShape();
 
   return (
-    <PageHeaderProvider>
-      {/* 根容器：fixed 全屏，不设 overflow，让 backdrop-filter 能穿透 */}
-      <div className={cn("fixed inset-0", DS.layout.pageBackground)}>
-        {/* 背景层：z-0 */}
-        <LayoutBackground />
+    <div className={cn("fixed inset-0", DS.layout.pageBackground)}>
+      {/* 背景层：z-0 */}
+      <LayoutBackground />
 
-        {/* 中间层（页面层）：z-10，提供路由页面的完整视口空间 */}
-        <div className="absolute inset-0 z-10 flex">
-          {/* 页面层：路由页面显示区域（滚动由各页面内部自行管理） */}
-          <div className="relative flex flex-1 flex-col h-full min-w-0">
-            {/* 主内容：不设 overflow，让页面自己管理滚动；关闭页面切换动画 */}
-            <main className={cn(
-              "relative flex flex-1 h-full min-h-0 flex-col",
-              "px-4 md:px-8",
-              "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom,20px))] md:pb-6"
-            )}>
-              <div className="relative flex flex-1 flex-col h-full min-h-0">
-                <div className="w-full md:max-w-5xl mx-auto flex flex-1 flex-col h-full min-h-0">
-                  <Outlet />
-                </div>
+      {/* 中间层（页面层）：z-10，提供路由页面的完整视口空间 */}
+      <div className="absolute inset-0 z-10 flex">
+        {/* 页面层：路由页面显示区域（滚动由各页面内部自行管理） */}
+        <div className="relative flex flex-1 flex-col h-full min-w-0">
+          {/* 主内容：不设 overflow，让页面自己管理滚动；关闭页面切换动画 */}
+          <main className={cn(
+            "relative flex flex-1 h-full min-h-0 flex-col",
+            "px-4 md:px-8",
+            "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom,20px))] md:pb-6"
+          )}>
+            <div className="relative flex flex-1 flex-col h-full min-h-0">
+              <div className="w-full md:max-w-5xl mx-auto flex flex-1 flex-col h-full min-h-0">
+                <Outlet />
               </div>
-            </main>
-          </div>
+            </div>
+          </main>
         </div>
       </div>
-    </PageHeaderProvider>
+    </div>
   );
 }
