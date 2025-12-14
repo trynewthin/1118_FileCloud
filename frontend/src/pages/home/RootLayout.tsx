@@ -40,11 +40,10 @@ export function RootLayout() {
           {/* 主内容：不设 overflow，让页面自己管理滚动；关闭页面切换动画 */}
           <main className={cn(
             "relative flex flex-1 h-full min-h-0 flex-col",
-            "px-4 md:px-8",
-            "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom,20px))] md:pb-6"
+            "px-0"
           )}>
             <div className="relative flex flex-1 flex-col h-full min-h-0">
-              <div className="w-full md:max-w-5xl mx-auto flex flex-1 flex-col h-full min-h-0">
+              <div className="w-full flex flex-1 flex-col h-full min-h-0">
                 <Outlet />
               </div>
             </div>
