@@ -1,7 +1,7 @@
 import { PageContainer } from "@/components/layout/PageContainer";
-import { SkeuoFolderItem } from "@/components/test/SkeuoFolderItem";
-import { SkeuoFileItem } from "@/components/test/SkeuoFileItem";
-import { Film, Image as ImageIcon, FolderOpen, FileText, FileVideo } from "lucide-react";
+import { SkeuoFolderItem } from "@/components/filebrowsepage/items/SkeuoFolderItem";
+import { SkeuoFileItem } from "@/components/filebrowsepage/items/SkeuoFileItem";
+import { Film, Image as ImageIcon, FolderOpen } from "lucide-react";
 
 export const TestPlaygroundPage = () => {
   return (
@@ -54,9 +54,11 @@ export const TestPlaygroundPage = () => {
         <div className="pt-2">
           <div className="mb-2 text-xs font-medium text-foreground/70">拟物化：文件</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-4">
-            <SkeuoFileItem name="需求说明.docx" subtitle="128.4 KB" icon={<FileText className="h-10 w-10" />} />
-            <SkeuoFileItem name="封面.jpg" subtitle="2.3 MB" selected icon={<ImageIcon className="h-10 w-10" />} />
-            <SkeuoFileItem name="预告片.mp4" subtitle="42.8 MB" icon={<FileVideo className="h-10 w-10" />} />
+            <SkeuoFileItem name="需求说明.docx" subtitle="128.4 KB" ext="docx" />
+            <SkeuoFileItem name="合同.pdf" subtitle="860 KB" ext="pdf" selected />
+            <SkeuoFileItem name="封面.jpg" subtitle="2.3 MB" ext="jpg" />
+            <SkeuoFileItem name="预告片.mp4" subtitle="42.8 MB" ext="mp4" />
+            <SkeuoFileItem name="素材.zip" subtitle="120 MB" ext="zip" />
           </div>
         </div>
       </div>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Folder,
   MoreVertical,
   Check,
   Tag,
@@ -11,6 +10,7 @@ import {
   Trash2,
   CloudOff,
   HardDrive,
+  Folder,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
@@ -18,9 +18,8 @@ import { buildApiUrl } from "@/lib/api/client";
 import {
   THUMBNAIL_EXTS,
   getFileIconGroup,
-  FILE_ICON_COMPONENTS,
-  FILE_ICON_DEFAULT_COMPONENT,
 } from "@/configs/fileTypeIcons";
+import { getSkeuoFileIconComponent, SKEUO_FILE_STYLE_TOKENS, type SkeuoFileTypeKey } from "@/configs/skeuoFileDesign";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +77,10 @@ export function FileListItem({
           : `/file-content/${entry.id}/thumbnail`,
       )
     : undefined;
+
+  const fileTypeKey: SkeuoFileTypeKey = (getFileIconGroup(ext) ?? "default") as SkeuoFileTypeKey;
+  const FileIcon = getSkeuoFileIconComponent(fileTypeKey);
+  const fileIconColor = SKEUO_FILE_STYLE_TOKENS[fileTypeKey].iconColor;
 
   return (
     <GlassCard
@@ -138,9 +141,7 @@ export function FileListItem({
               ) : isDir ? (
                 <Folder className="h-8 w-8" />
               ) : (() => {
-                const group = getFileIconGroup(ext);
-                const Icon = group ? FILE_ICON_COMPONENTS[group] : FILE_ICON_DEFAULT_COMPONENT;
-                return <Icon className="h-8 w-8" />;
+                return <FileIcon className="h-8 w-8" style={{ color: fileIconColor }} />;
               })()}
             </div>
           )}
