@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import type { FileTag } from "@/lib/api/tags";
 
 // 预设颜色列表（按暖色 -> 冷色 -> 中性色排列）

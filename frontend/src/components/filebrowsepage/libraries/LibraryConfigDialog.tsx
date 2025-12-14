@@ -6,9 +6,8 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassButton } from "@/components/common/button/GlassButton";
@@ -162,17 +161,20 @@ export function LibraryConfigDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[500px]" showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              文件库配置
-            </DialogTitle>
-            <DialogDescription>管理文件库 "{library.display_name}" 的配置</DialogDescription>
-          </DialogHeader>
+          <GlassCard variant="lite" className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  文件库配置
+                </DialogTitle>
+                <DialogDescription className="truncate">管理文件库 "{library.display_name}" 的配置</DialogDescription>
+              </div>
+            </div>
+          </GlassCard>
 
-          <div className="space-y-5 py-4">
-            {/* 基本信息 */}
-            <div className="space-y-3">
+          <div className="space-y-3 py-3">
+            <GlassCard variant="lite" className="p-4 space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="displayName">显示名称</Label>
                 <Input
@@ -192,21 +194,20 @@ export function LibraryConfigDialog({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
                   <Label>启用状态</Label>
                   <p className="text-xs text-muted-foreground">禁用后将无法浏览此文件库</p>
                 </div>
                 <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
               </div>
-            </div>
+            </GlassCard>
 
-            {/* 统计信息 */}
-            <GlassCard variant="ghost" className="p-3 space-y-2">
+            <GlassCard variant="lite" className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">统计信息</span>
                 <GlassButton
-                  glassVariant="ghost"
+                  glassVariant="lite"
                   size="icon"
                   className="h-7 w-7"
                   onClick={handleRefresh}
@@ -246,29 +247,34 @@ export function LibraryConfigDialog({
               )}
             </GlassCard>
 
-            {/* 操作按钮 */}
-            <div className="flex items-center gap-2">
-              <GlassButton
-                glassVariant="lite"
-                className="flex-1 gap-2"
-                onClick={handleReindex}
-                disabled={loading}
-              >
-                <RefreshCw className="h-4 w-4" />
-                重建索引
-              </GlassButton>
-              <GlassButton
-                glassVariant="lite"
-                className="flex-1 gap-2 text-destructive hover:text-destructive"
-                onClick={() => setDeleteConfirmOpen(true)}
-                disabled={loading}
-              >
-                <Trash2 className="h-4 w-4" />
-                删除文件库
-              </GlassButton>
-            </div>
+            <GlassCard variant="lite" className="p-4">
+              <div className="flex items-center gap-2">
+                <GlassButton
+                  glassVariant="lite"
+                  className="flex-1 gap-2"
+                  onClick={handleReindex}
+                  disabled={loading}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  重建索引
+                </GlassButton>
+                <GlassButton
+                  glassVariant="lite"
+                  className="flex-1 gap-2 text-destructive hover:text-destructive"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={loading}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  删除文件库
+                </GlassButton>
+              </div>
+            </GlassCard>
 
-            {error && <div className="text-sm text-red-500">{error}</div>}
+            {error && (
+              <GlassCard variant="lite" className="p-3">
+                <div className="text-sm text-red-500">{error}</div>
+              </GlassCard>
+            )}
           </div>
 
           <DialogFooter
@@ -276,7 +282,7 @@ export function LibraryConfigDialog({
             onLeftButtonClick={() => {
               if (!loading) onOpenChange(false);
             }}
-            leftButtonGlassVariant="ghost"
+            leftButtonGlassVariant="lite"
             rightButtonIcon={<Check className="h-4 w-4" />}
             onRightButtonClick={handleSave}
             rightButtonGlassVariant="lite"

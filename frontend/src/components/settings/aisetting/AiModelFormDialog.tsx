@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { AiChatModel, AiProvider, CreateAiChatModelRequest } from "@/lib/api/aiConfig";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Trash2, Check } from "lucide-react";
 
 interface AiModelFormDialogProps {
@@ -112,95 +113,109 @@ export function AiModelFormDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{editingModel ? "编辑模型" : "新建模型"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label htmlFor="model-key">唯一标识</Label>
-            <Input
-              id="model-key"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="mt-1"
-            />
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>{editingModel ? "编辑模型" : "新建模型"}</DialogTitle>
+          </DialogHeader>
+          <div className="text-xs text-muted-foreground mt-1">
+            配置模型的绑定供应商、模型名称、接口模式与上下文限制。
           </div>
-          <div>
-            <Label htmlFor="model-name">显示名称</Label>
-            <Input
-              id="model-name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>供应商</Label>
-            <Select value={providerId} onValueChange={setProviderId}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="选择供应商（可选）" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">未绑定</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="model-modelname">模型名称</Label>
-            <Input
-              id="model-modelname"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              placeholder="例如：gpt-4o-mini"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="model-apimode">接口模式</Label>
-            <Input
-              id="model-apimode"
-              value={apiMode}
-              onChange={(e) => setApiMode(e.target.value)}
-              placeholder="例如：chat 或 vision_chat"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="model-maxctx">默认上下文消息数</Label>
-            <Input
-              id="model-maxctx"
-              type="number"
-              value={defaultMaxContextMessages}
-              onChange={(e) => setDefaultMaxContextMessages(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="model-allowctx"
-              checked={allowOverrideContextLimit}
-              onCheckedChange={(v) => setAllowOverrideContextLimit(!!v)}
-            />
-            <Label htmlFor="model-allowctx">允许会话覆盖上下文限制</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="model-enabled"
-              checked={isEnabled}
-              onCheckedChange={(v) => setIsEnabled(!!v)}
-            />
-            <Label htmlFor="model-enabled">启用</Label>
-          </div>
+        </GlassCard>
+
+        <div className="space-y-3 py-3">
+          <GlassCard variant="lite" className="p-4 space-y-4">
+            <div>
+              <Label htmlFor="model-key">唯一标识</Label>
+              <Input
+                id="model-key"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="model-name">显示名称</Label>
+              <Input
+                id="model-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>供应商</Label>
+              <Select value={providerId} onValueChange={setProviderId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="选择供应商（可选）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">未绑定</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </GlassCard>
+
+          <GlassCard variant="lite" className="p-4 space-y-4">
+            <div>
+              <Label htmlFor="model-modelname">模型名称</Label>
+              <Input
+                id="model-modelname"
+                value={modelName}
+                onChange={(e) => setModelName(e.target.value)}
+                placeholder="例如：gpt-4o-mini"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="model-apimode">接口模式</Label>
+              <Input
+                id="model-apimode"
+                value={apiMode}
+                onChange={(e) => setApiMode(e.target.value)}
+                placeholder="例如：chat 或 vision_chat"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="model-maxctx">默认上下文消息数</Label>
+              <Input
+                id="model-maxctx"
+                type="number"
+                value={defaultMaxContextMessages}
+                onChange={(e) => setDefaultMaxContextMessages(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </GlassCard>
+
+          <GlassCard variant="lite" className="p-4 space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="model-allowctx"
+                checked={allowOverrideContextLimit}
+                onCheckedChange={(v) => setAllowOverrideContextLimit(!!v)}
+              />
+              <Label htmlFor="model-allowctx">允许会话覆盖上下文限制</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="model-enabled"
+                checked={isEnabled}
+                onCheckedChange={(v) => setIsEnabled(!!v)}
+              />
+              <Label htmlFor="model-enabled">启用</Label>
+            </div>
+          </GlassCard>
         </div>
         <DialogFooter
           leftButtonIcon={editingModel && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
           onLeftButtonClick={editingModel && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

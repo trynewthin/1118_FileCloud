@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, RotateCcw, XCircle, XIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
 import type { TrashEntry } from "@/lib/api/files";
@@ -102,17 +102,20 @@ export function RecycleBinDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] h-[520px] flex flex-col" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4" />
-            回收站
-          </DialogTitle>
-          <DialogDescription>
-            显示当前文件库中已删除的文件和文件夹，可以在这里进行还原或彻底删除操作。
-          </DialogDescription>
-        </DialogHeader>
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              回收站
+            </DialogTitle>
+            <DialogDescription>
+              显示当前文件库中已删除的文件和文件夹，可以在这里进行还原或彻底删除操作。
+            </DialogDescription>
+          </DialogHeader>
+        </GlassCard>
 
-        <div className="flex-1 border rounded-md bg-muted/30 overflow-hidden">
+        <GlassCard variant="lite" className="flex-1 overflow-hidden">
+        <div className="h-full border rounded-md bg-muted/30 overflow-hidden">
           {loading ? (
             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
               加载回收站...
@@ -154,23 +157,22 @@ export function RecycleBinDialog({
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-end gap-2 mt-2 sm:mt-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <GlassButton
+                        glassVariant="lite"
+                        className="h-8 px-3"
                         disabled={workingId === item.id}
                         onClick={() => handleRestore(item.id)}
                       >
                         <RotateCcw className="h-3 w-3 mr-1" /> 还原
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
+                      </GlassButton>
+                      <GlassButton
+                        glassVariant="lite"
+                        className="h-8 px-3 text-red-600 hover:text-red-700 bg-destructive/10 hover:bg-destructive/20"
                         disabled={workingId === item.id}
                         onClick={() => handleDestroy(item.id)}
                       >
                         <XCircle className="h-3 w-3 mr-1" /> 彻底删除
-                      </Button>
+                      </GlassButton>
                     </div>
                   </GlassCard>
                 ))}
@@ -178,11 +180,12 @@ export function RecycleBinDialog({
             </div>
           )}
         </div>
+        </GlassCard>
 
         <DialogFooter
           rightButtonIcon={<XIcon className="h-4 w-4" />}
           onRightButtonClick={() => onOpenChange(false)}
-          rightButtonGlassVariant="ghost"
+          rightButtonGlassVariant="lite"
         >
         </DialogFooter>
       </DialogContent>

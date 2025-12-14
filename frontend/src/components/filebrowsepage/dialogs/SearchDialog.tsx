@@ -6,7 +6,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/common/GlassCard";
 import { searchFiles, type FileSearchResult } from "@/lib/api/files";
@@ -137,17 +138,19 @@ export function SearchDialog({ open, onOpenChange, libraryId }: SearchDialogProp
             className="pl-10 pr-10"
           />
           {keyword && (
-            <button
+            <GlassIconButton
+              type="button"
+              glassVariant="lite"
               onClick={() => {
                 setKeyword("");
                 setResults([]);
                 setSearched(false);
                 inputRef.current?.focus();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
             >
               <X className="h-4 w-4" />
-            </button>
+            </GlassIconButton>
           )}
         </div>
 
@@ -218,13 +221,15 @@ export function SearchDialog({ open, onOpenChange, libraryId }: SearchDialogProp
           <span className="text-xs text-muted-foreground">
             {results.length > 0 && `找到 ${results.length} 个结果`}
           </span>
-          <button
+          <GlassIconButton
+            type="button"
+            glassVariant="lite"
             onClick={() => onOpenChange(false)}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+            title="关闭"
           >
             <X className="h-4 w-4" />
-            关闭
-          </button>
+            <span className="sr-only">关闭</span>
+          </GlassIconButton>
         </div>
       </DialogContent>
     </Dialog>

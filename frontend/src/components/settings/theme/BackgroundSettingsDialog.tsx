@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBackgroundSettings, type BackgroundMode, type ImageSourceType } from "@/hooks/useBackgroundSettings";
@@ -169,13 +169,18 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
         className="sm:max-w-[520px] h-[520px] flex flex-col"
         showCloseButton={false}
       >
-        <DialogHeader>
-          <DialogTitle>背景设置</DialogTitle>
-        </DialogHeader>
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>背景设置</DialogTitle>
+          </DialogHeader>
+          <div className="text-xs text-muted-foreground mt-1">
+            配置页面背景效果：光晕（默认）或自定义图片。
+          </div>
+        </GlassCard>
 
-        <div className="flex-1 flex flex-col gap-4 py-2 overflow-hidden">
+        <div className="flex-1 flex flex-col gap-3 py-3 overflow-hidden">
           {/* 背景模式选择 */}
-          <div className="space-y-2">
+          <GlassCard variant="lite" className="p-4 space-y-2">
             <Label>背景模式</Label>
             <div className="inline-flex items-center gap-1 rounded-full bg-muted/40 p-1">
               <button
@@ -205,11 +210,11 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                 <span>图片背景</span>
               </button>
             </div>
-          </div>
+          </GlassCard>
 
           {/* 图片来源选择（仅在图片模式下显示） */}
           {mode === "image" && (
-            <div className="space-y-2">
+            <GlassCard variant="lite" className="p-4 space-y-2">
               <Label>图片来源</Label>
               <div className="inline-flex items-center gap-1 rounded-full bg-muted/40 p-1">
                 <button
@@ -239,12 +244,12 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                   <span>外部链接</span>
                 </button>
               </div>
-            </div>
+            </GlassCard>
           )}
 
           {/* URL 输入（仅在图片模式 + URL 来源时显示） */}
           {mode === "image" && imageSourceType === "url" && (
-            <div className="space-y-2">
+            <GlassCard variant="lite" className="p-4 space-y-2">
               <Label htmlFor="bg-image-url">图片地址 URL</Label>
               <Input
                 id="bg-image-url"
@@ -253,15 +258,13 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                 onChange={(e) => setImageUrlState(e.target.value)}
               />
               {error && <div className="text-xs text-red-500">{error}</div>}
-              <p className="text-xs text-muted-foreground">
-                图片需能被当前浏览器访问。
-              </p>
-            </div>
+              <p className="text-xs text-muted-foreground">图片需能被当前浏览器访问。</p>
+            </GlassCard>
           )}
 
           {/* 本地图片管理（仅在图片模式 + 本地来源时显示） */}
           {mode === "image" && imageSourceType === "local" && (
-            <div className="flex-1 flex flex-col gap-2 min-h-0">
+            <GlassCard variant="lite" className="flex-1 flex flex-col gap-3 p-4 min-h-0">
               <div className="flex items-center justify-between">
                 <Label>本地背景图片</Label>
                 <div className="flex items-center gap-2">
@@ -284,10 +287,9 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                   </GlassButton>
                 </div>
               </div>
-              
+
               {error && <div className="text-xs text-red-500">{error}</div>}
 
-              {/* 图片列表 */}
               <div className="flex-1 border rounded-md bg-muted/30 overflow-hidden">
                 <div className="h-full overflow-y-auto p-2">
                   {localImages.length === 0 ? (
@@ -311,13 +313,11 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                             alt={img.name}
                             className="absolute inset-0 w-full h-full object-cover"
                           />
-                          {/* 选中标记 */}
                           {selectedLocalId === img.id && (
                             <div className="absolute top-1 left-1 bg-primary text-primary-foreground rounded-full p-0.5">
                               <CheckCircle2 className="h-3.5 w-3.5" />
                             </div>
                           )}
-                          {/* 删除按钮 */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -328,7 +328,6 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
-                          {/* 文件名 */}
                           <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
                             <p className="text-[10px] text-white truncate">{img.name}</p>
                           </div>
@@ -338,21 +337,23 @@ export function BackgroundSettingsDialog({ open, onOpenChange }: BackgroundSetti
                   )}
                 </div>
               </div>
-            </div>
+            </GlassCard>
           )}
 
           {/* 光晕模式说明 */}
           {mode === "glow" && (
-            <p className="text-xs text-muted-foreground">
-              光晕背景为默认的动态光效，营造通透、柔和的视觉体验。
-            </p>
+            <GlassCard variant="lite" className="p-4">
+              <p className="text-xs text-muted-foreground">
+                光晕背景为默认的动态光效，营造通透、柔和的视觉体验。
+              </p>
+            </GlassCard>
           )}
         </div>
 
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}
           onLeftButtonClick={handleCancel}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

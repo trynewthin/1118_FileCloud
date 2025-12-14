@@ -7,7 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
+import { GlassCard } from "@/components/common/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { XIcon, Check } from "lucide-react";
@@ -80,36 +81,46 @@ export function CreateFolderDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[400px]" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>新建文件夹</DialogTitle>
-          <DialogDescription>
-            在当前目录下创建一个新的文件夹
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="folderName">文件夹名称</Label>
-            <Input
-              id="folderName"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="请输入文件夹名称"
-              className="bg-background/50 border-white/10 focus:bg-background/80"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              autoFocus
-            />
-          </div>
-          {error && <div className="text-sm text-red-500">{error}</div>}
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>新建文件夹</DialogTitle>
+            <DialogDescription>
+              在当前目录下创建一个新的文件夹
+            </DialogDescription>
+          </DialogHeader>
+        </GlassCard>
+
+        <div className="grid gap-3 py-3">
+          <GlassCard variant="lite" className="p-4">
+            <div className="grid gap-2">
+              <Label htmlFor="folderName">文件夹名称</Label>
+              <Input
+                id="folderName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="请输入文件夹名称"
+                className="bg-background/50 border-white/10 focus:bg-background/80"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+          </GlassCard>
+
+          {error && (
+            <GlassCard variant="lite" className="p-3">
+              <div className="text-sm text-red-500">{error}</div>
+            </GlassCard>
+          )}
         </div>
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}
           onLeftButtonClick={handleClose}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

@@ -12,7 +12,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Plus, MessageSquare, Archive, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";

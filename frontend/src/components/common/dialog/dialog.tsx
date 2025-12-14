@@ -4,7 +4,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { DS } from "@/theme/design-system"
-import { GlassButton } from "@/components/common/button/GlassButton"
+import { GlassIconButton } from "@/components/common/button/GlassButton"
 
 function Dialog({
   ...props
@@ -50,7 +50,7 @@ interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive
   showCloseButton?: boolean
   leftButtonIcon?: React.ReactNode
   onLeftButtonClick?: () => void
-  leftButtonGlassVariant?: "strong" | "lite" | "ghost"
+  leftButtonGlassVariant?: "strong" | "lite"
   rightButton?: React.ReactNode
 }
 
@@ -71,7 +71,8 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed left-[50%] top-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
-          DS.radius.xl,
+          "rounded-3xl",
+          "button-rect:rounded-xl",
           DS.glass.strong,
           "border-white/20 dark:border-white/10",
           className
@@ -80,14 +81,13 @@ function DialogContent({
       >
         {children}
         {leftButtonIcon && (
-          <GlassButton
-            size="icon"
+          <GlassIconButton
             glassVariant={leftButtonGlassVariant}
             className="absolute top-4 left-4"
             onClick={onLeftButtonClick}
           >
             {leftButtonIcon}
-          </GlassButton>
+          </GlassIconButton>
         )}
 
         {(rightButton || showCloseButton) && (
@@ -96,13 +96,12 @@ function DialogContent({
               ? rightButton
               : (
                 <DialogPrimitive.Close data-slot="dialog-close" asChild>
-                  <GlassButton
-                    size="icon"
+                  <GlassIconButton
                     glassVariant="lite"
                   >
                     <XIcon className="h-4 w-4" />
                     <span className="sr-only">Close</span>
-                  </GlassButton>
+                  </GlassIconButton>
                 </DialogPrimitive.Close>
               )}
           </div>
@@ -125,10 +124,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 interface DialogFooterProps extends React.ComponentProps<"div"> {
   leftButtonIcon?: React.ReactNode
   onLeftButtonClick?: () => void
-  leftButtonGlassVariant?: "strong" | "lite" | "ghost"
+  leftButtonGlassVariant?: "strong" | "lite"
   rightButtonIcon?: React.ReactNode
   onRightButtonClick?: () => void
-  rightButtonGlassVariant?: "strong" | "lite" | "ghost"
+  rightButtonGlassVariant?: "strong" | "lite"
 }
 
 function DialogFooter({
@@ -136,7 +135,7 @@ function DialogFooter({
   children,
   leftButtonIcon,
   onLeftButtonClick,
-  leftButtonGlassVariant = "ghost",
+  leftButtonGlassVariant = "lite",
   rightButtonIcon,
   onRightButtonClick,
   rightButtonGlassVariant = "lite",
@@ -153,28 +152,26 @@ function DialogFooter({
     >
       <div className="flex items-center gap-2">
         {leftButtonIcon && (
-          <GlassButton
+          <GlassIconButton
             type="button"
-            size="icon"
             glassVariant={leftButtonGlassVariant}
             onClick={onLeftButtonClick}
           >
             {leftButtonIcon}
-          </GlassButton>
+          </GlassIconButton>
         )}
       </div>
 
       <div className="flex items-center gap-2">
         {children}
         {rightButtonIcon && (
-          <GlassButton
+          <GlassIconButton
             type="button"
-            size="icon"
             glassVariant={rightButtonGlassVariant}
             onClick={onRightButtonClick}
           >
             {rightButtonIcon}
-          </GlassButton>
+          </GlassIconButton>
         )}
       </div>
     </div>

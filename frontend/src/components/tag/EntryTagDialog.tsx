@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { useTagList, useEntryTags } from "@/hooks/useTags";
 import type { FileTag } from "@/lib/api/tags";
 

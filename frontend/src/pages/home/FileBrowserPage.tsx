@@ -39,7 +39,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 
 export function FileBrowserPage() {
   const navigate = useNavigate();
@@ -838,7 +838,7 @@ export function FileBrowserPage() {
                 <GlassButton 
                   onClick={() => handleFilterSortChange(defaultFilterSortState)}
                   className="text-xs text-primary hover:underline mt-2"
-                  glassVariant="ghost"
+                  glassVariant="lite"
                 >
                   清除筛选条件
                 </GlassButton>
@@ -850,7 +850,7 @@ export function FileBrowserPage() {
                 <GlassButton 
                   onClick={() => setReindexDialogOpen(true)}
                   className="text-xs text-primary hover:underline mt-2"
-                  glassVariant="ghost"
+                  glassVariant="lite"
                 >
                   手动触发索引
                 </GlassButton>
@@ -974,12 +974,15 @@ export function FileBrowserPage() {
 
       <AlertDialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>重建索引</AlertDialogTitle>
-            <AlertDialogDescription>
-              选择索引模式：增量索引只处理变动的文件，强制索引会清空现有索引并完全重建。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <GlassCard variant="lite" className="p-4">
+            <AlertDialogHeader>
+              <AlertDialogTitle>重建索引</AlertDialogTitle>
+              <AlertDialogDescription>
+                选择索引模式：增量索引只处理变动的文件，强制索引会清空现有索引并完全重建。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </GlassCard>
+
           <AlertDialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <AlertDialogCancel>取消</AlertDialogCancel>
             <div className="flex gap-2 sm:ml-auto">

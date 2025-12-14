@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import { Progress } from "@/components/ui/progress";
 import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -131,7 +131,6 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
       <DialogContent 
         className="sm:max-w-[560px] h-[420px] flex flex-col" 
         showCloseButton={false}
-        rightButton={addButton}
       >
         {/* 隐藏的文件输入框 */}
         <input
@@ -142,15 +141,25 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
           className="hidden"
         />
 
-        <DialogHeader>
-          <DialogTitle>上传文件</DialogTitle>
-          <DialogDescription>
-            目标文件夹：{targetPathLabel || "当前文件库根目录"}
-          </DialogDescription>
-        </DialogHeader>
+        <GlassCard variant="lite" className="p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <DialogHeader>
+                <DialogTitle>上传文件</DialogTitle>
+                <DialogDescription>
+                  目标文件夹：{targetPathLabel || "当前文件库根目录"}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+            <div className="shrink-0 self-center">
+              {addButton}
+            </div>
+          </div>
+        </GlassCard>
 
         {/* 文件列表区域 */}
-        <div className="flex-1 border rounded-md bg-muted/30 overflow-hidden">
+        <GlassCard variant="lite" className="flex-1 overflow-hidden">
+        <div className="h-full border rounded-md bg-muted/30 overflow-hidden">
           {fileList.length === 0 ? (
             <div 
               className="flex h-full flex-col items-center justify-center text-muted-foreground text-sm cursor-pointer hover:bg-muted/20 transition-colors"
@@ -197,24 +206,31 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
             </div>
           )}
         </div>
+        </GlassCard>
 
         {/* 上传进度显示 */}
         {loading && progress && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>上传中...</span>
-              <span>{formatBytes(progress.loaded)} / {formatBytes(progress.total)} ({progress.percent}%)</span>
+          <GlassCard variant="lite" className="p-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>上传中...</span>
+                <span>{formatBytes(progress.loaded)} / {formatBytes(progress.total)} ({progress.percent}%)</span>
+              </div>
+              <Progress value={progress.percent} className="h-2" />
             </div>
-            <Progress value={progress.percent} className="h-2" />
-          </div>
+          </GlassCard>
         )}
 
-        {error && <div className="text-sm text-red-500">{error}</div>}
+        {error && (
+          <GlassCard variant="lite" className="p-3">
+            <div className="text-sm text-red-500">{error}</div>
+          </GlassCard>
+        )}
 
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}
           onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={() => { if (!loading) handleSubmit(); }}
           rightButtonGlassVariant="lite"

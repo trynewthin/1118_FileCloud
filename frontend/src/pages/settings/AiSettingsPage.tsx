@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { SettingsGroup } from "@/components/settings/SettingsGroup";
 import { SettingsItemCard } from "@/components/settings/SettingsItemCard";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/common/dialog/dialog";
 import { XIcon, ChevronRight } from "lucide-react";
 
 export function AiSettingsPage() {
@@ -201,7 +201,7 @@ export function AiSettingsPage() {
           <DialogFooter
             leftButtonIcon={<XIcon className="h-4 w-4" />}
             onLeftButtonClick={() => setNamingDialogOpen(false)}
-            leftButtonGlassVariant="ghost"
+            leftButtonGlassVariant="lite"
             rightButtonIcon={<ChevronRight className="h-4 w-4" />}
             onRightButtonClick={async () => {
               await handleSaveNamingConfig();

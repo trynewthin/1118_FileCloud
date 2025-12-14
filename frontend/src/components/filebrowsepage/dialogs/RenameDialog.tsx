@@ -6,7 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
+import { GlassCard } from "@/components/common/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassButton } from "@/components/common/button/GlassButton";
@@ -112,42 +113,55 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
       <DialogContent 
         className="sm:max-w-[425px]" 
         showCloseButton={false}
-        rightButton={
-          <GlassButton
-            glassVariant="lite"
-            size="icon"
-            onClick={handleSmartRename}
-            disabled={aiLoading || loading}
-            className="h-7 w-7"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span className="sr-only">智能重命名</span>
-          </GlassButton>
-        }
       >
         <form onSubmit={(e) => handleSubmit(e)}>
-          <DialogHeader>
-            <DialogTitle>重命名</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">名称</Label>
-              <Input
-                id="name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoFocus
-                disabled={aiLoading}
-              />
+          <GlassCard variant="lite" className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <DialogHeader>
+                  <DialogTitle>重命名</DialogTitle>
+                </DialogHeader>
+              </div>
+              <div className="shrink-0 self-center">
+                <GlassButton
+                  glassVariant="lite"
+                  size="icon"
+                  onClick={handleSmartRename}
+                  disabled={aiLoading || loading}
+                  className="h-7 w-7"
+                  title="智能重命名"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="sr-only">智能重命名</span>
+                </GlassButton>
+              </div>
             </div>
-            {/* 暂时隐藏密码框，除非后端返回需要密码，这里为了通用先预留，或者默认不显示 */}
-            {/* 如果需要支持加密目录操作，可以在这里加密码输入框，或者由外层 logic 决定是否显示 */}
+          </GlassCard>
+
+          <div className="grid gap-3 py-3">
+            <GlassCard variant="lite" className="p-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">名称</Label>
+                <Input
+                  id="name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  autoFocus
+                  disabled={aiLoading}
+                />
+              </div>
+            </GlassCard>
+
+            {error && (
+              <GlassCard variant="lite" className="p-3">
+                <div className="text-sm text-red-500">{error}</div>
+              </GlassCard>
+            )}
           </div>
-          {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
           <DialogFooter
             leftButtonIcon={<XIcon className="h-4 w-4" />}
             onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
-            leftButtonGlassVariant="ghost"
+            leftButtonGlassVariant="lite"
             rightButtonIcon={<Check className="h-4 w-4" />}
             onRightButtonClick={() => { if (!loading) handleSubmit(null); }}
             rightButtonGlassVariant="lite"

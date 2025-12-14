@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { AiProvider, CreateAiProviderRequest } from "@/lib/api/aiConfig";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Trash2, Check } from "lucide-react";
 
 interface AiProviderFormDialogProps {
@@ -94,73 +95,84 @@ export function AiProviderFormDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{editingProvider ? "编辑供应商" : "新建供应商"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label htmlFor="provider-name">名称</Label>
-            <Input
-              id="provider-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1"
-            />
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>{editingProvider ? "编辑供应商" : "新建供应商"}</DialogTitle>
+          </DialogHeader>
+          <div className="text-xs text-muted-foreground mt-1">
+            配置 AI 供应商的连接信息（地址、密钥、请求头等）。
           </div>
-          <div>
-            <Label htmlFor="provider-baseurl">Base URL</Label>
-            <Input
-              id="provider-baseurl"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="例如：https://api.openai.com"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="provider-apikey">API Key</Label>
-            <Input
-              id="provider-apikey"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="provider-apitype">接口类型</Label>
-            <Input
-              id="provider-apitype"
-              value={apiType}
-              onChange={(e) => setApiType(e.target.value)}
-              placeholder="例如：openai_compatible"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="provider-headers">额外请求头 JSON</Label>
-            <Textarea
-              id="provider-headers"
-              value={extraHeadersJson}
-              onChange={(e) => setExtraHeadersJson(e.target.value)}
-              placeholder='可选，例如：{"x-foo":"bar"}'
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="provider-timeout">超时时间 (ms)</Label>
-            <Input
-              id="provider-timeout"
-              type="number"
-              value={timeoutMs}
-              onChange={(e) => setTimeoutMs(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+        </GlassCard>
+
+        <div className="space-y-3 py-3">
+          <GlassCard variant="lite" className="p-4 space-y-4">
+            <div>
+              <Label htmlFor="provider-name">名称</Label>
+              <Input
+                id="provider-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="provider-baseurl">Base URL</Label>
+              <Input
+                id="provider-baseurl"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="例如：https://api.openai.com"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="provider-apikey">API Key</Label>
+              <Input
+                id="provider-apikey"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </GlassCard>
+
+          <GlassCard variant="lite" className="p-4 space-y-4">
+            <div>
+              <Label htmlFor="provider-apitype">接口类型</Label>
+              <Input
+                id="provider-apitype"
+                value={apiType}
+                onChange={(e) => setApiType(e.target.value)}
+                placeholder="例如：openai_compatible"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="provider-headers">额外请求头 JSON</Label>
+              <Textarea
+                id="provider-headers"
+                value={extraHeadersJson}
+                onChange={(e) => setExtraHeadersJson(e.target.value)}
+                placeholder='可选，例如：{"x-foo":"bar"}'
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="provider-timeout">超时时间 (ms)</Label>
+              <Input
+                id="provider-timeout"
+                type="number"
+                value={timeoutMs}
+                onChange={(e) => setTimeoutMs(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </GlassCard>
         </div>
         <DialogFooter
           leftButtonIcon={editingProvider && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
           onLeftButtonClick={editingProvider && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

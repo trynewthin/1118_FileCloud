@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { GlassButton } from "@/components/common/button/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Folder, XIcon, Check, AlertTriangle } from "lucide-react";
@@ -103,48 +104,58 @@ export function NewLibraryDialog({
         )}
         <DialogContent className="sm:max-w-[450px]" showCloseButton={false}>
           <form onSubmit={(e) => handleSubmit(e)}>
-            <DialogHeader>
-              <DialogTitle>新建文件库</DialogTitle>
-              <DialogDescription>
-                添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-5 py-6">
-              <div className="grid gap-2">
-                <Label>
-                  根路径 <span className="text-destructive">*</span>
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setPickerOpen(true)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border border-input bg-background/50 hover:bg-accent/50 transition-colors text-left"
-                >
-                  <Folder className="h-5 w-5 text-muted-foreground shrink-0" />
-                  {rootPath ? (
-                    <span className="text-sm font-mono truncate">{rootPath}</span>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">点击选择服务器目录...</span>
-                  )}
-                </button>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="displayName">显示名称</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="可选，默认使用目录名"
-                  className="bg-background/50 border-white/10 focus:bg-background/80"
-                />
-              </div>
+            <GlassCard variant="lite" className="p-4">
+              <DialogHeader>
+                <DialogTitle>新建文件库</DialogTitle>
+                <DialogDescription>
+                  添加一个新的本地目录作为文件库。确保后端服务有权限访问该目录。
+                </DialogDescription>
+              </DialogHeader>
+            </GlassCard>
+
+            <div className="grid gap-3 py-3">
+              <GlassCard variant="lite" className="p-4 grid gap-5">
+                <div className="grid gap-2">
+                  <Label>
+                    根路径 <span className="text-destructive">*</span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border border-input bg-background/50 hover:bg-accent/50 transition-colors text-left"
+                  >
+                    <Folder className="h-5 w-5 text-muted-foreground shrink-0" />
+                    {rootPath ? (
+                      <span className="text-sm font-mono truncate">{rootPath}</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">点击选择服务器目录...</span>
+                    )}
+                  </button>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="displayName">显示名称</Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="可选，默认使用目录名"
+                    className="bg-background/50 border-white/10 focus:bg-background/80"
+                  />
+                </div>
+              </GlassCard>
+
+              {error && (
+                <GlassCard variant="lite" className="p-3">
+                  <div className="text-sm text-red-500">{error}</div>
+                </GlassCard>
+              )}
             </div>
-            {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
             <DialogFooter
               leftButtonIcon={<XIcon className="h-4 w-4" />}
               onLeftButtonClick={() => {
                 if (!loading) setOpen(false);
               }}
-              leftButtonGlassVariant="ghost"
+              leftButtonGlassVariant="lite"
               rightButtonIcon={<Check className="h-4 w-4" />}
               onRightButtonClick={() => {
                 if (!loading) handleSubmit(null);

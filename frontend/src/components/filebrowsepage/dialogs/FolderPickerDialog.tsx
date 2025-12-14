@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Folder, ChevronRight, Home, XIcon, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -229,16 +230,18 @@ export function FolderPickerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] h-[500px] flex flex-col" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{title || "选择文件夹"}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
-        </DialogHeader>
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>{title || "选择文件夹"}</DialogTitle>
+            {description && <DialogDescription>{description}</DialogDescription>}
+          </DialogHeader>
+        </GlassCard>
 
         {mode === "system" ? (
-          <div className="flex items-center gap-2 py-2 border-b text-sm">
-            <Button
-              variant="ghost"
-              size="icon"
+          <GlassCard variant="lite" className="px-3 py-2">
+          <div className="flex items-center gap-2 text-sm">
+            <GlassIconButton
+              glassVariant="lite"
               className="h-6 w-6 shrink-0"
               onClick={() => {
                 setCurrentPath("");
@@ -246,7 +249,7 @@ export function FolderPickerDialog({
               }}
             >
               <Home className="h-4 w-4" />
-            </Button>
+            </GlassIconButton>
             <div
               ref={systemBreadcrumbScrollRef}
               className="flex-1 min-w-0 overflow-x-auto scrollbar-thin pr-1"
@@ -275,24 +278,27 @@ export function FolderPickerDialog({
               </div>
             </div>
           </div>
+          </GlassCard>
         ) : (
-          <div className="flex items-center gap-2 py-2 border-b text-sm">
-            <Button
-              variant="ghost"
-              size="icon"
+          <GlassCard variant="lite" className="px-3 py-2">
+          <div className="flex items-center gap-2 text-sm">
+            <GlassIconButton
+              glassVariant="lite"
               className="h-6 w-6"
               onClick={handleGoUp}
               disabled={mode === "library" && !currentParentId}
             >
               <Home className="h-4 w-4" />
-            </Button>
+            </GlassIconButton>
             <div className="flex-1 truncate font-mono text-xs text-muted-foreground">
               {breadcrumbs.length === 0 ? "根目录" : breadcrumbs.map(b => b.name).join(" / ")}
             </div>
           </div>
+          </GlassCard>
         )}
 
-        <div className="flex-1 overflow-y-auto py-2">
+        <GlassCard variant="lite" className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto py-2">
           {loading ? (
             <div className="text-center text-muted-foreground py-4">加载中...</div>
           ) : items.length === 0 ? (
@@ -311,24 +317,24 @@ export function FolderPickerDialog({
                 >
                   <Folder className="h-4 w-4 fill-current opacity-70" />
                   <span className="flex-1 truncate">{item.name}</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <GlassIconButton
+                    glassVariant="lite"
                     className="h-6 w-6 hover:bg-background/20"
                     onClick={(e) => { e.stopPropagation(); handleEnter(item); }}
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </Button>
+                  </GlassIconButton>
                 </div>
               ))}
             </div>
           )}
         </div>
+        </GlassCard>
 
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}
           onLeftButtonClick={() => onOpenChange(false)}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

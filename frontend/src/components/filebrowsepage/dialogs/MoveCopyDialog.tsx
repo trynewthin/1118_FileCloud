@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Folder, ChevronRight, Home, XIcon, Check, Search, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FileEntry } from "@/lib/api/files";
@@ -256,17 +257,20 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] h-[550px] flex flex-col" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {isBatch 
-              ? "选择目标文件夹" 
-              : (entry?.is_directory ? "选择目标文件夹" : `${mode === "move" ? "移动" : "复制"} "${entry?.original_name}" 到：`)}
-          </DialogDescription>
-        </DialogHeader>
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              {isBatch 
+                ? "选择目标文件夹" 
+                : (entry?.is_directory ? "选择目标文件夹" : `${mode === "move" ? "移动" : "复制"} "${entry?.original_name}" 到：`)}
+            </DialogDescription>
+          </DialogHeader>
+        </GlassCard>
 
         {/* 搜索栏 / 面包屑导航 */}
-        <div className="flex items-center gap-1 py-2 border-b text-sm overflow-x-auto">
+        <GlassCard variant="lite" className="px-3 py-2">
+          <div className="flex items-center gap-1 text-sm overflow-x-auto">
           {searchMode ? (
             // 搜索模式
             <div className="flex items-center gap-2 flex-1">
@@ -278,9 +282,8 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                 placeholder="搜索文件夹..."
                 className="h-7 text-sm flex-1"
               />
-              <Button
-                variant="ghost"
-                size="icon"
+              <GlassIconButton
+                glassVariant="lite"
                 className="h-6 w-6 shrink-0"
                 onClick={() => {
                   setSearchMode(false);
@@ -289,14 +292,13 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                 }}
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </GlassIconButton>
             </div>
           ) : (
             // 浏览模式
             <>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <GlassIconButton
+                glassVariant="lite"
                 className="h-6 w-6 shrink-0" 
                 onClick={() => {
                   setCurrentParentId(null);
@@ -306,7 +308,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                 title="返回根目录"
               >
                 <Home className="h-4 w-4" />
-              </Button>
+              </GlassIconButton>
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.id} className="flex items-center gap-1 shrink-0">
                   <span className="text-muted-foreground">/</span>
@@ -332,21 +334,22 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                 <span className="text-xs text-muted-foreground ml-1">根目录</span>
               )}
               {/* 搜索按钮 */}
-              <Button
-                variant="ghost"
-                size="icon"
+              <GlassIconButton
+                glassVariant="lite"
                 className="h-6 w-6 shrink-0 ml-auto"
                 onClick={() => setSearchMode(true)}
                 title="搜索文件夹"
               >
                 <Search className="h-4 w-4" />
-              </Button>
+              </GlassIconButton>
             </>
           )}
-        </div>
+          </div>
+        </GlassCard>
 
         {/* 文件夹列表 / 搜索结果 */}
-        <div className="flex-1 overflow-y-auto py-2 min-h-0">
+        <GlassCard variant="lite" className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-y-auto py-3 px-3 min-h-0">
           {searchMode ? (
             // 搜索结果
             searchLoading ? (
@@ -356,13 +359,14 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
             ) : searchResults.length === 0 ? (
               <div className="text-center text-muted-foreground py-4">未找到匹配的文件夹</div>
             ) : (
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 gap-2">
                 {searchResults.map(result => (
                   <div
                     key={result.id}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors",
-                      selectedId === result.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                      "flex items-center gap-2 px-3 py-2 rounded-2xl cursor-pointer text-sm transition-colors border border-white/10",
+                      "bg-background/20 hover:bg-background/30",
+                      selectedId === result.id && "bg-primary/10 border-primary/20"
                     )}
                     onClick={() => handleSelectSearchResult(result)}
                   >
@@ -382,13 +386,14 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
             ) : items.length === 0 ? (
               <div className="text-center text-muted-foreground py-4">空文件夹</div>
             ) : (
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 gap-2">
                 {items.map(item => (
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors",
-                      selectedId === item.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                      "flex items-center gap-2 px-3 py-2 rounded-2xl cursor-pointer text-sm transition-colors border border-white/10",
+                      "bg-background/20 hover:bg-background/30",
+                      selectedId === item.id && "bg-primary/10 border-primary/20"
                     )}
                     onClick={() => setSelectedId(item.id === selectedId ? null : item.id)}
                     onDoubleClick={() => handleEnter(item)}
@@ -396,42 +401,48 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                     <Folder className="h-4 w-4 fill-current opacity-70" />
                     <span className="flex-1 truncate">{item.name}</span>
                     {item.id !== "__ROOT__" && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 hover:bg-background/20"
+                      <GlassIconButton
+                        glassVariant="lite"
+                        className="h-7 w-7"
                         onClick={(e) => { e.stopPropagation(); handleEnter(item); }}
                       >
                         <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      </GlassIconButton>
                     )}
                   </div>
                 ))}
               </div>
             )
           )}
-        </div>
+          </div>
+        </GlassCard>
 
         {/* 复制时的新名称输入 */}
         {mode === "copy" && (
-          <div className="grid gap-2 py-2 border-t">
-            <Label htmlFor="newName" className="text-xs">新名称（可选）</Label>
-            <Input
-              id="newName"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder={entry?.original_name}
-              className="h-8 text-sm"
-            />
-          </div>
+          <GlassCard variant="lite" className="p-4">
+            <div className="grid gap-2">
+              <Label htmlFor="newName" className="text-xs">新名称（可选）</Label>
+              <Input
+                id="newName"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder={entry?.original_name}
+                className="h-8 text-sm"
+              />
+            </div>
+          </GlassCard>
         )}
 
-        {error && <div className="text-sm text-red-500 py-2">{error}</div>}
+        {error && (
+          <GlassCard variant="lite" className="p-3">
+            <div className="text-sm text-red-500">{error}</div>
+          </GlassCard>
+        )}
 
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}
           onLeftButtonClick={() => { if (!loading) onOpenChange(false); }}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

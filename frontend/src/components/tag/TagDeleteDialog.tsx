@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import type { FileTag } from "@/lib/api/tags";
 
 interface TagDeleteDialogProps {

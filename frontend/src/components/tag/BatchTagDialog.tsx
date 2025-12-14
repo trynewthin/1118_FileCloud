@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/common/dialog/dialog";
 import { useTagList } from "@/hooks/useTags";
 import { addTagToEntries } from "@/lib/api/tags";
 import type { FileTag } from "@/lib/api/tags";

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { AiChatPrompt, CreateAiChatPromptRequest } from "@/lib/api/aiConfig";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GlassCard } from "@/components/common/GlassCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/common/dialog/alert-dialog";
 import { Trash2, Check } from "lucide-react";
 
 interface AiPromptFormDialogProps {
@@ -79,41 +80,52 @@ export function AiPromptFormDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && !deleting && onOpenChange(v)}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{editingPrompt ? "编辑提示词" : "新建提示词"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label htmlFor="prompt-title">标题</Label>
-            <Input
-              id="prompt-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1"
-            />
+        <GlassCard variant="lite" className="p-4">
+          <DialogHeader>
+            <DialogTitle>{editingPrompt ? "编辑提示词" : "新建提示词"}</DialogTitle>
+          </DialogHeader>
+          <div className="text-xs text-muted-foreground mt-1">
+            配置会话提示词（标题、内容）以及是否设为默认。
           </div>
-          <div>
-            <Label htmlFor="prompt-content">内容</Label>
-            <Textarea
-              id="prompt-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="mt-1 min-h-[120px]"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="prompt-default"
-              checked={isDefault}
-              onCheckedChange={(v) => setIsDefault(!!v)}
-            />
-            <Label htmlFor="prompt-default">设为默认提示词</Label>
-          </div>
+        </GlassCard>
+
+        <div className="space-y-3 py-3">
+          <GlassCard variant="lite" className="p-4 space-y-4">
+            <div>
+              <Label htmlFor="prompt-title">标题</Label>
+              <Input
+                id="prompt-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="prompt-content">内容</Label>
+              <Textarea
+                id="prompt-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="mt-1 min-h-[120px]"
+              />
+            </div>
+          </GlassCard>
+
+          <GlassCard variant="lite" className="p-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="prompt-default"
+                checked={isDefault}
+                onCheckedChange={(v) => setIsDefault(!!v)}
+              />
+              <Label htmlFor="prompt-default">设为默认提示词</Label>
+            </div>
+          </GlassCard>
         </div>
         <DialogFooter
           leftButtonIcon={editingPrompt && onDelete ? <Trash2 className="h-4 w-4" /> : undefined}
           onLeftButtonClick={editingPrompt && onDelete ? () => setConfirmDeleteOpen(true) : undefined}
-          leftButtonGlassVariant="ghost"
+          leftButtonGlassVariant="lite"
           rightButtonIcon={<Check className="h-4 w-4" />}
           onRightButtonClick={handleSubmit}
           rightButtonGlassVariant="lite"

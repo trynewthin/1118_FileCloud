@@ -3,7 +3,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { DS } from "@/theme/design-system"
-import { GlassButton } from "@/components/common/button/GlassButton"
+import { GlassButton, GlassIconButton } from "@/components/common/button/GlassButton"
 import { Trash2, XIcon } from "lucide-react"
 
 function AlertDialog({
@@ -55,7 +55,8 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         className={cn(
           "fixed left-[50%] top-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
-          DS.radius.xl,
+          "rounded-3xl",
+          "button-rect:rounded-xl",
           DS.glass.strong,
           "border-white/20 dark:border-white/10",
           className
@@ -159,14 +160,13 @@ function AlertDialogCancel({
       {...props}
       asChild
     >
-      <GlassButton
-        size="icon"
-        glassVariant="ghost"
+      <GlassIconButton
+        glassVariant="lite"
         className={cn(className)}
       >
         <XIcon className="h-4 w-4" />
         <span className="sr-only">{label}</span>
-      </GlassButton>
+      </GlassIconButton>
     </AlertDialogPrimitive.Cancel>
   )
 }
