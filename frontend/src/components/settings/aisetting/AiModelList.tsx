@@ -1,6 +1,6 @@
 import type { AiChatModel, AiProvider } from "@/lib/api/aiConfig";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";

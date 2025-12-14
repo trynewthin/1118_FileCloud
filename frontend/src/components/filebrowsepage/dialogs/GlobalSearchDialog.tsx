@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { XIcon, Check, File, X, Plus } from "lucide-react";
 

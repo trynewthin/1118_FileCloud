@@ -28,7 +28,7 @@ import { EntryTagDialog, BatchTagDialog, TagsBrowseView } from "@/components/tag
 import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { DelayedLoader } from "@/components/common/DelayedLoader";
 import {
   AlertDialog,

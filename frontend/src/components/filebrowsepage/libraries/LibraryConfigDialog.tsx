@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { Switch } from "@/components/ui/switch";
 import type { FileLibrary } from "@/lib/api/fileLibraries";

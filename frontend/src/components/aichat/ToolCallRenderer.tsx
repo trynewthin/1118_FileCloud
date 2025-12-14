@@ -17,7 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { buildApiUrl } from "@/lib/api/client";
 import {
   THUMBNAIL_EXTS,

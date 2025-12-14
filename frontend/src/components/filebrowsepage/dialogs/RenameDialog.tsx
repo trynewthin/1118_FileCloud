@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import type { FileEntry } from "@/lib/api/files";
 import { smartRename } from "@/lib/api/aiChat";
 import { XIcon, Check, Sparkles } from "lucide-react";

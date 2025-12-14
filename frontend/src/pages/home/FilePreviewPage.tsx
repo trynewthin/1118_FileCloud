@@ -11,7 +11,7 @@ import { ImagePreview } from "@/components/preview/adapters/ImagePreview";
 import { TextPreview } from "@/components/preview/adapters/TextPreview";
 import { PdfPreview } from "@/components/preview/adapters/PdfPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { DeleteDialog, MoveCopyDialog } from "@/components/filebrowsepage";
 import { EntryTagDialog, TagInfoCard } from "@/components/tag";
 import { useFileBrowser } from "@/hooks/useFileBrowser";

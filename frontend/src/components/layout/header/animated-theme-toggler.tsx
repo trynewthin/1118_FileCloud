@@ -3,7 +3,7 @@ import { Moon, Sun } from "lucide-react"
 import { flushSync } from "react-dom"
 
 import { cn } from "@/lib/utils"
-import { GlassIconButton } from "@/components/common/GlassButton"
+import { GlassIconButton } from "@/components/common/button/GlassButton"
 
 interface AnimatedThemeTogglerProps
   extends React.ComponentPropsWithoutRef<"button"> {

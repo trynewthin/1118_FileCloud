@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Square, ImagePlus, X } from "lucide-react";
-import { GlassIconButton } from "@/components/common/GlassButton";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";

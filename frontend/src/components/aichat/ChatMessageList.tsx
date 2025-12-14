@@ -4,7 +4,7 @@ import { Bot, User, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassIconButton } from "@/components/common/GlassButton";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { ToolCallRenderer, type PendingAction } from "./ToolCallRenderer";
 import { buildApiUrl } from "@/lib/api/client";
 import { getAuthToken } from "@/lib/api/client";

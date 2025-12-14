@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Tag, ChevronDown, ChevronRight } from "lucide-react";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { FileGridItem } from "@/components/filebrowsepage";
 import { DS } from "@/theme/design-system";
 import { cn } from "@/lib/utils";

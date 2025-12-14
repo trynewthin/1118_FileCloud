@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AiChatConversation } from "@/lib/api/aiChat";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
   AlertDialog,

@@ -10,7 +10,6 @@ import { useUiCompat } from "@/hooks/useUiCompat";
 import { useBlurTheme } from "@/hooks/useBlurTheme";
 import { useButtonShape } from "@/hooks/useButtonShape";
 import { cn } from "@/lib/utils";
-import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -20,7 +19,7 @@ export function SettingsPage() {
   const [backgroundDialogOpen, setBackgroundDialogOpen] = useState(false);
 
   return (
-    <PageContainer title="系统设置" action={<SettingsTopBarActions />}>
+    <PageContainer title="系统设置">
       {/* 主题设置 */}
       <div className="mt-2">
         <SettingsGroup title="外观与主题">

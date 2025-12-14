@@ -1,7 +1,7 @@
 import type { AiChatPrompt } from "@/lib/api/aiConfig";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { Pencil, FileText, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";

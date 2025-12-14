@@ -21,8 +21,8 @@ import {
   CheckSquare2,
   Star,
 } from "lucide-react";
-import { GlassButtonGroup } from "@/components/common/GlassButtonGroup";
-import { GlassIconButton } from "@/components/common/GlassButton";
+import { GlassButtonGroup } from "@/components/common/button/GlassButtonGroup";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassSegmentedSwitch } from "@/components/common";
 import {
   DropdownMenu,

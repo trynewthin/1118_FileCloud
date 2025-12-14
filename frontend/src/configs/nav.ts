@@ -1,11 +1,19 @@
 import {
+  Home,
   FolderOpen,
+  ListChecks,
   Settings,
   Sparkles,
   Tag,
 } from "lucide-react";
 
 export const navItems = [
+  {
+    title: "首页",
+    href: "/",
+    icon: Home,
+    match: /^\/$/,
+  },
   {
     title: "文件",
     href: "/files",
@@ -23,6 +31,12 @@ export const navItems = [
     href: "/ai",
     icon: Sparkles,
     match: /^\/ai/,
+  },
+  {
+    title: "任务",
+    href: "/settings/tasks",
+    icon: ListChecks,
+    match: /^\/settings\/tasks/,
   },
   {
     title: "设置",

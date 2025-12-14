@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { FileText, AlertCircle, ExternalLink } from "lucide-react";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 
 interface PdfPreviewProps {
   entry: FileEntry;

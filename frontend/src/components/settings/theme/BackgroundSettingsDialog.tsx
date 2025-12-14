@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useBackgroundSettings, type BackgroundMode, type ImageSourceType } from "@/hooks/useBackgroundSettings";
 import { cn } from "@/lib/utils";
 import { Image as ImageIcon, Sparkles, XIcon, Check, Upload, Link, Trash2, CheckCircle2 } from "lucide-react";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
   saveBackgroundImage,

@@ -3,7 +3,7 @@ import type { TaskRecord } from "@/lib/api/tasks";
 import { deleteTask } from "@/lib/api/tasks";
 import { CheckCircle2, XCircle, Clock, Loader2, Trash2, Square } from "lucide-react";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 
 interface TaskItemProps {
   task: TaskRecord;

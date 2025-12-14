@@ -6,7 +6,7 @@ import { useAiConfig } from "@/hooks/useAiConfig";
 import { AiMobileConversationManager } from "@/components/aichat/AiMobileConversationManager";
 import { ChatMessageList } from "@/components/aichat/ChatMessageList";
 import { ChatInputBar } from "@/components/aichat/ChatInputBar";
-import { GlassIconButton } from "@/components/common/GlassButton";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassLabel } from "@/components/common/label/GlassLabel";
 import { MessageCircle, Sparkles } from "lucide-react";
 import {

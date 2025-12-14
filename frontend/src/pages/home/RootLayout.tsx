@@ -1,15 +1,10 @@
-import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { AppBottomNav } from "@/components/layout/AppBottomNav";
 import { PageHeaderProvider } from "@/components/layout/PageHeaderContext";
 import { LayoutBackground } from "@/components/layout/LayoutBackground";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { useBlurTheme } from "@/hooks/useBlurTheme";
 import { useButtonShape } from "@/hooks/useButtonShape";
-
-const SIDEBAR_STATE_KEY = "filecloud_sidebar_collapsed";
 
 /**
  * RootLayout 布局设计原则：
@@ -33,23 +28,6 @@ export function RootLayout() {
   // 确保应用初始化时根据存储的配置同步毛玻璃主题
   useBlurTheme();
   useButtonShape();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem(SIDEBAR_STATE_KEY);
-      return stored === "true";
-    }
-    return false;
-  });
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(SIDEBAR_STATE_KEY, String(next));
-      }
-      return next;
-    });
-  };
 
   return (
     <PageHeaderProvider>
@@ -60,19 +38,13 @@ export function RootLayout() {
 
         {/* 中间层（页面层）：z-10，提供路由页面的完整视口空间 */}
         <div className="absolute inset-0 z-10 flex">
-          {/* 侧边栏：直接在这一层，能正确模糊背景 */}
-          <AppSidebar
-            collapsed={sidebarCollapsed}
-            onToggleSidebar={toggleSidebar}
-          />
-          
           {/* 页面层：路由页面显示区域（滚动由各页面内部自行管理） */}
           <div className="relative flex flex-1 flex-col h-full min-w-0">
             {/* 主内容：不设 overflow，让页面自己管理滚动；关闭页面切换动画 */}
             <main className={cn(
               "relative flex flex-1 h-full min-h-0 flex-col",
-              "px-4 md:pr-8 md:pl-0",
-              "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom,20px))] md:pb-6"
+              "px-4 md:px-8",
+              "pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom,20px))] md:pb-6"
             )}>
               <div className="relative flex flex-1 flex-col h-full min-h-0">
                 <div className="w-full md:max-w-5xl mx-auto flex flex-1 flex-col h-full min-h-0">
@@ -80,8 +52,6 @@ export function RootLayout() {
                 </div>
               </div>
             </main>
-
-            <AppBottomNav />
           </div>
         </div>
       </div>

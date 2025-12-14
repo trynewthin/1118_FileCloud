@@ -3,7 +3,7 @@ import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { Music, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 
 interface AudioPreviewProps {

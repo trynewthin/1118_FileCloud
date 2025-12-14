@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { VideoPlayer } from "@/components/preview/VideoPlayer";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { Loader2, RefreshCw, Play, AlertCircle } from "lucide-react";
 import {

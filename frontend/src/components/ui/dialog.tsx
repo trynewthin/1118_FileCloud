@@ -4,7 +4,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { DS } from "@/theme/design-system"
-import { GlassButton } from "@/components/common/GlassButton"
+import { GlassButton } from "@/components/common/button/GlassButton"
 
 function Dialog({
   ...props

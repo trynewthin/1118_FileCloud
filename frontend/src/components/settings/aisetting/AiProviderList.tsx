@@ -1,6 +1,6 @@
 import type { AiProvider } from "@/lib/api/aiConfig";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 import { Pencil, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";

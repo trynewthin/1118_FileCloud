@@ -12,7 +12,7 @@ import { AiPromptList } from "@/components/settings/aisetting/AiPromptList";
 import { AiPromptFormDialog } from "@/components/settings/aisetting/AiPromptFormDialog";
 import { SettingsTopBarActions } from "@/components/settings/SettingsTopBarActions";
 import type { AiProvider, AiChatModel, AiChatPrompt } from "@/lib/api/aiConfig";
-import { GlassButton } from "@/components/common/GlassButton";
+import { GlassButton } from "@/components/common/button/GlassButton";
 
 export function AiModelManagementPage() {
   const {

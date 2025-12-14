@@ -5,6 +5,7 @@ import { apiGetInitStatus } from "@/lib/api/init";
 import { useAuth } from "@/hooks/useAuth";
 import {
   RootLayout,
+  HomePage,
   FileBrowserPage,
   FilePreviewPage,
   AiChatPage,
@@ -88,7 +89,7 @@ function InitGate() {
   return (
     <Routes>
       <Route element={<RootLayout />}>
-        <Route path="/" element={<Navigate to="/files" replace />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/test" element={<Navigate to="/settings/test" replace />} />
         <Route path="/tags" element={<TagsManagePage />} />
         <Route path="/files/*" element={<FileBrowserPage />} />
