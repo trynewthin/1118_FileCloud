@@ -27,8 +27,11 @@ export function ActivityLogsPage() {
     <PageContainer
       title="操作日志"
       showBack
+      scroll
+      scrollFullBleed
+      scrollPaddingClassName="pt-2"
     >
-      <GlassCard variant="lite" className="p-0 border-white/10 overflow-hidden">
+      <GlassCard variant="lite" className="min-h-0 p-0 border-white/10 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-white/10">

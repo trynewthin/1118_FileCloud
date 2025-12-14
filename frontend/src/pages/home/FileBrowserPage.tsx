@@ -718,6 +718,9 @@ export function FileBrowserPage() {
       action={rightToolbar}
       headerOverlay
       headerOverlayMaskClassName="h-[calc(176px+env(safe-area-inset-top))]"
+      scroll
+      scrollFullBleed
+      scrollPaddingClassName="pt-[calc(176px+env(safe-area-inset-top)+12px)] pb-0"
       toolbar={
         <div>
           <GlassCard variant="lite" className="px-3 py-2">
@@ -730,184 +733,177 @@ export function FileBrowserPage() {
         </div>
       }
     >
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto -mx-6 md:-mx-12 pt-[calc(176px+env(safe-area-inset-top)+12px)] pb-0 max-md:pb-[calc(56px+env(safe-area-inset-bottom))]"
+      <DelayedLoader 
+        loading={libsLoading || (!!activeLibrary && entriesLoading)} 
+        className="flex h-full items-center justify-center"
       >
-        <div className="px-6 md:px-12">
-          <DelayedLoader 
-            loading={libsLoading || (!!activeLibrary && entriesLoading)} 
-            className="flex h-full items-center justify-center"
-          >
-          {/* 根目录：显示文件库列表 */}
-            {!activeLibraryId && !isVirtualTags ? (
-              libraries.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4">
-                  <p>暂无文件库</p>
-                  <NewLibraryDialog onSuccess={reload} />
-                </div>
-              ) : (
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
-                      : "space-y-2"
-                  }
-                >
-                  {libraries.map((lib) => {
-                    // 将文件库转换为虚拟 FileEntry
-                    const virtualEntry: FileEntry = {
-                      id: `library-${lib.id}`,
-                      library_id: lib.id,
-                      parent_id: null,
-                      is_directory: true,
-                      original_name: lib.display_name || lib.root_path,
-                      index_suffix: null,
-                      extension: null,
-                      size_bytes: 0,
-                      mime_type: null,
-                      is_deleted: false,
-                      deleted_at: null,
-                      created_at: lib.created_at,
-                      updated_at: lib.updated_at,
-                      _isLibraryEntry: true,
-                      _virtualType: "library",
-                    };
-                    const Component = viewMode === "grid" ? FileGridItem : FileListItem;
-                    return (
-                      <Component
-                        key={lib.id}
-                        entry={virtualEntry}
-                        onClick={() => handleEnterLibrary(lib.id)}
-                        onDoubleClick={() => handleEnterLibrary(lib.id)}
-                        onLibraryAction={handleLibraryAction}
-                      />
-                    );
-                  })}
+      {/* 根目录：显示文件库列表 */}
+        {!activeLibraryId && !isVirtualTags ? (
+          libraries.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4">
+              <p>暂无文件库</p>
+              <NewLibraryDialog onSuccess={reload} />
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
+                  : "space-y-2"
+              }
+            >
+              {libraries.map((lib) => {
+                // 将文件库转换为虚拟 FileEntry
+                const virtualEntry: FileEntry = {
+                  id: `library-${lib.id}`,
+                  library_id: lib.id,
+                  parent_id: null,
+                  is_directory: true,
+                  original_name: lib.display_name || lib.root_path,
+                  index_suffix: null,
+                  extension: null,
+                  size_bytes: 0,
+                  mime_type: null,
+                  is_deleted: false,
+                  deleted_at: null,
+                  created_at: lib.created_at,
+                  updated_at: lib.updated_at,
+                  _isLibraryEntry: true,
+                  _virtualType: "library",
+                };
+                const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+                return (
+                  <Component
+                    key={lib.id}
+                    entry={virtualEntry}
+                    onClick={() => handleEnterLibrary(lib.id)}
+                    onDoubleClick={() => handleEnterLibrary(lib.id)}
+                    onLibraryAction={handleLibraryAction}
+                  />
+                );
+              })}
 
-                  {(() => {
-                    const now = new Date().toISOString();
-                    const tagsBrowseEntry: FileEntry = {
-                      id: "virtual-tags-browse",
-                      library_id: 0,
-                      parent_id: null,
-                      is_directory: true,
-                      original_name: "标签浏览",
-                      index_suffix: null,
-                      extension: null,
-                      size_bytes: 0,
-                      mime_type: null,
-                      is_deleted: false,
-                      deleted_at: null,
-                      created_at: now,
-                      updated_at: now,
-                      _virtualType: "tags",
-                    };
-                    const Component = viewMode === "grid" ? FileGridItem : FileListItem;
-                    return (
-                      <Component
-                        key={tagsBrowseEntry.id}
-                        entry={tagsBrowseEntry}
-                        onClick={handleEnterVirtualTags}
-                        onDoubleClick={handleEnterVirtualTags}
-                      />
-                    );
-                  })()}
-                </div>
-              )
-            ) : isVirtualTags ? (
-              <TagsBrowseView
-                onOpenEntry={(entryId) => navigate(`/preview/${entryId}`)}
-                onOpenEntryTagDialog={(entry) => setTagDialogEntry(entry)}
-                onOpenRename={(entry) => setActionDialog({ type: "rename", entry })}
-                onOpenMove={(entry) => setActionDialog({ type: "move", entry })}
-                onOpenCopy={(entry) => setActionDialog({ type: "copy", entry })}
-                onOpenDelete={(entry) => setActionDialog({ type: "delete", entry })}
-                viewMode={viewMode}
-                tagViewMode={tagBrowseViewMode}
-                onlyPrimary={tagBrowseOnlyPrimary}
-              />
-            ) : entriesError ? (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                加载失败
-              </div>
-            ) : filteredAndSortedEntries.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
-                {filterSortState.fileType !== "all" && entries.length > 0 ? (
-                  <>
-                    <p>没有符合筛选条件的文件</p>
-                    <p className="text-xs opacity-70">当前筛选条件下无匹配结果，请调整筛选条件</p>
-                    <GlassButton 
-                      onClick={() => handleFilterSortChange(defaultFilterSortState)}
-                      className="text-xs text-primary hover:underline mt-2"
-                      glassVariant="ghost"
-                    >
-                      清除筛选条件
-                    </GlassButton>
-                  </>
-                ) : (
-                  <>
-                    <p>此文件夹为空</p>
-                    <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
-                    <GlassButton 
-                      onClick={() => setReindexDialogOpen(true)}
-                      className="text-xs text-primary hover:underline mt-2"
-                      glassVariant="ghost"
-                    >
-                      手动触发索引
-                    </GlassButton>
-                  </>
-                )}
-              </div>
+              {(() => {
+                const now = new Date().toISOString();
+                const tagsBrowseEntry: FileEntry = {
+                  id: "virtual-tags-browse",
+                  library_id: 0,
+                  parent_id: null,
+                  is_directory: true,
+                  original_name: "标签浏览",
+                  index_suffix: null,
+                  extension: null,
+                  size_bytes: 0,
+                  mime_type: null,
+                  is_deleted: false,
+                  deleted_at: null,
+                  created_at: now,
+                  updated_at: now,
+                  _virtualType: "tags",
+                };
+                const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+                return (
+                  <Component
+                    key={tagsBrowseEntry.id}
+                    entry={tagsBrowseEntry}
+                    onClick={handleEnterVirtualTags}
+                    onDoubleClick={handleEnterVirtualTags}
+                  />
+                );
+              })()}
+            </div>
+          )
+        ) : isVirtualTags ? (
+          <TagsBrowseView
+            onOpenEntry={(entryId) => navigate(`/preview/${entryId}`)}
+            onOpenEntryTagDialog={(entry) => setTagDialogEntry(entry)}
+            onOpenRename={(entry) => setActionDialog({ type: "rename", entry })}
+            onOpenMove={(entry) => setActionDialog({ type: "move", entry })}
+            onOpenCopy={(entry) => setActionDialog({ type: "copy", entry })}
+            onOpenDelete={(entry) => setActionDialog({ type: "delete", entry })}
+            viewMode={viewMode}
+            tagViewMode={tagBrowseViewMode}
+            onlyPrimary={tagBrowseOnlyPrimary}
+          />
+        ) : entriesError ? (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            加载失败
+          </div>
+        ) : filteredAndSortedEntries.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-2">
+            {filterSortState.fileType !== "all" && entries.length > 0 ? (
+              <>
+                <p>没有符合筛选条件的文件</p>
+                <p className="text-xs opacity-70">当前筛选条件下无匹配结果，请调整筛选条件</p>
+                <GlassButton 
+                  onClick={() => handleFilterSortChange(defaultFilterSortState)}
+                  className="text-xs text-primary hover:underline mt-2"
+                  glassVariant="ghost"
+                >
+                  清除筛选条件
+                </GlassButton>
+              </>
             ) : (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
-                    : "space-y-2"
-                }
-              >
-                {filteredAndSortedEntries.map((entry) => {
-                  const Component = viewMode === "grid" ? FileGridItem : FileListItem;
-                  return (
-                    <Component
-                      key={entry.id}
-                      entry={entry}
-                      onClick={() => {
-                        // 批量模式下点击切换选中状态
-                        if (batchMode) {
-                          handleBatchSelect(entry, !selectedIds.has(entry.id));
-                          return;
-                        }
-                        if (entry.is_directory) {
-                          handleEnterDirectory(entry);
-                        } else {
-                          saveScrollPosition();
-                          navigate(`/preview/${entry.id}`);
-                        }
-                      }}
-                      onDoubleClick={() => {
-                        // 批量模式下双击不做任何事
-                        if (batchMode) return;
-                        if (entry.is_directory) {
-                          handleEnterDirectory(entry);
-                        } else {
-                          saveScrollPosition();
-                          navigate(`/preview/${entry.id}`);
-                        }
-                      }}
-                      onAction={handleFileAction}
-                      batchMode={batchMode}
-                      batchSelected={selectedIds.has(entry.id)}
-                      onBatchSelect={handleBatchSelect}
-                    />
-                  );
-                })}
-              </div>
+              <>
+                <p>此文件夹为空</p>
+                <p className="text-xs opacity-70">如果刚创建文件库，可能正在后台建立索引，请稍后刷新</p>
+                <GlassButton 
+                  onClick={() => setReindexDialogOpen(true)}
+                  className="text-xs text-primary hover:underline mt-2"
+                  glassVariant="ghost"
+                >
+                  手动触发索引
+                </GlassButton>
+              </>
             )}
-          </DelayedLoader>
-        </div>
-      </div>
+          </div>
+        ) : (
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3"
+                : "space-y-2"
+            }
+          >
+            {filteredAndSortedEntries.map((entry) => {
+              const Component = viewMode === "grid" ? FileGridItem : FileListItem;
+              return (
+                <Component
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => {
+                    // 批量模式下点击切换选中状态
+                    if (batchMode) {
+                      handleBatchSelect(entry, !selectedIds.has(entry.id));
+                      return;
+                    }
+                    if (entry.is_directory) {
+                      handleEnterDirectory(entry);
+                    } else {
+                      saveScrollPosition();
+                      navigate(`/preview/${entry.id}`);
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    // 批量模式下双击不做任何事
+                    if (batchMode) return;
+                    if (entry.is_directory) {
+                      handleEnterDirectory(entry);
+                    } else {
+                      saveScrollPosition();
+                      navigate(`/preview/${entry.id}`);
+                    }
+                  }}
+                  onAction={handleFileAction}
+                  batchMode={batchMode}
+                  batchSelected={selectedIds.has(entry.id)}
+                  onBatchSelect={handleBatchSelect}
+                />
+              );
+            })}
+          </div>
+        )}
+      </DelayedLoader>
 
       <BlurFade
         inView={false}

@@ -131,6 +131,8 @@ export function AiModelManagementPage() {
       <PageContainer
         title="模型管理"
         showBack
+        scroll
+        scrollFullBleed
         headerCenter={
           <TabsList>
             <TabsTrigger value="providers">供应商</TabsTrigger>
@@ -144,7 +146,7 @@ export function AiModelManagementPage() {
           </div>
         }
       >
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex flex-col">
           <TabsContent value="providers" className="mt-0">
             <AiProviderList providers={providers} onEdit={handleEditProvider} />
           </TabsContent>

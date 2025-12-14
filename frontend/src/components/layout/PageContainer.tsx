@@ -13,6 +13,18 @@ interface PageContainerProps extends PropsWithChildren {
   toolbar?: ReactNode;
   /** 内容层额外样式（用于覆盖 DS.layout.pageBody 的默认 padding 等） */
   bodyClassName?: string;
+
+  /** 由 PageContainer 统一提供标准滚动容器（页面无需手写 overflow-y-auto） */
+  scroll?: boolean;
+  /** 滚动容器是否全宽（滚动条贴最边缘），内部内容仍保留左右内边距 */
+  scrollFullBleed?: boolean;
+  /** 滚动容器样式（应用在 overflow-y-auto 的容器上） */
+  scrollClassName?: string;
+  /** 滚动内容样式（应用在滚动容器内部的内容包裹层上） */
+  scrollContentClassName?: string;
+  /** 滚动容器的 padding（例如 pt/pb，用于 headerOverlay 等场景） */
+  scrollPaddingClassName?: string;
+
   /** 头部/工具栏是否采用覆盖层模式（不占位，内容可滚到页面顶部并在其下方穿过） */
   headerOverlay?: boolean;
   /** 覆盖层模式下，内容层的顶部留白（用于首屏不被头部遮挡） */
@@ -33,6 +45,11 @@ export const PageContainer: FC<PageContainerProps> = ({
   title,
   toolbar,
   bodyClassName,
+  scroll = false,
+  scrollFullBleed = false,
+  scrollClassName,
+  scrollContentClassName,
+  scrollPaddingClassName,
   headerOverlay = false,
   headerOverlayTopInsetClassName,
   headerOverlayMaskClassName,
@@ -47,6 +64,8 @@ export const PageContainer: FC<PageContainerProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const pageGutterClassName = "px-6 md:px-12";
+  const scrollFullBleedClassName = "-mx-6 md:-mx-12";
+  const scrollContentGutterClassName = "px-6 md:px-12";
   const [folderOpen, setFolderOpen] = useState(false);
   const [lastBrowsePath, setLastBrowsePath] = useState<string>("/files");
   const folderButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -126,6 +145,28 @@ export const PageContainer: FC<PageContainerProps> = ({
     </div>
   );
 
+  const resolvedScrollPaddingClassName =
+    scrollPaddingClassName ?? (headerOverlay ? undefined : "pt-2");
+
+  const contentNode = scroll ? (
+    <div
+      className={cn(
+        "flex-1 min-h-0 overflow-y-auto",
+        resolvedScrollPaddingClassName,
+        scrollFullBleed ? scrollFullBleedClassName : undefined,
+        scrollClassName
+      )}
+    >
+      {scrollFullBleed ? (
+        <div className={cn(scrollContentGutterClassName, scrollContentClassName)}>{children}</div>
+      ) : (
+        <div className={cn(scrollContentClassName)}>{children}</div>
+      )}
+    </div>
+  ) : (
+    <>{children}</>
+  );
+
   return (
     <div className={cn("relative flex min-h-0 flex-col w-full h-full", className)}>
       {headerOverlay ? (
@@ -141,7 +182,7 @@ export const PageContainer: FC<PageContainerProps> = ({
               bodyClassName
             )}
           >
-            {children}
+            {contentNode}
           </div>
 
           {headerOverlayMaskClassName && (
@@ -180,7 +221,7 @@ export const PageContainer: FC<PageContainerProps> = ({
               bodyClassName
             )}
           >
-            {children}
+            {contentNode}
           </div>
         </>
       )}

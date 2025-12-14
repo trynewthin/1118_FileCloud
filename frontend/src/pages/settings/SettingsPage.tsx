@@ -19,7 +19,7 @@ export function SettingsPage() {
   const [backgroundDialogOpen, setBackgroundDialogOpen] = useState(false);
 
   return (
-    <PageContainer title="系统设置">
+    <PageContainer title="系统设置" scroll scrollFullBleed>
       {/* 主题设置 */}
       <div className="mt-2">
         <SettingsGroup title="外观与主题">

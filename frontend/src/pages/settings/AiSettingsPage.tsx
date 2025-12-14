@@ -77,39 +77,38 @@ export function AiSettingsPage() {
   };
 
   return (
-    <PageContainer title="AI 设置" showBack>
-      <div className="flex-1 min-h-0 flex flex-col space-y-4">
-        {/* 模型管理入口 */}
-        <SettingsItemCard
-          title="模型管理"
-          description="管理 AI 供应商、模型和提示词"
-          onClick={() => navigate("/settings/ai/models")}
-        />
+    <PageContainer title="AI 设置" showBack scroll scrollFullBleed scrollContentClassName="space-y-4">
+      {/* 模型管理入口 */}
+      <SettingsItemCard
+        title="模型管理"
+        description="管理 AI 供应商、模型和提示词"
+        onClick={() => navigate("/settings/ai/models")}
+      />
 
-        {/* 会话配置 */}
-        <div className="mt-4">
-          <SettingsGroup title="会话配置">
-            {/* 模型设置 */}
-            <SettingsItemCard
-              title="模型设置"
-              action={
-                <Select value={defaultModelSelectValue} onValueChange={handleChangeDefaultModel}>
-                  <SelectTrigger className="h-9 w-[220px]">
-                    <SelectValue placeholder="请选择默认模型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">不设置默认模型</SelectItem>
-                    {models
-                      .filter((m) => m.is_enabled)
-                      .map((m) => (
-                        <SelectItem key={m.id} value={String(m.id)}>
-                          {m.display_name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              }
-            />
+      {/* 会话配置 */}
+      <div className="mt-4">
+        <SettingsGroup title="会话配置">
+          {/* 模型设置 */}
+          <SettingsItemCard
+            title="模型设置"
+            action={
+              <Select value={defaultModelSelectValue} onValueChange={handleChangeDefaultModel}>
+                <SelectTrigger className="h-9 w-[220px]">
+                  <SelectValue placeholder="请选择默认模型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不设置默认模型</SelectItem>
+                  {models
+                    .filter((m) => m.is_enabled)
+                    .map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.display_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            }
+          />
 
             {/* 会话命名配置 */}
             <SettingsItemCard
@@ -162,7 +161,6 @@ export function AiSettingsPage() {
             />
           </SettingsGroup>
         </div>
-      </div>
 
       {/* 会话命名配置对话框 */}
       <Dialog open={namingDialogOpen} onOpenChange={setNamingDialogOpen}>
