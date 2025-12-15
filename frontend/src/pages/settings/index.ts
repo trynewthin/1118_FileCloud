@@ -2,6 +2,7 @@
 // 方便在路由或其他地方统一按语义路径引用
 
 export { SettingsPage } from "./SettingsPage";
+export { ThemeSettingsPage } from "./ThemeSettingsPage";
 export { AiSettingsPage } from "./AiSettingsPage";
 export { AiModelManagementPage } from "./AiModelManagementPage";
 export { TasksPage } from "./TasksPage";

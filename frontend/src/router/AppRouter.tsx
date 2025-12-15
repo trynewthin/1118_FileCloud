@@ -11,6 +11,7 @@ import {
   AiChatPage,
   TagsManagePage,
   SettingsPage,
+  ThemeSettingsPage,
   TasksPage,
   ActivityLogsPage,
   AiSettingsPage,
@@ -97,6 +98,7 @@ function InitGate() {
         <Route path="/ai" element={<AiChatPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/test" element={<TestPlaygroundPage />} />
+        <Route path="/settings/theme" element={<ThemeSettingsPage />} />
         <Route path="/settings/tasks" element={<TasksPage />} />
         <Route path="/settings/logs" element={<ActivityLogsPage />} />
         <Route path="/settings/ai" element={<AiSettingsPage />} />

@@ -1,5 +1,6 @@
 import type { FC, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { GlassLabel } from "@/components/common/label/GlassLabel";
 
 interface SettingsGroupProps {
   title: string;
@@ -18,7 +19,9 @@ export const SettingsGroup: FC<SettingsGroupProps> = ({
 }) => {
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="text-sm font-medium text-foreground/80">{title}</div>
+      <GlassLabel glassVariant="lite" className="text-foreground/80">
+        {title}
+      </GlassLabel>
       <div className="space-y-2">{children}</div>
     </div>
   );

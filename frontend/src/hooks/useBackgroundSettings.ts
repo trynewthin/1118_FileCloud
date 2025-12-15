@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type BackgroundMode = "glow" | "image";
+export type BackgroundMode = "glow" | "aurora" | "nebula" | "image";
 
 // 图片来源类型：url 为外部链接，local 为本地上传
 export type ImageSourceType = "url" | "local";
@@ -14,6 +14,10 @@ export interface BackgroundSettings {
   imageUrl: string;
   // 本地图片 ID（IndexedDB 中的 key），仅在 image 模式 + local 来源时生效
   localImageId: string;
+  // 背景遮罩强度（0-1），用于提升可读性
+  maskOpacity: number;
+  // 背景模糊度（px），用于手动控制背景模糊
+  blurPx: number;
 }
 
 const STORAGE_KEY = "filecloud-background-settings";
@@ -30,6 +34,8 @@ const defaultSettings: BackgroundSettings = {
   imageSourceType: "url",
   imageUrl: "",
   localImageId: "",
+  maskOpacity: 0.18,
+  blurPx: 0,
 };
 
 // 从 localStorage 读取并初始化全局设置
@@ -43,13 +49,32 @@ function loadInitialSettings(): BackgroundSettings {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<BackgroundSettings>;
-        const mode: BackgroundMode = parsed.mode === "image" ? "image" : "glow";
+        // 兼容旧数据：
+        // - 旧：mode=glow + glowStyle=aurora => 新：mode=aurora
+        // - 旧：mode=glow + glowStyle=ambient/undefined => 新：mode=glow
+        // - 旧：mode=image => 新：mode=image
+        const legacyMode = parsed.mode;
+        const legacyGlowStyle = (parsed as any).glowStyle as any;
+        const mode: BackgroundMode =
+          legacyMode === "image"
+            ? "image"
+            : legacyMode === "nebula"
+              ? "nebula"
+              : legacyGlowStyle === "aurora" || legacyMode === "aurora"
+                ? "aurora"
+                : "glow";
         const imageSourceType: ImageSourceType =
           parsed.imageSourceType === "local" ? "local" : "url";
         const imageUrl = typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
         const localImageId =
           typeof parsed.localImageId === "string" ? parsed.localImageId : "";
-        next = { mode, imageSourceType, imageUrl, localImageId };
+        const maskOpacityRaw = typeof parsed.maskOpacity === "number" ? parsed.maskOpacity : defaultSettings.maskOpacity;
+        const maskOpacity = Number.isFinite(maskOpacityRaw)
+          ? Math.min(0.95, Math.max(0, maskOpacityRaw))
+          : defaultSettings.maskOpacity;
+        const blurPxRaw = typeof parsed.blurPx === "number" ? parsed.blurPx : defaultSettings.blurPx;
+        const blurPx = Number.isFinite(blurPxRaw) ? Math.min(80, Math.max(0, blurPxRaw)) : defaultSettings.blurPx;
+        next = { mode, imageSourceType, imageUrl, localImageId, maskOpacity, blurPx };
       }
     } catch {
       // 忽略解析错误，回退到默认值

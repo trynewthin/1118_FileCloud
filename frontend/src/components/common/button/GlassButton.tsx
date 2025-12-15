@@ -7,15 +7,34 @@ type ButtonProps = React.ComponentProps<typeof Button>;
 
 interface GlassButtonProps extends ButtonProps {
   glassVariant?: "strong" | "lite" | "ghost";
+  selected?: boolean;
+  selectedVariant?: "primary" | "accent";
 }
 
 export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
-  ({ className, glassVariant = "strong", variant = "ghost", size, ...props }, ref) => {
+  (
+    {
+      className,
+      glassVariant = "strong",
+      variant = "ghost",
+      size,
+      selected = false,
+      selectedVariant = "primary",
+      ...props
+    },
+    ref
+  ) => {
     const glassClass = {
       strong: DS.glass.strong,
       lite: DS.glass.lite,
       ghost: "bg-transparent hover:bg-accent/50",
     }[glassVariant];
+
+    const selectedClass = selected
+      ? selectedVariant === "accent"
+        ? "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+        : "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+      : "";
 
     return (
       <Button
@@ -31,6 +50,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           // 高度规范：icon/icon-sm 默认统一为 h-9 w-9（可通过 className 覆盖）
           (size === "icon" || size === "icon-sm") && "h-9 w-9",
           glassClass,
+          selectedClass,
           // classic：更克制；mac：更强的阴影与缩放
           "shadow-sm hover:shadow-sm hover:scale-[1.01] blur-mac:hover:shadow-md blur-mac:hover:scale-[1.04] active:scale-[0.96]",
           className
