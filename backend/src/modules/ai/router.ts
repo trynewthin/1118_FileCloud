@@ -1,11 +1,7 @@
 import express from "express";
-import fs from "fs";
-import path from "path";
-import Busboy from "busboy";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { createLogger } from "../../core/logger/index.ts";
-import { getAiUploadsStorageDir } from "../../core/config/paths.ts";
 import {
   listAiProviders,
   createAiProvider,
@@ -30,19 +26,10 @@ import {
   appendUserMessageAndReply,
   listAiToolConfigs,
   upsertAiToolConfig,
-  createAiChatUpload,
-  getAiChatUploadById,
 } from "./service.ts";
 import { getSetting } from "../settings/service.ts";
 import { getToolKitList } from "./toolkits/index.ts";
-
-// AI 上传文件存储目录
-const AI_UPLOADS_DIR = getAiUploadsStorageDir();
-
-// 确保上传目录存在
-if (!fs.existsSync(AI_UPLOADS_DIR)) {
-  fs.mkdirSync(AI_UPLOADS_DIR, { recursive: true });
-}
+import conversationFilesRouter from "./conversationFiles/router.ts";
 
 const router = express.Router();
 const logger = createLogger("AI/SmartRename");
@@ -525,121 +512,6 @@ router.get(
   },
 );
 
-// 上传图片附件
-router.post(
-  "/uploads",
-  authenticate,
-  requirePermission(PermissionLevel.User),
-  (req, res) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "未登录" });
-    }
-
-    const userId = req.user.id;
-    const uploads: { id: number; originalName: string }[] = [];
-
-    try {
-      const busboy = Busboy({ headers: req.headers });
-
-      busboy.on("file", (fieldname, file, info) => {
-        const { filename, mimeType } = info;
-        
-        // 只允许图片
-        if (!mimeType.startsWith("image/")) {
-          file.resume(); // 跳过非图片文件
-          return;
-        }
-
-        const ext = path.extname(filename).toLowerCase() || ".png";
-        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-        const relPath = uniqueName;
-        const fullPath = path.join(AI_UPLOADS_DIR, uniqueName);
-
-        const chunks: Buffer[] = [];
-        file.on("data", (chunk) => chunks.push(chunk));
-        file.on("end", () => {
-          const buffer = Buffer.concat(chunks);
-          fs.writeFileSync(fullPath, buffer);
-
-          const upload = createAiChatUpload({
-            userId,
-            originalName: filename,
-            extension: ext,
-            mimeType,
-            sizeBytes: buffer.length,
-            storageRelPath: relPath,
-          });
-
-          uploads.push({ id: upload.id, originalName: filename });
-        });
-      });
-
-      busboy.on("finish", () => {
-        res.json({ uploads });
-      });
-
-      busboy.on("error", (err) => {
-        console.error("上传处理错误:", err);
-        res.status(500).json({ message: "上传处理失败" });
-      });
-
-      req.pipe(busboy);
-    } catch (err: any) {
-      console.error("上传错误:", err);
-      res.status(500).json({ message: "上传失败" });
-    }
-  },
-);
-
-// 获取上传的图片（支持 token 查询参数认证，用于 img src）
-router.get(
-  "/uploads/:id",
-  async (req, res, next) => {
-    // 如果 URL 中有 token 参数，将其设置到 Authorization header
-    const tokenFromQuery = req.query.token as string | undefined;
-    if (tokenFromQuery && !req.headers.authorization) {
-      req.headers.authorization = `Bearer ${tokenFromQuery}`;
-    }
-    next();
-  },
-  authenticate,
-  requirePermission(PermissionLevel.User),
-  async (req, res) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "未登录" });
-    }
-
-    const uploadId = parseInt(req.params.id ?? "", 10);
-    if (isNaN(uploadId) || uploadId <= 0) {
-      return res.status(400).json({ message: "无效的上传 ID" });
-    }
-
-    try {
-      const upload = getAiChatUploadById(uploadId);
-      if (!upload) {
-        return res.status(404).json({ message: "上传记录不存在" });
-      }
-
-      // 验证用户权限
-      if (upload.user_id !== req.user.id) {
-        return res.status(403).json({ message: "无权访问该文件" });
-      }
-
-      const absPath = path.join(AI_UPLOADS_DIR, upload.storage_rel_path);
-      if (!fs.existsSync(absPath)) {
-        return res.status(404).json({ message: "文件不存在" });
-      }
-
-      res.setHeader("Content-Type", upload.mime_type || "application/octet-stream");
-      res.setHeader("Cache-Control", "public, max-age=31536000");
-      fs.createReadStream(absPath).pipe(res);
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "获取文件失败";
-      return res.status(500).json({ message });
-    }
-  },
-);
-
 router.post(
   "/conversations/:id/messages",
   authenticate,
@@ -1052,5 +924,10 @@ router.post(
     }
   },
 );
+
+// ============================================================================
+// 挂载新的会话文件路由
+// ============================================================================
+router.use("/files", conversationFilesRouter);
 
 export { router as aiRouter };

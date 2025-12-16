@@ -29,6 +29,7 @@ export {
 // 工具包导出
 export { fileLibraryToolKit } from "./fileLibrary.ts";
 export { timeToolKit } from "./time.ts";
+export { creativeToolKit } from "./creative.ts";
 
 // ============================================================================
 // 初始化
@@ -37,11 +38,13 @@ export { timeToolKit } from "./time.ts";
 import { registerToolKits } from "./registry.ts";
 import { fileLibraryToolKit } from "./fileLibrary.ts";
 import { timeToolKit } from "./time.ts";
+import { creativeToolKit } from "./creative.ts";
 
 /** 所有内置工具包 */
 const builtinToolKits = [
   fileLibraryToolKit,
   timeToolKit,
+  creativeToolKit,
 ];
 
 /** 是否已初始化 */

@@ -69,13 +69,45 @@ export interface AppendMessageRequest {
   attachmentIds?: number[];
 }
 
-export interface UploadResult {
+// ============================================================================
+// 会话文件服务
+// ============================================================================
+
+export type ConversationFileOrigin = "upload" | "tool_generated" | "system";
+export type ConversationFilePurpose = "image" | "markdown" | "text" | "attachment" | "other";
+
+export interface ConversationFileInfo {
   id: number;
+  conversationId: number | null;
+  messageId: number | null;
+  origin: ConversationFileOrigin;
+  purpose: ConversationFilePurpose;
   originalName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  createdAt: string;
+  contentUrl?: string;
+  previewUrl?: string;
 }
 
-export interface UploadResponse {
-  uploads: UploadResult[];
+export interface UploadFilesResult {
+  id: number;
+  originalName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  purpose: string;
+}
+
+export interface UploadFilesResponse {
+  uploads: UploadFilesResult[];
+}
+
+export interface ListConversationFilesResponse {
+  items: ConversationFileInfo[];
+}
+
+export interface BatchGetFilesResponse {
+  items: ConversationFileInfo[];
 }
 
 export interface AppendMessageResponse {
@@ -123,15 +155,57 @@ export const appendUserMessage = async (
   );
 };
 
-// 上传图片附件
-export const uploadAiImages = async (files: File[]): Promise<UploadResponse> => {
+// 上传文件到会话
+export const uploadConversationFiles = async (
+  files: File[],
+  conversationId?: number,
+): Promise<UploadFilesResponse> => {
   const formData = new FormData();
   for (const file of files) {
-    formData.append("images", file);
+    formData.append("files", file);
   }
+  if (conversationId) {
+    formData.append("conversationId", String(conversationId));
+  }
+  return apiClient.post<UploadFilesResponse>("/ai/files", formData);
+};
 
-  // 使用 apiClient 的 post 方法，支持 FormData
-  return apiClient.post<UploadResponse>("/ai/uploads", formData);
+// 获取单个文件信息
+export const getConversationFile = async (
+  fileId: number,
+): Promise<{ file: ConversationFileInfo }> => {
+  return apiClient.get<{ file: ConversationFileInfo }>(`/ai/files/${fileId}`);
+};
+
+// 列出会话文件
+export const listConversationFiles = async (
+  conversationId: number,
+  options?: { purpose?: ConversationFilePurpose; limit?: number; offset?: number },
+): Promise<ListConversationFilesResponse> => {
+  const params = new URLSearchParams();
+  if (options?.purpose) params.append("purpose", options.purpose);
+  if (options?.limit) params.append("limit", String(options.limit));
+  if (options?.offset) params.append("offset", String(options.offset));
+  const query = params.toString();
+  const url = `/ai/files/conversations/${conversationId}/files${query ? `?${query}` : ""}`;
+  return apiClient.get<ListConversationFilesResponse>(url);
+};
+
+// 批量获取文件信息
+export const batchGetConversationFiles = async (
+  ids: number[],
+): Promise<BatchGetFilesResponse> => {
+  return apiClient.post<BatchGetFilesResponse>("/ai/files/batch", { ids });
+};
+
+// 构建文件内容 URL（带 token）
+export const buildFileContentUrl = (fileId: number, token: string): string => {
+  return `/api/ai/files/${fileId}/content?token=${encodeURIComponent(token)}`;
+};
+
+// 构建文件下载 URL（带 token）
+export const buildFileDownloadUrl = (fileId: number, token: string): string => {
+  return `/api/ai/files/${fileId}/content?token=${encodeURIComponent(token)}&disposition=attachment`;
 };
 
 // 执行工具操作

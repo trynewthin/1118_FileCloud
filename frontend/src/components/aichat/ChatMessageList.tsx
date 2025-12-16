@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
 import type { PendingAction } from "./ToolCallRenderer";
-import { AssistantMessage, UserMessageBubble, BOTTOM_TOOL_TYPES } from "./ChatMessageBubbles";
+import { AssistantMessage, UserMessageBubble } from "./ChatMessageBubbles";
 import { useMemo } from "react";
 
 interface ChatMessageListProps {
@@ -25,91 +25,54 @@ export function ChatMessageList({
   onToolConfirm,
   onToolCancel,
 }: ChatMessageListProps) {
-  // 预处理消息：将工具消息合并到 AI 消息，并计算是否显示头像
-  // - 普通工具结果：合并到前一个 AI 消息（显示在上方）
-  // - file_display 类型：合并到后一个 AI 消息（显示在下方）
+  // 预处理消息：从 assistant.payload.toolResults 读取工具结果，跳过独立的 role=tool 消息
   const processedMessages = useMemo(() => {
     const result: Array<{
       message: AiChatMessage;
       toolResults: Array<{ result: any; pendingAction?: PendingAction }>;
-      showAvatar: boolean; // 是否显示头像
+      showAvatar: boolean;
     }> = [];
-    
-    // 第一遍：收集需要延迟合并的 file_display 工具结果
-    const pendingBottomTools: Array<{ result: any; pendingAction?: PendingAction }> = [];
-    
+
     for (let i = 0; i < messages.length; i++) {
       const m = messages[i];
-      
-      if (m.role === "tool" && m.payload) {
-        const toolResult = m.payload as { result?: any; pendingAction?: PendingAction };
-        if (toolResult.result) {
-          // 判断是否是需要放在下方的工具类型
-          const isBottomType = BOTTOM_TOOL_TYPES.has(toolResult.result.type);
-          
-          if (isBottomType) {
-            // 延迟合并到下一个 AI 消息
-            pendingBottomTools.push({
-              result: toolResult.result,
-              pendingAction: toolResult.pendingAction,
-            });
-            continue;
-          }
-          
-          // 普通工具结果：合并到前一个 AI 消息
-          if (result.length > 0) {
-            const lastItem = result[result.length - 1];
-            if (lastItem.message.role === "assistant" || lastItem.message.role === "tool") {
-              lastItem.toolResults.push({
-                result: toolResult.result,
-                pendingAction: toolResult.pendingAction,
-              });
-              continue;
-            }
-          }
-        }
+
+      // 跳过独立的 tool 消息（历史数据兼容）
+      if (m.role === "tool") {
+        continue;
       }
-      
-      // 判断是否需要显示头像：如果前一条消息是同类型（AI/工具 或 用户），则不显示
+
+      // 判断是否显示头像
       const prevItem = result.length > 0 ? result[result.length - 1] : null;
-      const isAiLike = m.role === "assistant" || m.role === "tool";
-      const prevIsAiLike = prevItem && (prevItem.message.role === "assistant" || prevItem.message.role === "tool");
+      const isAiLike = m.role === "assistant";
+      const prevIsAiLike = prevItem && prevItem.message.role === "assistant";
       const prevIsUser = prevItem && prevItem.message.role === "user";
-      
+
       let showAvatar = true;
       if (isAiLike && prevIsAiLike) {
         showAvatar = false;
       } else if (m.role === "user" && prevIsUser) {
         showAvatar = false;
       }
-      
-      // 如果是 AI 消息，把之前积累的 pendingBottomTools 合并进来
-      if (m.role === "assistant" && pendingBottomTools.length > 0) {
-        result.push({
-          message: m,
-          toolResults: [...pendingBottomTools],
-          showAvatar,
-        });
-        pendingBottomTools.length = 0; // 清空
-      } else {
-        result.push({
-          message: m,
-          toolResults: [],
-          showAvatar,
-        });
+
+      // 从 assistant payload 读取 toolResults
+      let toolResults: Array<{ result: any; pendingAction?: PendingAction }> = [];
+      if (m.role === "assistant" && m.payload?.toolResults) {
+        const payloadToolResults = m.payload.toolResults as Array<{
+          result?: any;
+          pendingAction?: PendingAction;
+        }>;
+        toolResults = payloadToolResults
+          .filter((tr) => tr.result)
+          .map((tr) => ({ result: tr.result, pendingAction: tr.pendingAction }));
       }
+
+      result.push({
+        message: m,
+        toolResults,
+        showAvatar,
+      });
     }
-    
-    // 如果还有未合并的 pendingBottomTools，合并到最后一个 AI 消息
-    if (pendingBottomTools.length > 0 && result.length > 0) {
-      for (let i = result.length - 1; i >= 0; i--) {
-        if (result[i].message.role === "assistant") {
-          result[i].toolResults.push(...pendingBottomTools);
-          break;
-        }
-      }
-    }
-    
+
     return result;
   }, [messages]);
 
@@ -137,8 +100,6 @@ export function ChatMessageList({
         const isAssistant = m.role === "assistant";
         const isSystem = m.role === "system";
         const isUser = m.role === "user";
-        const isTool = m.role === "tool";
-        const isAiLike = isAssistant || isTool;
 
         // 系统消息
         if (isSystem) {
@@ -170,29 +131,8 @@ export function ChatMessageList({
           <div className="shrink-0 h-7 w-7 md:h-8 md:w-8" />
         );
 
-        // 独立的工具消息（未能合并到 AI 消息的）- 使用 AI 头像
-        if (isTool && m.payload) {
-          const toolResult = m.payload as { result?: any; pendingAction?: PendingAction };
-          if (toolResult.result) {
-            return (
-              <div key={m.id} className="flex w-full justify-start">
-                <div className="flex flex-col md:flex-row gap-2 md:gap-3 max-w-[90%] md:max-w-[75%]">
-                  {AiAvatar}
-                  <AssistantMessage 
-                    content="" 
-                    toolResults={[{ result: toolResult.result, pendingAction: toolResult.pendingAction }, ...toolResults]}
-                    onToolConfirm={onToolConfirm}
-                    onToolCancel={onToolCancel}
-                    loading={false}
-                  />
-                </div>
-              </div>
-            );
-          }
-        }
-
         // AI 消息
-        if (isAiLike) {
+        if (isAssistant) {
           return (
             <div key={m.id} className="flex w-full justify-start">
               <div className="flex flex-col md:flex-row gap-2 md:gap-3 max-w-[90%] md:max-w-[75%]">

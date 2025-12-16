@@ -14,7 +14,7 @@ import {
   updateAiConversation,
   deleteAiConversation,
   appendUserMessage,
-  uploadAiImages,
+  uploadConversationFiles,
   executeAiTool,
   listToolKits,
 } from "@/lib/api/aiChat";
@@ -311,7 +311,7 @@ export const useAiChat = () => {
         messages: [...prev.messages, tempUserMessage, tempAssistantMessage],
       }));
       try {
-        // 上传图片并获取 attachmentIds
+        // 上传文件并获取 attachmentIds（优先使用新 API）
         let attachmentIds: number[] | undefined;
         if (attachments && attachments.length > 0) {
           const filesToUpload = attachments
@@ -319,7 +319,8 @@ export const useAiChat = () => {
             .map(a => a.file!);
           
           if (filesToUpload.length > 0) {
-            const uploadRes = await uploadAiImages(filesToUpload);
+            // 使用新的会话文件服务 API
+            const uploadRes = await uploadConversationFiles(filesToUpload, convId);
             attachmentIds = uploadRes.uploads.map(u => u.id);
           }
         }

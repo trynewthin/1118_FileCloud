@@ -19,7 +19,7 @@ const bubbleRadiusLg = cn(DS.radius.xl, "button-rect:rounded-lg");
 const buildUploadImageUrl = (uploadId: number): string => {
   const token = getAuthToken();
   // 使用 token 作为查询参数（因为 img src 不能设置 header）
-  return `${buildApiUrl(`/ai/uploads/${uploadId}`)}${token ? `?token=${token}` : ""}`;
+  return `${buildApiUrl(`/ai/files/${uploadId}/content`)}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 };
 
 // 需要放在消息下方的工具结果类型（用户交互类）
@@ -115,43 +115,20 @@ export function AssistantMessage({
 
   const hasContent = content.trim().length > 0;
 
-  // 区分工具结果：上方显示（信息类）和下方显示（用户交互类）
-  const topToolResults = toolResults.filter((tr) => !BOTTOM_TOOL_TYPES.has(tr.result?.type));
-  const bottomToolResults = toolResults.filter((tr) => BOTTOM_TOOL_TYPES.has(tr.result?.type));
-  const hasTopToolResults = topToolResults.length > 0;
+  // 区分工具结果：正文后显示（信息类）和末尾显示（用户交互类）
+  const inlineToolResults = toolResults.filter(
+    (tr) => !BOTTOM_TOOL_TYPES.has(tr.result?.type) && !tr.pendingAction,
+  );
+  const bottomToolResults = toolResults.filter(
+    (tr) => BOTTOM_TOOL_TYPES.has(tr.result?.type) || !!tr.pendingAction,
+  );
+  const hasInlineToolResults = inlineToolResults.length > 0;
   const hasBottomToolResults = bottomToolResults.length > 0;
 
   return (
     <div className="flex flex-col w-full gap-2 min-w-0">
-      {/* 工具调用结果（上方：信息类）- 每个工具单独气泡 */}
-      {hasTopToolResults && (
-        <div className="flex flex-col gap-2 min-w-0">
-          {topToolResults.map((tr, idx) => (
-            <GlassCard
-              key={`tool-top-${idx}`}
-              variant="lite"
-              className={cn(
-                "px-3 py-2.5 text-sm border-white/10 min-w-0",
-                bubbleRadiusLg,
-                "rounded-tl-sm button-rect:rounded-tl-md"
-              )}
-            >
-              <div aria-hidden className="absolute inset-0 bg-background/55 dark:bg-black/45 pointer-events-none" />
-              <div className="relative z-10 min-w-0 wrap-anywhere">
-                <ToolCallRenderer
-                  result={tr.result}
-                  pendingAction={tr.pendingAction}
-                  onConfirm={onToolConfirm}
-                  onCancel={onToolCancel}
-                />
-              </div>
-            </GlassCard>
-          ))}
-        </div>
-      )}
-
-      {/* 文本内容气泡 */}
-      {hasContent && (
+      {/* 主气泡：正文 + 信息类工具结果（内联，不分多个气泡） */}
+      {(hasContent || hasInlineToolResults) && (
         <GlassCard
           variant="lite"
           className={cn(
@@ -164,20 +141,48 @@ export function AssistantMessage({
           <div
             className={cn(
               "relative z-10 min-w-0 wrap-anywhere",
-              "prose prose-sm dark:prose-invert max-w-none",
-              "prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5",
-              "prose-pre:my-2 prose-pre:overflow-x-auto",
+              "prose prose-sm dark:prose-invert",
+              "prose-headings:font-semibold prose-headings:text-foreground",
+              "prose-p:leading-relaxed prose-p:text-foreground",
+              "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+              "prose-strong:text-foreground",
               "prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded",
-              "prose-code:before:content-none prose-code:after:content-none"
+              "prose-code:before:content-none prose-code:after:content-none",
+              "[&_pre_code]:bg-transparent [&_pre_code]:text-slate-50 dark:[&_pre_code]:text-slate-100 [&_pre_code]:p-0"
             )}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            {hasContent && <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>}
+
+            {hasInlineToolResults && (
+              <div className={cn(hasContent ? "mt-3 pt-3 border-t border-white/10" : "")}>
+                <div className={cn(
+                  "px-3 py-2.5",
+                  "pb-3",
+                  cn(DS.radius.xl, "button-rect:rounded-lg"),
+                  "bg-white/5 dark:bg-black/20",
+                  "min-w-0"
+                )}>
+                  <div className="flex flex-col gap-2 min-w-0">
+                    {inlineToolResults.map((tr, idx) => (
+                      <div key={`tool-inline-${idx}`} className="min-w-0 wrap-anywhere">
+                        <ToolCallRenderer
+                          result={tr.result}
+                          pendingAction={tr.pendingAction}
+                          onConfirm={onToolConfirm}
+                          onCancel={onToolCancel}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </GlassCard>
       )}
 
       {/* 流式加载指示器 */}
-      {!hasContent && !hasTopToolResults && !hasBottomToolResults && loading && (
+      {!hasContent && !hasInlineToolResults && !hasBottomToolResults && loading && (
         <GlassCard
           variant="lite"
           className={cn(

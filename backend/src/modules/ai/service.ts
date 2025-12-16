@@ -4,6 +4,7 @@ import { callChatModel } from "../../core/ai/client.ts";
 import { getSetting } from "../settings/service.ts";
 import { buildVariableContext } from "./orchestrator.ts";
 import { buildImageAttachmentsFromUploadIds } from "./attachments.ts";
+import { deleteConversationFiles } from "./conversationFiles/service.ts";
 import {
   initializeToolKits,
   getEnabledToolDefinitions,
@@ -845,6 +846,13 @@ export const updateAiChatConversation = (
 };
 
 export const deleteAiChatConversation = (id: number): boolean => {
+  // 先删除关联的会话文件
+  deleteConversationFiles(id);
+  
+  // 删除会话消息
+  db.prepare("DELETE FROM ai_chat_messages WHERE conversation_id = ?").run(id);
+  
+  // 删除会话记录
   const stmt = db.prepare("DELETE FROM ai_chat_conversations WHERE id = ?");
   const result = stmt.run(id);
   return result.changes > 0;
@@ -931,77 +939,6 @@ export const createAiChatMessage = (input: CreateAiChatMessageInput): AiChatMess
     .get(Number(result.lastInsertRowid)) as any;
 
   return mapRowToMessage(row);
-};
-
-// 媒体上传实体
-export interface AiChatUpload {
-  id: number;
-  user_id: number;
-  conversation_id: number | null;
-  original_name: string;
-  extension: string | null;
-  mime_type: string | null;
-  size_bytes: number;
-  storage_rel_path: string;
-  created_at: string;
-}
-
-const mapRowToUpload = (row: any): AiChatUpload => {
-  return {
-    id: row.id,
-    user_id: row.user_id,
-    conversation_id: row.conversation_id ?? null,
-    original_name: row.original_name,
-    extension: row.extension ?? null,
-    mime_type: row.mime_type ?? null,
-    size_bytes: row.size_bytes,
-    storage_rel_path: row.storage_rel_path,
-    created_at: row.created_at,
-  };
-};
-
-export const getAiChatUploadById = (id: number): AiChatUpload | null => {
-  const row = db
-    .prepare(
-      "SELECT id, user_id, conversation_id, original_name, extension, mime_type, size_bytes, storage_rel_path, created_at FROM ai_chat_uploads WHERE id = ?",
-    )
-    .get(id) as any | undefined;
-
-  if (!row) return null;
-  return mapRowToUpload(row);
-};
-
-export interface CreateAiChatUploadInput {
-  userId: number;
-  conversationId?: number | null;
-  originalName: string;
-  extension?: string | null;
-  mimeType?: string | null;
-  sizeBytes: number;
-  storageRelPath: string;
-}
-
-export const createAiChatUpload = (
-  input: CreateAiChatUploadInput,
-): AiChatUpload => {
-  const now = new Date().toISOString();
-  const stmt = db.prepare(
-    "INSERT INTO ai_chat_uploads(user_id, conversation_id, original_name, extension, mime_type, size_bytes, storage_rel_path, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-
-  const result = stmt.run(
-    input.userId,
-    input.conversationId ?? null,
-    input.originalName,
-    input.extension ?? null,
-    input.mimeType ?? null,
-    input.sizeBytes,
-    input.storageRelPath,
-    now,
-  );
-
-  const id = Number(result.lastInsertRowid);
-  return getAiChatUploadById(id)!;
 };
 
 // 根据供应商记录组装额外请求头
@@ -1231,6 +1168,13 @@ export const appendUserMessageAndReply = async (
     messagesForAi.push({ role: "system", content: systemPrompt });
   }
 
+  // 系统级约束：禁止编造外链/预览下载 URL，文件类工具结果以工具卡片为准
+  messagesForAi.push({
+    role: "system",
+    content:
+      "重要：你只能输出本系统可验证的信息，禁止编造任何外部链接或预览/下载 URL（例如 content.googleapis.com 等）。当你通过工具创建了文件（如 Markdown/HTML）后，不要在正文中提供任何链接或重复整篇文件内容；只需简短说明文件已创建，并提示用户在工具卡片中预览/下载。",
+  });
+
   effectiveHistory.forEach((msg) => {
     if (!msg.content) return;
 
@@ -1270,6 +1214,16 @@ export const appendUserMessageAndReply = async (
   let currentMessages = [...messagesForAi];
   let finalContent = "";
   let toolRound = 0;
+  const createdFileNames: string[] = [];
+  // 累积所有工具调用结果，最终挂到 assistant payload
+  const collectedToolResults: Array<{
+    toolName: string;
+    args: Record<string, any>;
+    result: any;
+    pendingAction?: any;
+    success: boolean;
+    error?: string;
+  }> = [];
 
   while (toolRound < MAX_TOOL_ROUNDS) {
     const aiResult = await callChatByModelId(conv.model_id, currentMessages, callOptions);
@@ -1312,19 +1266,27 @@ export const appendUserMessageAndReply = async (
         enabledToolKitKeys,
       );
 
-      // 保存工具调用结果到数据库（用于前端渲染）
-      createAiChatMessage({
-        conversationId: conv.id,
-        role: "tool",
-        content: toolName,
-        toolName: toolName,
-        payload: {
-          result: toolResult.result,
-          pendingAction: toolResult.pendingAction,
-          args: toolArgs,
-          success: toolResult.success,
-          error: toolResult.error,
-        },
+      if (
+        toolResult.success &&
+        (toolName === "create_markdown_file" ||
+          toolName === "create_html_file" ||
+          toolResult.result?.type === "markdown_file" ||
+          toolResult.result?.type === "html_file")
+      ) {
+        const fn = toolResult.result?.filename;
+        if (typeof fn === "string" && fn.trim().length > 0) {
+          createdFileNames.push(fn.trim());
+        }
+      }
+
+      // 累积工具调用结果（不再单独写 tool 消息）
+      collectedToolResults.push({
+        toolName,
+        args: toolArgs,
+        result: toolResult.result,
+        pendingAction: toolResult.pendingAction,
+        success: toolResult.success,
+        error: toolResult.error,
       });
 
       // 添加工具结果消息给模型
@@ -1347,6 +1309,12 @@ export const appendUserMessageAndReply = async (
     finalContent = finalResult.content;
   }
 
+  if (createdFileNames.length > 0) {
+    const uniqueNames = Array.from(new Set(createdFileNames));
+    const namesText = uniqueNames.join("、");
+    finalContent = `已生成文件：${namesText}。请在文件卡片中预览或下载（不要依赖正文中的链接）。`;
+  }
+
   const assistantMessage = createAiChatMessage({
     conversationId: conv.id,
     role: "assistant",
@@ -1356,6 +1324,8 @@ export const appendUserMessageAndReply = async (
       provider: "chat_model",
       modelKey: model.key,
       toolRounds: toolRound > 0 ? toolRound : undefined,
+      // 工具调用结果挂到 assistant payload，前端直接从这里读取
+      toolResults: collectedToolResults.length > 0 ? collectedToolResults : undefined,
     },
   });
 
