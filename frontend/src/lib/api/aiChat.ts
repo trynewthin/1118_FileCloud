@@ -115,6 +115,14 @@ export interface AppendMessageResponse {
   assistantMessage: AiChatMessage;
 }
 
+export interface AbortStreamRequest {
+  requestId: string;
+}
+
+export interface AbortStreamResponse {
+  success: boolean;
+}
+
 export const listAiConversations = async (): Promise<ListAiConversationsResponse> => {
   return apiClient.get<ListAiConversationsResponse>("/ai/conversations");
 };
@@ -151,6 +159,17 @@ export const appendUserMessage = async (
 ): Promise<AppendMessageResponse> => {
   return apiClient.post<AppendMessageResponse>(
     `/ai/conversations/${conversationId}/messages`,
+    body,
+  );
+};
+
+// 终止正在进行的流式消息
+export const abortAiChatMessageStream = async (
+  conversationId: number,
+  body: AbortStreamRequest,
+): Promise<AbortStreamResponse> => {
+  return apiClient.post<AbortStreamResponse>(
+    `/ai/conversations/${conversationId}/messages/abort`,
     body,
   );
 };

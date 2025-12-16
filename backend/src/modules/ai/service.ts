@@ -1020,7 +1020,7 @@ const getChatNamingConfig = () => {
   return { contextMessages, prompt };
 };
 
-const tryAutoNameConversation = async (conversationId: number) => {
+export const tryAutoNameConversation = async (conversationId: number) => {
   const conv = getAiChatConversationById(conversationId);
   if (!conv) return;
 

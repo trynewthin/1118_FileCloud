@@ -32,6 +32,8 @@ export function AiChatPage() {
     toolkits,
     loadingToolkits,
     sending,
+    streamingStatus,
+    currentToolName,
     error,
     localAttachments,
     selectConversation,
@@ -40,6 +42,7 @@ export function AiChatPage() {
     updateToolkitsConfig,
     deleteConversation,
     sendMessage,
+    abortCurrentMessage,
     executeTool,
   } = useAiChat();
 
@@ -238,6 +241,8 @@ export function AiChatPage() {
                 localAttachments={localAttachments}
                 onToolConfirm={handleToolConfirm}
                 onToolCancel={handleToolCancel}
+                streamingStatus={streamingStatus}
+                currentToolName={currentToolName}
               />
             </div>
           </div>
@@ -248,6 +253,7 @@ export function AiChatPage() {
               <ChatInputBar
                 sending={sending}
                 onSend={handleSendMessage}
+                onAbort={abortCurrentMessage}
               />
             </div>
           </div>

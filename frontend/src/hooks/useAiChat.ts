@@ -13,15 +13,19 @@ import {
   createAiConversation,
   updateAiConversation,
   deleteAiConversation,
-  appendUserMessage,
   uploadConversationFiles,
+  abortAiChatMessageStream,
   executeAiTool,
   listToolKits,
 } from "@/lib/api/aiChat";
+import { sendMessageStream } from "@/lib/api/aiChatStream";
 import type { LocalAttachment } from "@/lib/types/aiChat";
 
 // 重新导出类型以保持向后兼容
 export type { LocalAttachment } from "@/lib/types/aiChat";
+
+/** 流式状态 */
+export type StreamingStatus = "idle" | "thinking" | "streaming" | "tool";
 
 interface AiChatState {
   conversations: AiChatConversation[];
@@ -32,6 +36,10 @@ interface AiChatState {
   toolkits: ToolKitListItem[];
   loadingToolkits: boolean;
   sending: boolean;
+  /** 流式状态 */
+  streamingStatus: StreamingStatus;
+  /** 当前正在执行的工具名称 */
+  currentToolName: string | null;
   error: string | null;
 }
 
@@ -60,12 +68,19 @@ export const useAiChat = () => {
     toolkits: [],
     loadingToolkits: true,
     sending: false,
+    streamingStatus: "idle",
+    currentToolName: null,
     error: null,
   });
 
   // 本地附件映射：临时消息 ID -> 附件列表
   const localAttachmentsRef = useRef<Map<number, LocalAttachment[]>>(new Map());
   const [localAttachments, setLocalAttachments] = useState<Map<number, LocalAttachment[]>>(new Map());
+
+  // 当前流式请求控制（用于终止）
+  const activeRequestIdRef = useRef<string | null>(null);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
+  const activeConversationIdRef = useRef<number | null>(null);
 
   const setError = useCallback((message: string | null) => {
     setState((prev) => ({ ...prev, error: message }));
@@ -263,6 +278,44 @@ export const useAiChat = () => {
     [setError],
   );
 
+  // 用于存储流式内容的 ref（避免闭包问题）
+  const streamingContentRef = useRef<string>("");
+
+  const abortCurrentMessage = useCallback(async () => {
+    const requestId = activeRequestIdRef.current;
+    const controller = activeAbortControllerRef.current;
+    const convId = activeConversationIdRef.current;
+
+    if (!requestId || !controller || !convId) {
+      return;
+    }
+
+    // 先本地 abort，保证 UI 立即停止
+    try {
+      controller.abort();
+    } catch {
+      // 忽略
+    }
+
+    // 再通知后端（若后端已结束/不存在则忽略错误）
+    try {
+      await abortAiChatMessageStream(convId, { requestId });
+    } catch {
+      // 忽略
+    } finally {
+      activeRequestIdRef.current = null;
+      activeAbortControllerRef.current = null;
+      activeConversationIdRef.current = null;
+
+      setState((prev) => ({
+        ...prev,
+        sending: false,
+        streamingStatus: "idle",
+        currentToolName: null,
+      }));
+    }
+  }, []);
+
   const sendMessage = useCallback(
     async (content: string, conversationId?: number, attachments?: LocalAttachment[]) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) return;
@@ -292,9 +345,9 @@ export const useAiChat = () => {
         id: tempAssistantId,
         conversation_id: convId,
         role: "assistant",
-        content: "...",
+        content: "",
         tool_name: null,
-        payload: { placeholder: true } as any,
+        payload: { streaming: true } as any,
         created_at: now,
       };
 
@@ -304,14 +357,27 @@ export const useAiChat = () => {
         setLocalAttachments(new Map(localAttachmentsRef.current));
       }
 
+      // 重置流式内容
+      streamingContentRef.current = "";
+
       setState((prev) => ({
         ...prev,
         sending: true,
+        streamingStatus: "thinking",
+        currentToolName: null,
         error: null,
         messages: [...prev.messages, tempUserMessage, tempAssistantMessage],
       }));
+
       try {
-        // 上传文件并获取 attachmentIds（优先使用新 API）
+        // 为本次流式请求生成 requestId + AbortController
+        const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const controller = new AbortController();
+        activeRequestIdRef.current = requestId;
+        activeAbortControllerRef.current = controller;
+        activeConversationIdRef.current = convId;
+
+        // 上传文件并获取 attachmentIds
         let attachmentIds: number[] | undefined;
         if (attachments && attachments.length > 0) {
           const filesToUpload = attachments
@@ -319,43 +385,166 @@ export const useAiChat = () => {
             .map(a => a.file!);
           
           if (filesToUpload.length > 0) {
-            // 使用新的会话文件服务 API
             const uploadRes = await uploadConversationFiles(filesToUpload, convId);
             attachmentIds = uploadRes.uploads.map(u => u.id);
           }
         }
 
-        await appendUserMessage(convId, { 
-          content: content || "", 
+        // 使用流式 API
+        await sendMessageStream({
+          conversationId: convId,
+          content: content || "",
           attachmentIds,
+          requestId,
+          signal: controller.signal,
+          onReceived: (event) => {
+            // 更新用户消息 ID
+            setState((prev) => ({
+              ...prev,
+              messages: prev.messages.map((m) =>
+                m.id === tempUserId
+                  ? { ...m, id: event.data.userMessageId }
+                  : m
+              ),
+            }));
+          },
+          onThinking: () => {
+            setState((prev) => ({
+              ...prev,
+              streamingStatus: "thinking",
+              currentToolName: null,
+            }));
+          },
+          onDelta: (event) => {
+            // 累积流式内容
+            streamingContentRef.current += event.data.content;
+            const currentContent = streamingContentRef.current;
+            
+            setState((prev) => ({
+              ...prev,
+              streamingStatus: "streaming",
+              messages: prev.messages.map((m) =>
+                m.id === tempAssistantId
+                  ? { ...m, content: currentContent }
+                  : m
+              ),
+            }));
+          },
+          onToolStart: (event) => {
+            setState((prev) => ({
+              ...prev,
+              streamingStatus: "tool",
+              currentToolName: event.data.toolName,
+            }));
+          },
+          onToolEnd: () => {
+            setState((prev) => ({
+              ...prev,
+              streamingStatus: "thinking",
+              currentToolName: null,
+            }));
+          },
+          onFinal: (event) => {
+            // 用最终消息替换临时消息
+            // 优先使用 delta 累积的内容（流式过程中已收到），否则使用 final 事件的内容
+            const streamedContent = streamingContentRef.current;
+            const finalContent = streamedContent || event.data.content;
+            
+            const finalMessage: AiChatMessage = {
+              id: event.data.assistantMessageId,
+              conversation_id: convId,
+              role: "assistant",
+              content: finalContent,
+              tool_name: null,
+              payload: {
+                toolResults: event.data.toolResults,
+              },
+              created_at: now,
+            };
+
+            // 清理临时附件
+            localAttachmentsRef.current.delete(tempUserId);
+            setLocalAttachments(new Map(localAttachmentsRef.current));
+
+            setState((prev) => ({
+              ...prev,
+              sending: false,
+              streamingStatus: "idle",
+              currentToolName: null,
+              messages: prev.messages.map((m) =>
+                m.id === tempAssistantId ? finalMessage : m
+              ),
+            }));
+
+            activeRequestIdRef.current = null;
+            activeAbortControllerRef.current = null;
+            activeConversationIdRef.current = null;
+
+            // 重新加载会话列表，以便获取后端自动命名后的标题
+            void reloadConversations();
+          },
+          onError: (event) => {
+            // 清理临时附件
+            localAttachmentsRef.current.delete(tempUserId);
+            setLocalAttachments(new Map(localAttachmentsRef.current));
+
+            setState((prev) => ({
+              ...prev,
+              sending: false,
+              streamingStatus: "idle",
+              currentToolName: null,
+              error: event.data.message,
+              messages: prev.messages.filter(
+                (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+              ),
+            }));
+
+            activeRequestIdRef.current = null;
+            activeAbortControllerRef.current = null;
+            activeConversationIdRef.current = null;
+          },
         });
-        
-        // 清理临时附件
-        localAttachmentsRef.current.delete(tempUserId);
-        setLocalAttachments(new Map(localAttachmentsRef.current));
-        
-        setState((prev) => ({
-          ...prev,
-          sending: false,
-        }));
-        // 重新加载消息列表，以获取工具调用消息
-        await reloadMessages(convId);
-        // 重新加载会话列表，以便获取后端自动命名后的标题
-        void reloadConversations();
       } catch (err: any) {
         // 清理临时附件
         localAttachmentsRef.current.delete(tempUserId);
         setLocalAttachments(new Map(localAttachmentsRef.current));
         
+        // 如果是请求被中止，静默处理
+        const isAborted = err?.name === "AbortError" || 
+          (typeof err?.message === "string" && err.message.includes("aborted"));
+        
+        if (isAborted) {
+          setState((prev) => ({
+            ...prev,
+            sending: false,
+            streamingStatus: "idle",
+            currentToolName: null,
+            messages: prev.messages.filter(
+              (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+            ),
+          }));
+
+          activeRequestIdRef.current = null;
+          activeAbortControllerRef.current = null;
+          activeConversationIdRef.current = null;
+          return;
+        }
+        
         const message = typeof err?.message === "string" ? err.message : "发送消息失败";
         setState((prev) => ({
           ...prev,
           sending: false,
+          streamingStatus: "idle",
+          currentToolName: null,
           error: message,
           messages: prev.messages.filter(
             (m) => m.id !== tempUserId && m.id !== tempAssistantId,
           ),
         }));
+
+        activeRequestIdRef.current = null;
+        activeAbortControllerRef.current = null;
+        activeConversationIdRef.current = null;
       }
     },
     [state.currentConversationId, setError, reloadConversations],
@@ -392,6 +581,7 @@ export const useAiChat = () => {
     updateToolkitsConfig,
     deleteConversation: deleteConversationAction,
     sendMessage,
+    abortCurrentMessage,
     executeTool,
   };
 };

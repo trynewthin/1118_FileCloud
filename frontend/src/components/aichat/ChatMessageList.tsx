@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
 import type { PendingAction } from "./ToolCallRenderer";
-import { AssistantMessage, UserMessageBubble } from "./ChatMessageBubbles";
+import { AssistantMessage, UserMessageBubble, type StreamingStatus } from "./ChatMessageBubbles";
 import { useMemo } from "react";
 
 interface ChatMessageListProps {
@@ -16,6 +16,10 @@ interface ChatMessageListProps {
   // 工具确认回调
   onToolConfirm?: (action: PendingAction) => void;
   onToolCancel?: (action: PendingAction) => void;
+  /** 流式状态 */
+  streamingStatus?: StreamingStatus;
+  /** 当前正在执行的工具名称 */
+  currentToolName?: string | null;
 }
 
 export function ChatMessageList({
@@ -24,6 +28,8 @@ export function ChatMessageList({
   localAttachments,
   onToolConfirm,
   onToolCancel,
+  streamingStatus = "idle",
+  currentToolName = null,
 }: ChatMessageListProps) {
   // 预处理消息：从 assistant.payload.toolResults 读取工具结果，跳过独立的 role=tool 消息
   const processedMessages = useMemo(() => {
@@ -143,6 +149,8 @@ export function ChatMessageList({
                   onToolConfirm={onToolConfirm}
                   onToolCancel={onToolCancel}
                   loading={loading}
+                  streamingStatus={m.payload?.streaming ? streamingStatus : "idle"}
+                  currentToolName={m.payload?.streaming ? currentToolName : null}
                 />
               </div>
             </div>

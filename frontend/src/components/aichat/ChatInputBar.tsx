@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Square, ImagePlus, X } from "lucide-react";
-import { GlassIconButton } from "@/components/common/button/GlassButton";
+import { GlassButton, GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
@@ -16,9 +16,10 @@ export interface ChatAttachment {
 interface ChatInputBarProps {
   sending: boolean;
   onSend: (content: string, attachments?: File[]) => Promise<void> | void;
+  onAbort?: () => Promise<void> | void;
 }
 
-export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
+export function ChatInputBar({ sending, onSend, onAbort }: ChatInputBarProps) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -115,6 +116,22 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
       )}
 
       {/* 输入区 */}
+      {sending && (
+        <div className="flex justify-center px-2">
+          <GlassButton
+            type="button"
+            glassVariant="lite"
+            onClick={onAbort}
+            disabled={!onAbort}
+            className="h-8 px-3"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Square className="h-4 w-4" />
+              <span className="text-xs">终止</span>
+            </span>
+          </GlassButton>
+        </div>
+      )}
       <div className="flex items-end gap-2">
         {/* 隐藏的文件输入 */}
         <input
@@ -178,11 +195,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           className="shrink-0"
           aria-label="发送消息"
         >
-          {sending ? (
-            <Square className="h-4 w-4" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
+          <Send className="h-4 w-4" />
         </GlassIconButton>
       </div>
     </div>

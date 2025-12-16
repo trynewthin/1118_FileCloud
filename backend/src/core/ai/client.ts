@@ -19,6 +19,11 @@ export interface ChatToolCall {
   function: {
     name: string;
     arguments: string;  // JSON 字符串
+    /**
+     * 部分上游（如某些网关/供应商）要求工具调用携带 thought_signature
+     * 该字段通常由模型返回，后续轮次需要原样回传以保证工具链正确。
+     */
+    thought_signature?: string;
   };
 }
 
@@ -54,6 +59,14 @@ export interface ChatCallOptions {
   maxTokens?: number;
   tools?: ChatToolDefinition[];       // 可用工具列表
   tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
+  /** 是否启用流式输出 */
+  stream?: boolean;
+  /** 流式输出时的增量回调 */
+  onDelta?: (delta: string) => void;
+  /** 流式输出时检测到工具调用（工具名出现） */
+  onToolCall?: (toolName: string, toolIndex: number) => void;
+  /** 外部 AbortSignal（用于取消请求） */
+  signal?: AbortSignal;
 }
 
 export interface ChatResult {
@@ -94,7 +107,21 @@ const buildOpenAiMessage = (m: ChatMessageInput): any => {
     return {
       role: "assistant",
       content: m.content,
-      tool_calls: m.tool_calls,
+      tool_calls: m.tool_calls.map((tc) => {
+        const fn: Record<string, any> = {
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        };
+        // 部分上游要求 thought_signature 必须回传
+        if (tc.function.thought_signature) {
+          fn.thought_signature = tc.function.thought_signature;
+        }
+        return {
+          id: tc.id,
+          type: tc.type,
+          function: fn,
+        };
+      }),
     };
   }
 
@@ -153,6 +180,7 @@ async function callOpenAiCompatible(
     messages: openAiMessages,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.maxTokens,
+    stream: options.stream ?? false,
   };
 
   // 添加工具定义
@@ -164,8 +192,13 @@ async function callOpenAiCompatible(
   }
 
   const controller = new AbortController();
-  const timeoutMs = config.timeoutMs && config.timeoutMs > 0 ? config.timeoutMs : 60_000;
+  const timeoutMs = config.timeoutMs && config.timeoutMs > 0 ? config.timeoutMs : 120_000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  // 如果外部传入 signal，监听其 abort 事件
+  if (options.signal) {
+    options.signal.addEventListener("abort", () => controller.abort());
+  }
 
   try {
     const resp = await fetch(url, {
@@ -180,57 +213,199 @@ async function callOpenAiCompatible(
       throw new Error(`调用 AI 接口失败: ${resp.status} ${resp.statusText} - ${text}`);
     }
 
-    const json: any = await resp.json();
-    let content: string = "";
-    let tool_calls: ChatToolCall[] | undefined;
-    let finish_reason: string | undefined;
-
-    const choice = json?.choices?.[0];
-    const message = choice?.message;
-    finish_reason = choice?.finish_reason;
-
-    // 解析内容（支持 reasoning_content 字段，用于推理模型）
-    const messageContent = message?.content ?? choice?.delta?.content;
-    const reasoningContent = message?.reasoning_content;
-    
-    if (typeof messageContent === "string") {
-      content = messageContent;
-    } else if (Array.isArray(messageContent)) {
-      const textParts = messageContent
-        .filter((p: any) => p && p.type === "text" && typeof p.text === "string")
-        .map((p: any) => p.text);
-      content = textParts.join("\n\n");
-    } else if (typeof messageContent === "object" && messageContent !== null && typeof messageContent.text === "string") {
-      content = messageContent.text;
-    }
-    
-    // 如果 content 为空但有 reasoning_content，使用 reasoning_content
-    // 注意：reasoning_content 通常包含推理过程，需要提取最终答案
-    if (!content && typeof reasoningContent === "string" && reasoningContent.trim()) {
-      content = reasoningContent;
+    // 流式模式
+    if (options.stream && resp.body) {
+      return await handleStreamResponse(resp, options.onDelta, options.onToolCall);
     }
 
-    // 解析工具调用
-    if (message?.tool_calls && Array.isArray(message.tool_calls)) {
-      tool_calls = message.tool_calls.map((tc: any) => ({
-        id: tc.id,
-        type: tc.type || "function",
-        function: {
-          name: tc.function?.name ?? "",
-          arguments: tc.function?.arguments ?? "{}",
-        },
-      }));
-    }
-
-    return {
-      content,
-      tool_calls,
-      finish_reason,
-      raw: json,
-    };
+    // 非流式模式
+    return await handleNonStreamResponse(resp);
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** 处理非流式响应 */
+async function handleNonStreamResponse(resp: Response): Promise<ChatResult> {
+  const json: any = await resp.json();
+  let content: string = "";
+  let tool_calls: ChatToolCall[] | undefined;
+  let finish_reason: string | undefined;
+
+  const choice = json?.choices?.[0];
+  const message = choice?.message;
+  finish_reason = choice?.finish_reason;
+
+  // 解析内容（支持 reasoning_content 字段，用于推理模型）
+  const messageContent = message?.content ?? choice?.delta?.content;
+  const reasoningContent = message?.reasoning_content;
+  
+  if (typeof messageContent === "string") {
+    content = messageContent;
+  } else if (Array.isArray(messageContent)) {
+    const textParts = messageContent
+      .filter((p: any) => p && p.type === "text" && typeof p.text === "string")
+      .map((p: any) => p.text);
+    content = textParts.join("\n\n");
+  } else if (typeof messageContent === "object" && messageContent !== null && typeof messageContent.text === "string") {
+    content = messageContent.text;
+  }
+  
+  // 如果 content 为空但有 reasoning_content，使用 reasoning_content
+  if (!content && typeof reasoningContent === "string" && reasoningContent.trim()) {
+    content = reasoningContent;
+  }
+
+  // 解析工具调用
+  if (message?.tool_calls && Array.isArray(message.tool_calls)) {
+    tool_calls = message.tool_calls.map((tc: any) => ({
+      id: tc.id,
+      type: tc.type || "function",
+      function: {
+        name: tc.function?.name ?? "",
+        arguments: tc.function?.arguments ?? "{}",
+        thought_signature:
+          tc.function?.thought_signature ??
+          tc.function?.thoughtSignature ??
+          tc.thought_signature ??
+          tc.thoughtSignature,
+      },
+    }));
+  }
+
+  return {
+    content,
+    tool_calls,
+    finish_reason,
+    raw: json,
+  };
+}
+
+/** 处理流式响应 */
+async function handleStreamResponse(
+  resp: Response,
+  onDelta?: (delta: string) => void,
+  onToolCall?: (toolName: string, toolIndex: number) => void,
+): Promise<ChatResult> {
+  const reader = resp.body!.getReader();
+  const decoder = new TextDecoder("utf-8");
+
+  let content = "";
+  let tool_calls: ChatToolCall[] | undefined;
+  let finish_reason: string | undefined;
+  let buffer = "";
+
+  // 用于累积工具调用（流式模式下工具调用可能分多个 chunk）
+  const toolCallsMap = new Map<number, { id: string; type: string; name: string; arguments: string; thought_signature?: string }>();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // 按行解析 SSE
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === "data: [DONE]") continue;
+        if (!trimmed.startsWith("data: ")) continue;
+
+        const jsonStr = trimmed.slice(6);
+        try {
+          const chunk = JSON.parse(jsonStr);
+          const delta = chunk?.choices?.[0]?.delta;
+          const chunkFinishReason = chunk?.choices?.[0]?.finish_reason;
+
+          if (chunkFinishReason) {
+            finish_reason = chunkFinishReason;
+          }
+
+          // 累积文本内容
+          if (delta?.content) {
+            content += delta.content;
+            if (onDelta) {
+              onDelta(delta.content);
+            }
+          }
+
+          // 累积工具调用
+          if (delta?.tool_calls && Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              const existing = toolCallsMap.get(idx);
+              if (existing) {
+                // 追加 arguments
+                if (tc.function?.arguments) {
+                  existing.arguments += tc.function.arguments;
+                }
+
+                // 补齐 name（部分流式返回会先给 arguments 再给 name）
+                if (!existing.name && tc.function?.name) {
+                  existing.name = tc.function.name;
+                  onToolCall?.(existing.name, idx);
+                }
+
+                // 首次出现时保存 thought_signature
+                const ts =
+                  tc.function?.thought_signature ??
+                  tc.function?.thoughtSignature ??
+                  tc.thought_signature ??
+                  tc.thoughtSignature;
+                if (!existing.thought_signature && ts) {
+                  existing.thought_signature = ts;
+                }
+              } else {
+                toolCallsMap.set(idx, {
+                  id: tc.id || "",
+                  type: tc.type || "function",
+                  name: tc.function?.name || "",
+                  arguments: tc.function?.arguments || "",
+                  thought_signature:
+                    tc.function?.thought_signature ??
+                    tc.function?.thoughtSignature ??
+                    tc.thought_signature ??
+                    tc.thoughtSignature,
+                });
+
+                const toolName = tc.function?.name;
+                if (toolName) {
+                  onToolCall?.(toolName, idx);
+                }
+              }
+            }
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // 转换工具调用
+  if (toolCallsMap.size > 0) {
+    tool_calls = Array.from(toolCallsMap.values()).map((tc) => ({
+      id: tc.id,
+      type: "function" as const,
+      function: {
+        name: tc.name,
+        arguments: tc.arguments,
+        thought_signature: tc.thought_signature,
+      },
+    }));
+  }
+
+  return {
+    content,
+    tool_calls,
+    finish_reason,
+    raw: null,
+  };
 }
 
 async function safeReadText(resp: Response): Promise<string> {

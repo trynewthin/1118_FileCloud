@@ -8,6 +8,7 @@ import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { ToolCallRenderer, type PendingAction } from "./ToolCallRenderer";
 import { buildApiUrl } from "@/lib/api/client";
 import { getAuthToken } from "@/lib/api/client";
+import { getToolDisplayName } from "@/configs/aiToolDisplay";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useState, useCallback, useMemo } from "react";
@@ -85,6 +86,9 @@ export function UserMessageBubble({
   );
 }
 
+/** 流式状态类型 */
+export type StreamingStatus = "idle" | "thinking" | "streaming" | "tool";
+
 // AI 消息组件：Markdown 渲染 + 工具调用结果 + 操作按钮
 interface AssistantMessageProps {
   content: string;
@@ -92,6 +96,10 @@ interface AssistantMessageProps {
   onToolConfirm?: (action: PendingAction) => void;
   onToolCancel?: (action: PendingAction) => void;
   loading?: boolean;
+  /** 流式状态 */
+  streamingStatus?: StreamingStatus;
+  /** 当前正在执行的工具名称 */
+  currentToolName?: string | null;
 }
 
 export function AssistantMessage({
@@ -100,6 +108,8 @@ export function AssistantMessage({
   onToolConfirm,
   onToolCancel,
   loading = false,
+  streamingStatus = "idle",
+  currentToolName = null,
 }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false);
 
@@ -182,7 +192,7 @@ export function AssistantMessage({
       )}
 
       {/* 流式加载指示器 */}
-      {!hasContent && !hasInlineToolResults && !hasBottomToolResults && loading && (
+      {(loading || streamingStatus !== "idle") && !hasContent && !hasInlineToolResults && !hasBottomToolResults && (
         <GlassCard
           variant="lite"
           className={cn(
@@ -192,10 +202,35 @@ export function AssistantMessage({
           )}
         >
           <div aria-hidden className="absolute inset-0 bg-background/55 dark:bg-black/45 pointer-events-none" />
-          <div className="relative z-10 flex gap-1">
-            <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          <div className="relative z-10 flex items-center gap-2">
+            {/* 思考中状态 */}
+            {streamingStatus === "thinking" && (
+              <>
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span className="text-xs text-muted-foreground">思考中...</span>
+              </>
+            )}
+            {/* 工具执行状态 */}
+            {streamingStatus === "tool" && (
+              <>
+                <div className="w-3 h-3 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                <span className="text-xs text-muted-foreground">
+                  {currentToolName ? `执行 ${getToolDisplayName(currentToolName)}...` : "执行工具..."}
+                </span>
+              </>
+            )}
+            {/* 默认加载状态 */}
+            {streamingStatus === "idle" && loading && (
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            )}
           </div>
         </GlassCard>
       )}
