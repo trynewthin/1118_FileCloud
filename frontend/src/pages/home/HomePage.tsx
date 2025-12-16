@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { GlassCard } from "@/components/common/GlassCard";
-import { GlassButton } from "@/components/common/button/GlassButton";
+import { IconLabelItem } from "@/components/common/item/IconLabelItem";
+import { navItems } from "@/configs/nav";
+import { cn } from "@/lib/utils";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -17,54 +19,23 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/files")}
-            >
-              文件浏览
-            </GlassButton>
-
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/ai")}
-            >
-              AI 聊天
-            </GlassButton>
-
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/tags")}
-            >
-              标签管理
-            </GlassButton>
-
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/settings")}
-            >
-              系统设置
-            </GlassButton>
-
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/settings/tasks")}
-            >
-              任务中心
-            </GlassButton>
-
-            <GlassButton
-              glassVariant="lite"
-              className="justify-start h-11"
-              onClick={() => navigate("/settings/ai")}
-            >
-              AI 设置
-            </GlassButton>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            {navItems
+              .filter((item) => item.href !== "/")
+              .map((item) => {
+                const Icon = item.icon;
+                return (
+                  <IconLabelItem
+                    key={item.href}
+                    label={item.title}
+                    icon={<Icon className="h-6 w-6" />}
+                      className={cn(
+                            "flex flex-col items-center justify-center",
+                          )}
+                    onClick={() => navigate(item.href)}
+                  />
+                );
+              })}
           </div>
         </div>
       </GlassCard>

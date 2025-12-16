@@ -4,6 +4,8 @@ import type {
   AiChatMessage,
   CreateAiConversationRequest,
   UpdateAiConversationRequest,
+  ToolKitsConfig,
+  ToolKitListItem,
 } from "@/lib/api/aiChat";
 import {
   listAiConversations,
@@ -14,6 +16,7 @@ import {
   appendUserMessage,
   uploadAiImages,
   executeAiTool,
+  listToolKits,
 } from "@/lib/api/aiChat";
 import type { LocalAttachment } from "@/lib/types/aiChat";
 
@@ -26,6 +29,8 @@ interface AiChatState {
   currentConversationId: number | null;
   loadingConversations: boolean;
   loadingMessages: boolean;
+  toolkits: ToolKitListItem[];
+  loadingToolkits: boolean;
   sending: boolean;
   error: string | null;
 }
@@ -52,6 +57,8 @@ export const useAiChat = () => {
     currentConversationId: getSavedConversationId(),
     loadingConversations: true,
     loadingMessages: false,
+    toolkits: [],
+    loadingToolkits: true,
     sending: false,
     error: null,
   });
@@ -138,9 +145,32 @@ export const useAiChat = () => {
     }
   }, [state.currentConversationId]);
 
+  const reloadToolkits = useCallback(async () => {
+    setState((prev) => ({ ...prev, loadingToolkits: true }));
+    try {
+      const res = await listToolKits();
+      setState((prev) => ({
+        ...prev,
+        toolkits: res.items,
+        loadingToolkits: false,
+      }));
+    } catch (err: any) {
+      const message = typeof err?.message === "string" ? err.message : "加载工具包列表失败";
+      setState((prev) => ({
+        ...prev,
+        loadingToolkits: false,
+        error: message,
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     reloadConversations();
   }, [reloadConversations]);
+
+  useEffect(() => {
+    reloadToolkits();
+  }, [reloadToolkits]);
 
   // 当 currentConversationId 变化时自动加载消息
   useEffect(() => {
@@ -201,6 +231,13 @@ export const useAiChat = () => {
       return conv;
     },
     [setError],
+  );
+
+  const updateToolkitsConfig = useCallback(
+    async (id: number, toolkitsConfig: ToolKitsConfig | null) => {
+      return updateConversationAction(id, { toolkitsConfig } as any);
+    },
+    [updateConversationAction],
   );
 
   const deleteConversationAction = useCallback(
@@ -347,9 +384,11 @@ export const useAiChat = () => {
     localAttachments,
     reloadConversations,
     reloadMessages,
+    reloadToolkits,
     selectConversation,
     createConversation: createConversationAction,
     updateConversation: updateConversationAction,
+    updateToolkitsConfig,
     deleteConversation: deleteConversationAction,
     sendMessage,
     executeTool,

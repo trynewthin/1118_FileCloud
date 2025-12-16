@@ -22,6 +22,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [expanded, setExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -81,6 +82,7 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 192)}px`;
+    setExpanded(el.scrollHeight > 32);
   }, [value]);
 
   const hasAttachments = attachments.length > 0;
@@ -140,11 +142,16 @@ export function ChatInputBar({ sending, onSend }: ChatInputBarProps) {
           variant="strong" 
           className={cn(
             "flex-1 p-0 transition-all duration-300 border-white/20 min-h-9",
-            cn(DS.radius.full, "button-rect:rounded-xl"),
+            expanded ? cn(DS.radius.xl, "button-rect:rounded-xl") : cn(DS.radius.full, "button-rect:rounded-xl"),
             focused && "ring-2 ring-primary/20 border-primary/30 shadow-lg shadow-primary/5"
           )}
         >
-          <div className="relative w-full px-3 py-1.5 flex items-end">
+          <div
+            className={cn(
+              "relative w-full px-3 flex items-end",
+              expanded ? "py-3" : "py-1.5"
+            )}
+          >
             <Textarea
               ref={textareaRef}
               rows={1}

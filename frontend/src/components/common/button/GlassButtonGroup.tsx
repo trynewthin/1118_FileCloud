@@ -5,6 +5,8 @@ import { GlassIconButton } from "./GlassButton";
 
 interface GlassButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   glassVariant?: "strong" | "lite" | "ghost";
+  layout?: "group" | "split";
+  left?: React.ReactNode;
   /**
    * 是否自动将非 GlassIconButton 子节点包裹成 GlassIconButton。
    * 某些子节点（如 DropdownMenu / FilterSortMenu）内部会自己渲染触发按钮，
@@ -14,7 +16,18 @@ interface GlassButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps>(
-  ({ className, glassVariant = "strong", wrapNonIconChildren = true, children, ...props }, ref) => {
+  (
+    {
+      className,
+      glassVariant = "strong",
+      layout = "group",
+      left,
+      wrapNonIconChildren = true,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const glassClass = {
       strong: DS.glass.strong,
       lite: DS.glass.lite,
@@ -23,11 +36,35 @@ export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps
 
     const groupButtonClassName = cn("h-7! w-7!", cn(DS.radius.full, "button-rect:rounded-md"));
 
+    const renderChild = (child: React.ReactNode) => {
+      if (!React.isValidElement(child)) return child;
+
+      // 已经是 GlassIconButton：统一注入组内缩小尺寸
+      if (child.type === GlassIconButton) {
+        const el = child as React.ReactElement<any>;
+        return React.cloneElement(el, {
+          className: cn(groupButtonClassName, el.props?.className),
+        });
+      }
+
+      if (!wrapNonIconChildren) {
+        return child;
+      }
+
+      return (
+        <GlassIconButton asChild glassVariant={glassVariant} className={groupButtonClassName}>
+          {child}
+        </GlassIconButton>
+      );
+    };
+
     return (
       <div
         ref={ref}
         className={cn(
-          "inline-flex items-center h-9 px-1 gap-1 button-rect:px-1.5 button-rect:gap-1.5",
+          layout === "split"
+            ? "flex w-full items-center justify-between h-9 px-1 button-rect:px-1.5"
+            : "inline-flex items-center h-9 px-1 gap-1 button-rect:px-1.5 button-rect:gap-1.5",
           "transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
           // 移除默认 hover，由 glass 效果接管
           glassVariant !== "ghost" && "hover:bg-background/80 border-border/20",
@@ -39,27 +76,18 @@ export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps
         )}
         {...props}
       >
-        {React.Children.map(children, (child) => {
-          if (!React.isValidElement(child)) return child;
-
-          // 已经是 GlassIconButton：统一注入组内缩小尺寸
-          if (child.type === GlassIconButton) {
-            const el = child as React.ReactElement<any>;
-            return React.cloneElement(el, {
-              className: cn(groupButtonClassName, el.props?.className),
-            });
-          }
-
-          if (!wrapNonIconChildren) {
-            return child;
-          }
-
-          return (
-            <GlassIconButton asChild glassVariant={glassVariant} className={groupButtonClassName}>
-              {child}
-            </GlassIconButton>
-          );
-        })}
+        {layout === "split" ? (
+          <>
+            <div className="flex items-center gap-1">
+              {left ? renderChild(left) : null}
+            </div>
+            <div className="flex items-center gap-1 button-rect:gap-1.5">
+              {React.Children.map(children, (child) => renderChild(child))}
+            </div>
+          </>
+        ) : (
+          React.Children.map(children, (child) => renderChild(child))
+        )}
       </div>
     );
   }

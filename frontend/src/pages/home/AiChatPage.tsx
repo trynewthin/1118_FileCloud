@@ -3,12 +3,14 @@ import { toast } from "sonner";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useAiChat } from "@/hooks/useAiChat";
 import { useAiConfig } from "@/hooks/useAiConfig";
-import { AiMobileConversationManager } from "@/components/aichat/AiMobileConversationManager";
+import { AiConversationDialog } from "@/components/aichat/AiConversationDialog";
+import { AiToolkitsDialog } from "@/components/aichat/AiToolkitsDialog";
 import { ChatMessageList } from "@/components/aichat/ChatMessageList";
 import { ChatInputBar } from "@/components/aichat/ChatInputBar";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassLabel } from "@/components/common/label/GlassLabel";
-import { MessageCircle, Sparkles } from "lucide-react";
+import type { ToolKitsConfig } from "@/lib/api/aiChat";
+import { MessageCircle, Sparkles, Wrench } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,12 +29,15 @@ export function AiChatPage() {
     currentConversationId,
     loadingConversations,
     loadingMessages,
+    toolkits,
+    loadingToolkits,
     sending,
     error,
     localAttachments,
     selectConversation,
     createConversation,
     updateConversation,
+    updateToolkitsConfig,
     deleteConversation,
     sendMessage,
     executeTool,
@@ -42,6 +47,7 @@ export function AiChatPage() {
 
   const [creating, setCreating] = useState(false);
   const [conversationPanelOpen, setConversationPanelOpen] = useState(false);
+  const [toolkitsDialogOpen, setToolkitsDialogOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // 滚动到底部
@@ -78,7 +84,7 @@ export function AiChatPage() {
 
   const handleSelectConversationFromPanel = (id: number) => {
     selectConversation(id);
-    setConversationPanelOpen(true);
+    setConversationPanelOpen(false);
   };
 
   // 发送消息：如果没有当前会话，先自动创建一个
@@ -126,16 +132,106 @@ export function AiChatPage() {
     // 取消操作，无需处理
   };
 
+  const handleSaveToolkitsConfig = async (config: ToolKitsConfig | null) => {
+    if (!currentConversation) return;
+    await updateToolkitsConfig(currentConversation.id, config);
+  };
+
   return (
     <PageContainer
       title="AI 助手"
+      leftAction={
+        models && models.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <GlassIconButton
+                type="button"
+                glassVariant="lite"
+                title={`切换模型 (${currentModel?.display_name ?? "未设置"})`}
+              >
+                <Sparkles className="h-5 w-5" />
+              </GlassIconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className={cn("w-56", DS.glass.strong, "border-white/10")}>
+              <DropdownMenuLabel className="text-xs">
+                当前模型：{currentModel ? currentModel.display_name : "未设置"}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10" />
+              {models.map((m) => (
+                <DropdownMenuItem
+                  key={m.id}
+                  disabled={!m.is_enabled}
+                  className="text-xs focus:bg-primary/10 focus:text-primary"
+                  onClick={() => handleChangeModel(m.id)}
+                >
+                  <span className="truncate">
+                    {m.display_name}
+                    {!m.is_enabled ? "（已禁用）" : ""}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null
+      }
+      headerCenter={
+        <div className="min-w-0 max-w-[60%] flex justify-center">
+          <GlassLabel
+            glassVariant="lite"
+            className={cn("h-9 px-6 max-w-full", DS.text.heading)}
+            title={
+              currentConversation
+                ? currentConversation.title || `会话 #${currentConversation.id}`
+                : "新会话"
+            }
+          >
+            <span className="truncate text-sm text-foreground">
+              {currentConversation
+                ? currentConversation.title || `会话 #${currentConversation.id}`
+                : "新会话"}
+            </span>
+          </GlassLabel>
+        </div>
+      }
+      action={
+        <div className="flex items-center gap-2">
+          <GlassIconButton
+            glassVariant="lite"
+            className={cn("h-9 w-9", toolkitsDialogOpen && "border-primary/30 bg-primary/10")}
+            onClick={() => setToolkitsDialogOpen(true)}
+            disabled={!currentConversation}
+            title="工具包设置"
+          >
+            <Wrench className="h-5 w-5" />
+          </GlassIconButton>
+
+          <GlassIconButton
+            glassVariant="lite"
+            className={cn("h-9 w-9", conversationPanelOpen && "border-primary/30 bg-primary/10")}
+            onClick={() => setConversationPanelOpen((open) => !open)}
+            disabled={loadingConversations}
+            title="切换会话"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </GlassIconButton>
+        </div>
+      }
       className="h-full flex flex-col"
+      headerOverlay
+      headerOverlayMaskClassName="h-[calc(176px+env(safe-area-inset-top))]"
     >
       <div className="flex h-full min-h-0 flex-col">
         {/* Main Chat Container - Transparent/Ghost */}
         <div className="relative flex-1 min-h-0 flex flex-col">
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto h-full scroll-smooth px-2 scrollbar-none">
-            <div className="pt-24 pb-32"> {/* Spacer for header and bottom input bar */}
+          <div
+            ref={scrollContainerRef}
+            className={cn(
+              "flex-1 min-h-0 overflow-y-auto scroll-smooth scrollbar-none",
+              "-mx-6 md:-mx-12"
+            )}
+          >
+            <div className={cn("px-6 md:px-12", "pt-[calc(176px+env(safe-area-inset-top)+12px)] pb-32")}
+            >
               <ChatMessageList
                 messages={messages}
                 loading={loadingMessages}
@@ -143,104 +239,6 @@ export function AiChatPage() {
                 onToolConfirm={handleToolConfirm}
                 onToolCancel={handleToolCancel}
               />
-            </div>
-          </div>
-
-          {/* Floating Header Overlay */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-2 pt-3">
-            <div className="pointer-events-auto space-y-2 relative">
-              <div className="flex items-center justify-center relative h-9">
-                {/* Left: Model Selector */}
-                {models && models.length > 0 && (
-                  <div className="absolute left-0 top-0 flex items-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <GlassIconButton
-                          type="button"
-                          glassVariant="lite"
-                          title={`切换模型 (${currentModel?.display_name ?? "未设置"})`}
-                        >
-                          <Sparkles className="h-5 w-5" />
-                        </GlassIconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className={cn("w-56", DS.glass.strong, "border-white/10")}>
-                        <DropdownMenuLabel className="text-xs">
-                          当前模型：{currentModel ? currentModel.display_name : "未设置"}
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-white/10" />
-                        {models.map((m) => (
-                          <DropdownMenuItem
-                            key={m.id}
-                            disabled={!m.is_enabled}
-                            className="text-xs focus:bg-primary/10 focus:text-primary"
-                            onClick={() => handleChangeModel(m.id)}
-                          >
-                            <span className="truncate">
-                              {m.display_name}
-                              {!m.is_enabled ? "（已禁用）" : ""}
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-
-                {/* Center: Title Capsule */}
-                <div className="min-w-0 max-w-[60%] flex justify-center">
-                  <GlassLabel
-                    glassVariant="lite"
-                    className={cn("h-9 px-6 max-w-full", DS.text.heading)}
-                    title={
-                      currentConversation
-                        ? currentConversation.title || `会话 #${currentConversation.id}`
-                        : "新会话"
-                    }
-                  >
-                    <span className="truncate text-sm text-foreground">
-                      {currentConversation
-                        ? currentConversation.title || `会话 #${currentConversation.id}`
-                        : "新会话"}
-                    </span>
-                  </GlassLabel>
-                </div>
-
-                {/* Right: History Toggle */}
-                <div className="absolute right-0 top-0 flex items-center">
-                  <GlassIconButton
-                    glassVariant="lite"
-                    className={cn(
-                      "h-9 w-9",
-                      conversationPanelOpen && "border-primary/30 bg-primary/10"
-                    )}
-                    onClick={() => setConversationPanelOpen((open) => !open)}
-                    disabled={loadingConversations}
-                    title="切换会话"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                  </GlassIconButton>
-                </div>
-              </div>
-
-              {conversationPanelOpen && (
-                <>
-                  {/* 点击遮罩关闭面板 */}
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setConversationPanelOpen(false)}
-                  />
-                  <div className="mt-2 mr-2 flex justify-end relative z-20">
-                    <AiMobileConversationManager
-                      conversations={conversations}
-                      currentId={currentConversationId}
-                      loading={loadingConversations}
-                      onSelect={handleSelectConversationFromPanel}
-                      onNewConversation={handleCreateConversation}
-                      onDelete={deleteConversation}
-                    />
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -255,6 +253,26 @@ export function AiChatPage() {
           </div>
         </div>
       </div>
+
+      <AiConversationDialog
+        open={conversationPanelOpen}
+        onOpenChange={setConversationPanelOpen}
+        conversations={conversations}
+        currentId={currentConversationId}
+        loading={loadingConversations}
+        onSelect={handleSelectConversationFromPanel}
+        onNewConversation={handleCreateConversation}
+        onDelete={deleteConversation}
+      />
+
+      <AiToolkitsDialog
+        open={toolkitsDialogOpen}
+        onOpenChange={setToolkitsDialogOpen}
+        conversation={currentConversation}
+        toolkits={toolkits}
+        loadingToolkits={loadingToolkits}
+        onSave={handleSaveToolkitsConfig}
+      />
 
     </PageContainer>
   );

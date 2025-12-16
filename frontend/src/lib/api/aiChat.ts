@@ -43,6 +43,15 @@ export interface CreateAiConversationRequest {
   memoryStrategy?: string | null;
 }
 
+// 工具包配置类型
+export type ToolKitsConfigMode = "inherit" | "override";
+
+export interface ToolKitsConfig {
+  mode: ToolKitsConfigMode;
+  enabled?: string[];
+  disabled?: string[];
+}
+
 export interface UpdateAiConversationRequest {
   modelId?: number;
   title?: string | null;
@@ -52,6 +61,7 @@ export interface UpdateAiConversationRequest {
   memoryEnabled?: boolean;
   memoryStrategy?: string | null;
   isArchived?: boolean;
+  toolkitsConfig?: ToolKitsConfig;
 }
 
 export interface AppendMessageRequest {
@@ -160,4 +170,24 @@ export const smartRename = async (
   request: SmartRenameRequest,
 ): Promise<SmartRenameResponse> => {
   return apiClient.post<SmartRenameResponse>("/ai/smart-rename", request);
+};
+
+// 工具包列表
+export interface ToolKitListItem {
+  key: string;
+  displayName: string;
+  description: string;
+  icon?: string;
+  defaultEnabled: boolean;
+  requiredPermission?: string;
+  toolCount: number;
+  order?: number;
+}
+
+export interface ListToolKitsResponse {
+  items: ToolKitListItem[];
+}
+
+export const listToolKits = async (): Promise<ListToolKitsResponse> => {
+  return apiClient.get<ListToolKitsResponse>("/ai/toolkits");
 };

@@ -148,10 +148,11 @@ export const searchByFts = (params: {
   keyword: string;
   pathPrefix?: string;
   extension?: string;
+  extensions?: string[];
   type?: "all" | "file" | "directory";
   limit?: number;
 }): FtsSearchResult[] => {
-  const { libraryId, keyword, pathPrefix, extension, type = "all", limit = 50 } = params;
+  const { libraryId, keyword, pathPrefix, extension, extensions, type = "all", limit = 50 } = params;
   
   if (!keyword || !keyword.trim()) {
     return [];
@@ -197,9 +198,26 @@ export const searchByFts = (params: {
   }
   
   // 扩展名过滤
-  if (extension) {
-    sql += " AND fts.extension = ?";
-    sqlParams.push(extension.toLowerCase());
+  const normalizedExtensions = (() => {
+    const out: string[] = [];
+    if (typeof extension === "string" && extension.trim()) {
+      out.push(extension.trim().toLowerCase());
+    }
+    if (Array.isArray(extensions)) {
+      for (const ext of extensions) {
+        if (typeof ext !== "string") continue;
+        const trimmed = ext.trim().toLowerCase();
+        if (!trimmed) continue;
+        out.push(trimmed);
+      }
+    }
+    return Array.from(new Set(out));
+  })();
+
+  if (normalizedExtensions.length > 0) {
+    const placeholders = normalizedExtensions.map(() => "?").join(",");
+    sql += ` AND fts.extension IN (${placeholders})`;
+    sqlParams.push(...normalizedExtensions);
   }
   
   // 类型过滤
@@ -240,49 +258,74 @@ const searchByLike = (params: {
   keyword: string;
   pathPrefix?: string;
   extension?: string;
+  extensions?: string[];
   type?: "all" | "file" | "directory";
   limit?: number;
 }): FtsSearchResult[] => {
-  const { libraryId, keyword, type = "all", limit = 50 } = params;
+  const { libraryId, keyword, pathPrefix, extension, extensions, type = "all", limit = 50 } = params;
   
   const searchPattern = `%${keyword.trim()}%`;
   
   let sql = `
-    SELECT id, original_name, extension, is_directory, size_bytes
-    FROM file_entries 
-    WHERE library_id = ? AND is_deleted = 0 AND original_name LIKE ?
+    SELECT 
+      fe.id as file_id,
+      fe.original_name as name,
+      COALESCE(fts.path, '') as path,
+      COALESCE(NULLIF(fts.extension, ''), fe.extension) as extension,
+      fe.is_directory,
+      fe.size_bytes
+    FROM file_entries fe
+    LEFT JOIN file_index_fts fts ON fts.file_id = fe.id
+    WHERE fe.library_id = ? AND fe.is_deleted = 0 AND fe.original_name LIKE ?
   `;
   
   const sqlParams: any[] = [libraryId, searchPattern];
-  
-  if (type === "file") {
-    sql += " AND is_directory = 0";
-  } else if (type === "directory") {
-    sql += " AND is_directory = 1";
+
+  if (pathPrefix) {
+    sql += " AND fts.path LIKE ?";
+    sqlParams.push(pathPrefix + "%");
+  }
+
+  const normalizedExtensions = (() => {
+    const out: string[] = [];
+    if (typeof extension === "string" && extension.trim()) {
+      out.push(extension.trim().toLowerCase());
+    }
+    if (Array.isArray(extensions)) {
+      for (const ext of extensions) {
+        if (typeof ext !== "string") continue;
+        const trimmed = ext.trim().toLowerCase();
+        if (!trimmed) continue;
+        out.push(trimmed);
+      }
+    }
+    return Array.from(new Set(out));
+  })();
+
+  if (normalizedExtensions.length > 0) {
+    const placeholders = normalizedExtensions.map(() => "?").join(",");
+    sql += ` AND lower(COALESCE(NULLIF(fts.extension, ''), fe.extension, '')) IN (${placeholders})`;
+    sqlParams.push(...normalizedExtensions);
   }
   
-  sql += " ORDER BY is_directory DESC, original_name ASC LIMIT ?";
+  if (type === "file") {
+    sql += " AND fe.is_directory = 0";
+  } else if (type === "directory") {
+    sql += " AND fe.is_directory = 1";
+  }
+  
+  sql += " ORDER BY fe.is_directory DESC, fe.original_name ASC LIMIT ?";
   sqlParams.push(limit);
   
   const rows = db.prepare(sql).all(...sqlParams) as any[];
-  
-  // 需要为每个结果构建路径
+
   return rows.map((row) => {
-    const entry = db.prepare(`
-      SELECT id, library_id, parent_id, is_directory, original_name, extension, size_bytes
-      FROM file_entries WHERE id = ?
-    `).get(row.id) as any;
-    
-    if (!entry) return null;
-    
-    // 简化的路径构建
-    const ancestors = getAncestorNames(entry.id);
-    const pathParts = [...ancestors, entry.original_name];
-    
+    const rawPath = typeof row.path === "string" ? row.path : "";
+    const path = rawPath && rawPath.startsWith("/") ? rawPath : rawPath ? "/" + rawPath : "";
     return {
-      id: row.id,
-      name: row.original_name,
-      path: "/" + pathParts.join("/"),
+      id: row.file_id,
+      name: row.name,
+      path: path || "/" + row.name,
       isDirectory: Boolean(row.is_directory),
       size: row.size_bytes ?? 0,
       extension: row.extension || null,

@@ -4,7 +4,16 @@ import { callChatModel } from "../../core/ai/client.ts";
 import { getSetting } from "../settings/service.ts";
 import { buildVariableContext } from "./orchestrator.ts";
 import { buildImageAttachmentsFromUploadIds } from "./attachments.ts";
-import { getAllToolDefinitions, executeTool } from "./tools.ts";
+import {
+  initializeToolKits,
+  getEnabledToolDefinitions,
+  executeTool,
+  resolveEnabledToolKitKeys,
+  type ToolKitsConfig,
+} from "./toolkits/index.ts";
+
+// 初始化工具包系统
+initializeToolKits();
 
 // 供应商实体
 export interface AiProvider {
@@ -1242,8 +1251,12 @@ export const appendUserMessageAndReply = async (
     messagesForAi.push({ role, content: msg.content, attachments });
   });
 
-  // 获取可用工具
-  const toolDefinitions = getAllToolDefinitions();
+  // 解析会话工具包配置
+  const toolkitsConfig = conv.metadata?.toolkitsConfig as ToolKitsConfig | undefined;
+
+  // 根据配置获取启用的工具包和工具定义
+  const enabledToolKitKeys = resolveEnabledToolKitKeys(toolkitsConfig, "user");
+  const toolDefinitions = getEnabledToolDefinitions(toolkitsConfig, "user");
   const callOptions: ChatCallOptions = {};
   
   // 如果有注册的工具，就传递给模型
@@ -1288,11 +1301,16 @@ export const appendUserMessageAndReply = async (
         toolArgs = {};
       }
 
-      const toolResult = await executeTool(toolName, toolArgs, {
-        userId: input.userId,
-        conversationId: conv.id,
-        conversationVars: varContext.conversationVars,
-      });
+      const toolResult = await executeTool(
+        toolName,
+        toolArgs,
+        {
+          userId: input.userId,
+          conversationId: conv.id,
+          conversationVars: varContext.conversationVars,
+        },
+        enabledToolKitKeys,
+      );
 
       // 保存工具调用结果到数据库（用于前端渲染）
       createAiChatMessage({

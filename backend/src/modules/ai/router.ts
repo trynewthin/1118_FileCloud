@@ -34,6 +34,7 @@ import {
   getAiChatUploadById,
 } from "./service.ts";
 import { getSetting } from "../settings/service.ts";
+import { getToolKitList } from "./toolkits/index.ts";
 
 // AI 上传文件存储目录
 const AI_UPLOADS_DIR = getAiUploadsStorageDir();
@@ -45,6 +46,21 @@ if (!fs.existsSync(AI_UPLOADS_DIR)) {
 
 const router = express.Router();
 const logger = createLogger("AI/SmartRename");
+
+// ============================================================================
+// 工具包 API
+// ============================================================================
+
+// 获取工具包列表
+router.get(
+  "/toolkits",
+  authenticate,
+  requirePermission(PermissionLevel.User),
+  (_req, res) => {
+    const items = getToolKitList();
+    return res.json({ items });
+  },
+);
 
 const DEFAULT_MODEL_SETTING_KEY = "ai.chat.defaultModelId";
 
@@ -428,6 +444,16 @@ router.patch(
       }
 
       body.modelId = parsedModelId;
+    }
+
+    // 处理 toolkitsConfig 更新（增量合并到 metadata）
+    if (body.toolkitsConfig !== undefined) {
+      const existingMetadata = conv.metadata ?? {};
+      body.metadata = {
+        ...existingMetadata,
+        toolkitsConfig: body.toolkitsConfig,
+      };
+      delete body.toolkitsConfig;
     }
 
     const updated = updateAiChatConversation(id, body);

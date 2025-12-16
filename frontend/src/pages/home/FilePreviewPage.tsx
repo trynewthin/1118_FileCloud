@@ -11,7 +11,8 @@ import { ImagePreview } from "@/components/preview/adapters/ImagePreview";
 import { TextPreview } from "@/components/preview/adapters/TextPreview";
 import { PdfPreview } from "@/components/preview/adapters/PdfPreview";
 import { DefaultPreview } from "@/components/preview/adapters/DefaultPreview";
-import { GlassButton } from "@/components/common/button/GlassButton";
+import { GlassIconButton } from "@/components/common/button/GlassButton";
+import { GlassButtonGroup } from "@/components/common/button/GlassButtonGroup";
 import { DeleteDialog, MoveCopyDialog } from "@/components/filebrowsepage";
 import { EntryTagDialog, TagInfoCard } from "@/components/tag";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
@@ -160,77 +161,66 @@ export function FilePreviewPage() {
     window.open(downloadUrl, "_blank");
   };
 
-  // 操作按钮
-  const actionButtons = entry ? (
-    <div className="flex items-center gap-2">
-      <GlassButton
-        glassVariant="lite"
-        size="icon"
-        className="h-9 w-9 rounded-full"
-        onClick={handleDownload}
-        title="下载"
-      >
+  const leftActionButtons = entry ? (
+    <GlassIconButton glassVariant="lite" onClick={() => setTagDialogOpen(true)} title="标签">
+      <Tag className="h-4 w-4" />
+    </GlassIconButton>
+  ) : null;
+
+  const rightActionButtons = entry ? (
+    <GlassButtonGroup glassVariant="lite">
+      <GlassIconButton glassVariant="lite" onClick={handleDownload} title="下载">
         <Download className="h-4 w-4" />
-      </GlassButton>
-      <GlassButton
-        glassVariant="lite"
-        size="icon"
-        className="h-9 w-9 rounded-full"
-        onClick={() => setTagDialogOpen(true)}
-        title="标签"
-      >
-        <Tag className="h-4 w-4" />
-      </GlassButton>
-      <GlassButton
-        glassVariant="lite"
-        size="icon"
-        className="h-9 w-9 rounded-full"
-        onClick={() => setActionDialog({ type: "copy" })}
-        title="复制"
-      >
+      </GlassIconButton>
+
+      <GlassIconButton glassVariant="lite" onClick={() => setActionDialog({ type: "copy" })} title="复制">
         <Copy className="h-4 w-4" />
-      </GlassButton>
-      <GlassButton
-        glassVariant="lite"
-        size="icon"
-        className="h-9 w-9 rounded-full"
-        onClick={() => setActionDialog({ type: "move" })}
-        title="移动"
-      >
+      </GlassIconButton>
+
+      <GlassIconButton glassVariant="lite" onClick={() => setActionDialog({ type: "move" })} title="移动">
         <Move className="h-4 w-4" />
-      </GlassButton>
-      <GlassButton
+      </GlassIconButton>
+
+      <GlassIconButton
         glassVariant="lite"
-        size="icon"
         onClick={() => setActionDialog({ type: "delete" })}
         title="删除"
-        className="h-9 w-9 rounded-full text-destructive hover:text-destructive"
+        className="text-destructive hover:text-destructive"
       >
         <Trash2 className="h-4 w-4" />
-      </GlassButton>
-    </div>
+      </GlassIconButton>
+    </GlassButtonGroup>
   ) : null;
 
   return (
-    <PageContainer title={pageTitle} showBack action={actionButtons} onBack={handleBack}>
-      <div className="flex flex-col min-h-0">
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center" />
-        ) : error ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            加载失败
-          </div>
-        ) : (
-          entry && (
-            <div className="flex flex-col gap-3 max-w-5xl w-full mx-auto">
-              <div className="relative flex flex-col p-0 w-full">
-                {renderPreviewer()}
-              </div>
-              <TagInfoCard entryId={entry.id} refreshKey={tagRefreshKey} />
+    <PageContainer
+      title={pageTitle}
+      showBack
+      leftAction={leftActionButtons}
+      action={rightActionButtons}
+      onBack={handleBack}
+      headerOverlay
+      headerOverlayMaskClassName="h-[calc(132px+env(safe-area-inset-top))]"
+      scroll
+      scrollFullBleed
+      scrollPaddingClassName="pt-[calc(132px+env(safe-area-inset-top)+10px)] pb-4"
+    >
+      {loading ? (
+        <div className="flex h-full items-center justify-center" />
+      ) : error ? (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          加载失败
+        </div>
+      ) : (
+        entry && (
+          <div className="flex flex-col gap-3 max-w-5xl w-full mx-auto">
+            <div className="relative flex flex-col p-0 w-full">
+              {renderPreviewer()}
             </div>
-          )
-        )}
-      </div>
+            <TagInfoCard entryId={entry.id} refreshKey={tagRefreshKey} />
+          </div>
+        )
+      )}
 
       {/* 移动/复制对话框 */}
       {(actionDialog.type === "move" || actionDialog.type === "copy") && entry && (
