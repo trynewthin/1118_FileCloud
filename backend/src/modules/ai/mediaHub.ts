@@ -3,9 +3,10 @@ import path from "node:path";
 import { Buffer } from "node:buffer";
 import type { AiChatUpload } from "./service.ts";
 import { getAiChatUploadById } from "./service.ts";
+import { getAiUploadsStorageDir } from "../../core/config/paths.ts";
 
 // AI 上传文件存储目录
-const AI_UPLOADS_DIR = path.join(process.cwd(), "data", "ai_uploads");
+const AI_UPLOADS_DIR = getAiUploadsStorageDir();
 
 export interface UploadBase64Result {
   mimeType: string;

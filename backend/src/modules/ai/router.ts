@@ -5,6 +5,7 @@ import Busboy from "busboy";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { createLogger } from "../../core/logger/index.ts";
+import { getAiUploadsStorageDir } from "../../core/config/paths.ts";
 import {
   listAiProviders,
   createAiProvider,
@@ -35,7 +36,7 @@ import {
 import { getSetting } from "../settings/service.ts";
 
 // AI 上传文件存储目录
-const AI_UPLOADS_DIR = path.join(process.cwd(), "data", "ai_uploads");
+const AI_UPLOADS_DIR = getAiUploadsStorageDir();
 
 // 确保上传目录存在
 if (!fs.existsSync(AI_UPLOADS_DIR)) {

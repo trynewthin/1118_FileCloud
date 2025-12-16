@@ -2,17 +2,15 @@
  * 背景图片服务
  * 
  * 负责背景图片的存储、查询、删除
- * 图片存储在 data/backgrounds 目录下
+ * 图片存储在 database/backgrounds 目录下
  */
 
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "fs";
 import { join } from "path";
 import { createLogger } from "../../core/logger/index.ts";
+import { getBackgroundsStorageDir } from "../../core/config/paths.ts";
 
 const logger = createLogger("Backgrounds");
-
-// 背景图片存储目录（相对于项目根目录）
-const BACKGROUNDS_DIR = "data/backgrounds";
 
 // 支持的图片扩展名
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
@@ -31,7 +29,7 @@ export interface BackgroundImage {
  * 获取背景图片存储目录的绝对路径
  */
 export function getBackgroundsDir(): string {
-  const dir = join(process.cwd(), BACKGROUNDS_DIR);
+  const dir = getBackgroundsStorageDir();
   // 确保目录存在
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });

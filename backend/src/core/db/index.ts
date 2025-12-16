@@ -1,11 +1,10 @@
 import { Database } from "bun:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+import { getDbPath } from "../config/paths.ts";
 
-const DB_FILE_NAME = "filecloud.db";
-const projectRoot = path.resolve(process.cwd(), "..");
-const dbDir = path.join(projectRoot, "database");
-const dbPath = path.join(dbDir, DB_FILE_NAME);
+const dbPath = getDbPath();
+const dbDir = path.dirname(dbPath);
 
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
