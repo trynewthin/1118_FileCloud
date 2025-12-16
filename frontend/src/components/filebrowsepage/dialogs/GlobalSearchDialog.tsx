@@ -184,14 +184,26 @@ export function GlobalSearchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-[600px] h-[520px] flex flex-col"
-        showCloseButton={true}
+        showCloseButton={false}
       >
         <GlassCard variant="lite" className="p-4">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              全局搜索
-            </DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                全局搜索
+              </DialogTitle>
+              <GlassIconButton
+                type="button"
+                glassVariant="lite"
+                onClick={() => onOpenChange(false)}
+                title="关闭"
+                className="h-9 w-9"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">关闭</span>
+              </GlassIconButton>
+            </div>
           </DialogHeader>
         </GlassCard>
 
@@ -284,11 +296,8 @@ export function GlobalSearchDialog({
               </PopoverContent>
             </Popover>
           </div>
-        </GlassCard>
 
-        {/* 搜索范围提示 */}
-        <GlassCard variant="lite" className="px-3 py-2">
-          <div className="text-xs text-muted-foreground">
+          <div className="pt-2 text-xs text-muted-foreground">
             搜索范围: {getSearchScopeText()}
           </div>
         </GlassCard>

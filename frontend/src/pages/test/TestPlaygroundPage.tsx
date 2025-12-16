@@ -1,7 +1,8 @@
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SkeuoFolderItem } from "@/components/filebrowsepage/items/SkeuoFolderItem";
 import { SkeuoFileItem } from "@/components/filebrowsepage/items/SkeuoFileItem";
-import { Film, Image as ImageIcon, FolderOpen } from "lucide-react";
+import { IconLabelItem } from "@/components/common/item/IconLabelItem";
+import { Film, Image as ImageIcon, FolderOpen, Settings, Upload } from "lucide-react";
 
 export const TestPlaygroundPage = () => {
   return (
@@ -9,6 +10,16 @@ export const TestPlaygroundPage = () => {
       <div className="flex flex-col gap-3 p-1 text-sm text-muted-foreground">
         <p>这里是测试页面，用于临时挂载和调试各类组件。</p>
         <p>后续可以在此处自由添加测试区域，而不影响正式页面。</p>
+
+        <div className="pt-2">
+          <div className="mb-2 text-xs font-medium text-foreground/70">通用：图标 + 文字标签</div>
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+            <IconLabelItem label="设置" icon={<Settings className="h-7 w-7" />} />
+            <IconLabelItem label="上传" icon={<Upload className="h-7 w-7" />} selected />
+            <IconLabelItem label="禁用态" icon={<FolderOpen className="h-7 w-7" />} disabled />
+            <IconLabelItem label="跟随全局" icon={<Settings className="h-7 w-7" />} />
+          </div>
+        </div>
 
         <div className="pt-2">
           <div className="mb-2 text-xs font-medium text-foreground/70">拟物化：文件夹</div>

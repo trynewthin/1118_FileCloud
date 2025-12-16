@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/common/GlassCard";
+import { IconLabelItem } from "@/components/common/item/IconLabelItem";
 import { navItems } from "@/configs/nav";
 
 interface FolderGridMenuProps {
@@ -64,7 +65,7 @@ export function FolderGridMenu({ open, onOpenChange, lastBrowsePath, anchorRect 
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="grid grid-cols-3 gap-x-1 gap-y-1">
+          <div className="grid grid-cols-3 gap-x-1 gap-y-1 p-1 py-1.5">
             {navItems.map((item) => {
               const href = item.href === "/files" ? lastBrowsePath : item.href;
               return (
@@ -95,33 +96,18 @@ function MenuItem({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <IconLabelItem
+      label={title}
+      icon={<Icon className="h-5.5 w-5.5" />}
       onClick={onClick}
+      glassVariant="strong"
       className={cn(
         "w-full aspect-square",
         "flex flex-col items-center justify-center",
-        "gap-1",
-        "rounded-2xl",
-        "bg-transparent",
         "outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
       )}
-    >
-      <div
-        className={cn(
-          "h-10 w-10",
-          "rounded-2xl",
-          "flex items-center justify-center",
-          "border border-white/15 dark:border-white/10",
-          "bg-background/70 supports-backdrop-filter:bg-background/55 backdrop-blur-xl",
-          "shadow-sm",
-          "transition-transform duration-200",
-          "hover:scale-[1.04] active:scale-[0.96]"
-        )}
-      >
-        <Icon className="h-5.5 w-5.5" />
-      </div>
-      <span className="text-[11px] leading-none text-foreground/90">{title}</span>
-    </button>
+       iconWrapperClassName={cn(
+        "h-12 w-12")}
+    />
   );
 }
