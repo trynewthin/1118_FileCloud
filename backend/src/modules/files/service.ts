@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
-import { isLibraryOnline } from "../../core/services/index.ts";
+import { isLibraryOnline } from "../coreServices/index.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 // 物理文件保持原始名称，不再使用 [xxxxxx] 后缀
 

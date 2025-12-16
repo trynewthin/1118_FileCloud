@@ -3,8 +3,8 @@
  * 定时检测所有文件库的可访问性，维护实时状态
  */
 import fs from "node:fs";
-import { db } from "../db/index.ts";
-import { createLogger } from "../logger/index.ts";
+import { db } from "../../core/db/index.ts";
+import { createLogger } from "../../core/logger/index.ts";
 
 const logger = createLogger("LibraryWatcher");
 

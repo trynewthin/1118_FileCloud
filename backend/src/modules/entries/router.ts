@@ -10,7 +10,7 @@ import {
   getAllLibraryStatus,
   isLibraryOnline,
   getCheckInterval,
-} from "../../core/services/index.ts";
+} from "../coreServices/index.ts";
 
 const router = express.Router();
 
