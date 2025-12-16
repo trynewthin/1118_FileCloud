@@ -6,8 +6,7 @@
  * 2. 配置日志系统
  * 3. 注册所有模块（路由 + 任务处理器）
  * 4. 启动任务 Worker
- * 5. 启动文件库监控服务
- * 6. 启动 HTTP 服务
+ * 5. 启动 HTTP 服务
  */
 
 import { app } from "./app.ts";
@@ -15,7 +14,6 @@ import { initDatabase } from "./core/db/index.ts";
 import { createLogger, setProductionMode } from "./core/logger/index.ts";
 import { registerModules, bootstrapModules } from "./core/module-loader/index.ts";
 import { injectTaskService, startExecutor, configureExecutor } from "./core/tasks/executor.ts";
-import { startLibraryWatcher } from "./core/services/index.ts";
 import { allModules } from "./modules/index.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 import * as taskService from "./modules/tasks/service.ts";
@@ -51,11 +49,7 @@ const bootstrap = async () => {
   startExecutor();
   logger.info("任务执行器已启动");
 
-  // 5. 启动文件库监控服务
-  startLibraryWatcher();
-  logger.info("文件库监控服务已启动");
-
-  // 6. 启动 HTTP 服务
+  // 5. 启动 HTTP 服务
   app.listen(PORT, () => {
     logger.info(`HTTP 服务已启动，端口: ${PORT}`);
   });
