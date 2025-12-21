@@ -19,6 +19,7 @@ import { aiModule } from "./ai/module.ts";
 import { tagsModule } from "./tags/module.ts";
 import { entriesModule } from "./entries/module.ts";
 import { backgroundsModule } from "./backgrounds/module.ts";
+import { remoteProxyModule } from "./remoteProxy/module.ts";
 
 /**
  * 所有业务模块列表
@@ -40,4 +41,5 @@ export const allModules: ModuleDefinition[] = [
   tagsModule,
   entriesModule,
   backgroundsModule,
+  remoteProxyModule,
 ];

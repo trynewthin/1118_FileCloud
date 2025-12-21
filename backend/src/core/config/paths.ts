@@ -78,3 +78,35 @@ export const getFsAllowedPaths = (): string[] => {
     .map((p) => path.resolve(p.trim()))
     .filter((p) => p.length > 0);
 };
+
+// 获取远程代理连接密钥（空字符串表示禁用远程代理）
+export const getRemoteProxyKey = (): string => {
+  return process.env.REMOTE_PROXY_KEY?.trim() || "";
+};
+
+// ============= 客户端模式配置 =============
+
+// 是否启用客户端模式
+export const isRemoteClientEnabled = (): boolean => {
+  return process.env.REMOTE_CLIENT_ENABLED?.toLowerCase() === "true";
+};
+
+// 获取主服务器 WebSocket 地址
+export const getRemoteClientServerUrl = (): string => {
+  return process.env.REMOTE_CLIENT_SERVER_URL?.trim() || "";
+};
+
+// 获取客户端 ID
+export const getRemoteClientId = (): string => {
+  return process.env.REMOTE_CLIENT_ID?.trim() || `client-${Date.now()}`;
+};
+
+// 获取客户端名称
+export const getRemoteClientName = (): string => {
+  return process.env.REMOTE_CLIENT_NAME?.trim() || "远程后端";
+};
+
+// 获取客户端认证密钥
+export const getRemoteClientSecret = (): string => {
+  return process.env.REMOTE_CLIENT_SECRET?.trim() || "";
+};

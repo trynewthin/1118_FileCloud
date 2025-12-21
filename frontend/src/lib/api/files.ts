@@ -19,7 +19,8 @@ export interface FileEntry {
   library_online?: boolean;
   // 虚拟文件库条目标记（用于在根目录将文件库显示为文件夹）
   _isLibraryEntry?: boolean;
-  _virtualType?: "library" | "tags";
+  _virtualType?: "library" | "tags" | "remote";
+  _remoteClientId?: string;  // 远程客户端 ID
 }
 
 export interface TrashEntry extends FileEntry {

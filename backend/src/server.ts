@@ -9,6 +9,7 @@
  * 5. 启动 HTTP 服务
  */
 
+import http from "node:http";
 import { app } from "./app.ts";
 import { initDatabase } from "./core/db/index.ts";
 import { createLogger, setProductionMode } from "./core/logger/index.ts";
@@ -17,6 +18,8 @@ import { injectTaskService, startExecutor, configureExecutor } from "./core/task
 import { allModules } from "./modules/index.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 import * as taskService from "./modules/tasks/service.ts";
+import { initWebSocketServer, initWebSocketClient } from "./modules/remoteProxy/index.ts";
+import { getRemoteProxyKey, isRemoteClientEnabled, getRemoteClientServerUrl } from "./core/config/paths.ts";
 
 const logger = createLogger("Server");
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -49,8 +52,32 @@ const bootstrap = async () => {
   startExecutor();
   logger.info("任务执行器已启动");
 
-  // 5. 启动 HTTP 服务
-  app.listen(PORT, () => {
+  // 5. 创建 HTTP 服务器
+  const server = http.createServer(app);
+
+  // 6. 初始化 WebSocket 服务（服务端模式）或连接主服务器（客户端模式）
+  const clientModeEnabled = isRemoteClientEnabled();
+  const remoteProxyKey = getRemoteProxyKey();
+
+  if (clientModeEnabled) {
+    // 客户端模式：连接到主服务器
+    const serverUrl = getRemoteClientServerUrl();
+    if (serverUrl) {
+      logger.info("以客户端模式启动，连接主服务器...");
+      initWebSocketClient(app);
+    } else {
+      logger.warn("客户端模式已启用但未配置服务器地址 (REMOTE_CLIENT_SERVER_URL)");
+    }
+  } else if (remoteProxyKey) {
+    // 服务端模式：接受远程客户端连接
+    initWebSocketServer(server);
+    logger.info("远程代理 WebSocket 服务已启用（服务端模式）");
+  } else {
+    logger.debug("远程代理未配置，WebSocket 服务未启用");
+  }
+
+  // 7. 启动 HTTP 服务
+  server.listen(PORT, () => {
     logger.info(`HTTP 服务已启动，端口: ${PORT}`);
   });
 };

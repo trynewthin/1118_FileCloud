@@ -19,6 +19,7 @@ import {
   LoginPage,
   RegisterPage,
   TestPlaygroundPage,
+  RemoteBrowserPage,
 } from "@/pages";
 
 export function AppRouter() {
@@ -79,6 +80,7 @@ function AuthGate() {
         <Route path="/settings/ai" element={<AiSettingsPage />} />
         <Route path="/settings/ai/models" element={<AiModelManagementPage />} />
         <Route path="/settings/account" element={<AccountPage />} />
+        <Route path="/remote/:clientId" element={<RemoteBrowserPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
