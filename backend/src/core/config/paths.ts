@@ -55,3 +55,9 @@ export const getBackgroundsStorageDir = (): string => {
   ensureDirExists(dir);
   return dir;
 };
+
+// 是否允许用户注册
+export const isRegisterAllowed = (): boolean => {
+  const env = process.env.ALLOW_REGISTER;
+  return env?.toLowerCase() === "true";
+};

@@ -8,7 +8,19 @@ export function SettingsPage() {
 
   return (
     <PageContainer title="系统设置" scroll scrollFullBleed>
+      {/* 账户设置 */}
       <div className="mt-2">
+        <SettingsGroup title="账户">
+          <SettingsItemCard
+            title="账户管理"
+            description="查看个人信息、修改密码、用户管理（管理员）。"
+            onClick={() => navigate("/settings/account")}
+          />
+        </SettingsGroup>
+      </div>
+
+      {/* 外观设置 */}
+      <div className="mt-8">
         <SettingsGroup title="外观与主题">
           <SettingsItemCard
             title="主题与背景"

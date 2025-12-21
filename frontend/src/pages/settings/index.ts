@@ -7,3 +7,4 @@ export { AiSettingsPage } from "./AiSettingsPage";
 export { AiModelManagementPage } from "./AiModelManagementPage";
 export { TasksPage } from "./TasksPage";
 export { ActivityLogsPage } from "./ActivityLogsPage";
+export { AccountPage } from "./AccountPage";

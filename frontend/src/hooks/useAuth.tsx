@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 import type { AuthUser } from "@/lib/api/auth";
-import { getMe, initAdmin, login } from "@/lib/api/auth";
+import { getMe, loginWithPassword, loginWithSecret, register } from "@/lib/api/auth";
 import { setAuthToken, getAuthToken } from "@/lib/api/client";
 
 interface AuthState {
@@ -10,8 +10,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  loginWithSecret: (secret: string) => Promise<void>;
-  initAdminWithSecret: (secret: string) => Promise<void>;
+  loginByPassword: (username: string, password: string) => Promise<void>;
+  loginBySecret: (secret: string) => Promise<void>;
+  registerUser: (username: string, password: string) => Promise<void>;
   refreshMe: () => Promise<void>;
   logout: () => void;
 }
@@ -44,15 +45,22 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     bootstrap();
   }, []);
 
-  const loginWithSecret = useCallback(async (secret: string) => {
-    const res = await login(secret);
+  const loginByPassword = useCallback(async (username: string, password: string) => {
+    const res = await loginWithPassword(username, password);
     setAuthToken(res.token);
     window.localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
     setState({ user: res.user, loading: false });
   }, []);
 
-  const initAdminWithSecret = useCallback(async (secret: string) => {
-    const res = await initAdmin(secret);
+  const loginBySecret = useCallback(async (secret: string) => {
+    const res = await loginWithSecret(secret);
+    setAuthToken(res.token);
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
+    setState({ user: res.user, loading: false });
+  }, []);
+
+  const registerUser = useCallback(async (username: string, password: string) => {
+    const res = await register(username, password);
     setAuthToken(res.token);
     window.localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
     setState({ user: res.user, loading: false });
@@ -76,8 +84,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ ...state, loginWithSecret, initAdminWithSecret, refreshMe, logout }),
-    [state, loginWithSecret, initAdminWithSecret, refreshMe, logout],
+    () => ({ ...state, loginByPassword, loginBySecret, registerUser, refreshMe, logout }),
+    [state, loginByPassword, loginBySecret, registerUser, refreshMe, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

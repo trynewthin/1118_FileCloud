@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { apiGetInitStatus } from "@/lib/api/init";
+import { apiGetRegisterStatus } from "@/lib/api/init";
 import { useAuth } from "@/hooks/useAuth";
 import {
   RootLayout,
@@ -16,49 +15,34 @@ import {
   ActivityLogsPage,
   AiSettingsPage,
   AiModelManagementPage,
-  InitPage,
+  AccountPage,
   LoginPage,
+  RegisterPage,
   TestPlaygroundPage,
 } from "@/pages";
 
 export function AppRouter() {
-  return <InitGate />;
+  return <AuthGate />;
 }
 
-function InitGate() {
-  const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
-
+// 注册状态上下文（供登录页判断是否显示注册入口）
+export const useRegisterAllowed = () => {
+  const [allowed, setAllowed] = useState<boolean>(false);
+  
   useEffect(() => {
-    const checkInit = async () => {
-      try {
-        setError(null);
-        const res = await apiGetInitStatus();
-        setInitialized(res.initialized);
-      } catch (err: any) {
-        setError(err?.response?.data?.message ?? "初始化状态查询失败");
-      }
-    };
-    checkInit();
+    apiGetRegisterStatus()
+      .then((res) => setAllowed(res.allowed))
+      .catch(() => setAllowed(false));
   }, []);
+  
+  return allowed;
+};
 
-  // 错误时显示 toast
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
-  }, [error]);
+function AuthGate() {
+  const { user, loading: authLoading } = useAuth();
+  const registerAllowed = useRegisterAllowed();
 
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        加载失败，请刷新页面重试
-      </div>
-    );
-  }
-
-  if (initialized === null || authLoading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
         Loading...
@@ -66,27 +50,18 @@ function InitGate() {
     );
   }
 
-  // 1. 未初始化 -> 强制去 Init
-  if (!initialized) {
-    return (
-      <Routes>
-        <Route path="/init" element={<InitPage />} />
-        <Route path="*" element={<Navigate to="/init" replace />} />
-      </Routes>
-    );
-  }
-
-  // 2. 已初始化但未登录 -> 强制去 Login
+  // 未登录 -> 显示登录/注册页
   if (!user) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage registerAllowed={registerAllowed} />} />
+        {registerAllowed && <Route path="/register" element={<RegisterPage />} />}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
-  // 3. 已登录 -> 正常路由
+  // 已登录 -> 正常路由
   return (
     <Routes>
       <Route element={<RootLayout />}>
@@ -103,6 +78,7 @@ function InitGate() {
         <Route path="/settings/logs" element={<ActivityLogsPage />} />
         <Route path="/settings/ai" element={<AiSettingsPage />} />
         <Route path="/settings/ai/models" element={<AiModelManagementPage />} />
+        <Route path="/settings/account" element={<AccountPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 
-export const apiGetInitStatus = async (): Promise<{ initialized: boolean }> => {
-  return apiClient.get<{ initialized: boolean }>("/auth/init-status");
+// 查询是否允许注册
+export const apiGetRegisterStatus = async (): Promise<{ allowed: boolean }> => {
+  return apiClient.get<{ allowed: boolean }>("/auth/register-status");
 };
