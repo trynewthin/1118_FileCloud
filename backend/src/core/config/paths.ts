@@ -61,3 +61,20 @@ export const isRegisterAllowed = (): boolean => {
   const env = process.env.ALLOW_REGISTER;
   return env?.toLowerCase() === "true";
 };
+
+// 获取服务器目录访问密钥（空字符串表示不需要密钥）
+export const getFsAccessKey = (): string => {
+  return process.env.FS_ACCESS_KEY?.trim() || "";
+};
+
+// 获取可浏览的目录白名单（空数组表示不限制）
+export const getFsAllowedPaths = (): string[] => {
+  const env = process.env.FS_ALLOWED_PATHS?.trim() || "";
+  if (!env) return [];
+  
+  // 支持逗号分隔的多个路径
+  return env
+    .split(",")
+    .map((p) => path.resolve(p.trim()))
+    .filter((p) => p.length > 0);
+};

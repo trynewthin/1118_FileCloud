@@ -7,6 +7,7 @@ import { TASK_TYPE_FILE_INDEX_LIBRARY } from "../files/indexTasks.ts";
 
 export interface FileLibrary {
   id: number;
+  user_id: number;
   root_path: string;
   display_name: string;
   capacity_limit_bytes: number | null;
@@ -41,6 +42,7 @@ const calculateDirectorySize = (dir: string): number => {
 const mapRowToFileLibrary = (row: any): FileLibrary => {
   return {
     id: row.id,
+    user_id: row.user_id,
     root_path: row.root_path,
     display_name: row.display_name,
     capacity_limit_bytes: row.capacity_limit_bytes ?? null,
@@ -54,11 +56,22 @@ const mapRowToFileLibrary = (row: any): FileLibrary => {
   };
 };
 
-// 查询所有文件库
-export const listFileLibraries = (): FileLibrary[] => {
+// 查询用户的文件库列表
+export const listFileLibraries = (userId: number): FileLibrary[] => {
   const rows = db
     .prepare(
-      "SELECT id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at FROM file_libraries ORDER BY id ASC",
+      "SELECT id, user_id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at FROM file_libraries WHERE user_id = ? ORDER BY id ASC",
+    )
+    .all(userId) as any[];
+
+  return rows.map(mapRowToFileLibrary);
+};
+
+// 查询所有文件库（管理员用）
+export const listAllFileLibraries = (): FileLibrary[] => {
+  const rows = db
+    .prepare(
+      "SELECT id, user_id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at FROM file_libraries ORDER BY id ASC",
     )
     .all() as any[];
 
@@ -69,7 +82,7 @@ export const listFileLibraries = (): FileLibrary[] => {
 export const getFileLibraryById = (id: number): FileLibrary | null => {
   const row = db
     .prepare(
-      "SELECT id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at FROM file_libraries WHERE id = ?",
+      "SELECT id, user_id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at FROM file_libraries WHERE id = ?",
     )
     .get(id) as any | undefined;
 
@@ -78,6 +91,7 @@ export const getFileLibraryById = (id: number): FileLibrary | null => {
 };
 
 interface CreateFileLibraryInput {
+  userId: number;
   rootPath: string;
   displayName?: string;
   capacityLimitBytes?: number | null;
@@ -91,7 +105,7 @@ export const createFileLibrary = (input: CreateFileLibraryInput): FileLibrary =>
   const now = new Date().toISOString();
 
   const insert = db.prepare(
-    "INSERT INTO file_libraries(root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO file_libraries(user_id, root_path, display_name, capacity_limit_bytes, current_size_bytes, is_enabled, is_online_cached, last_scanned_at, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   );
 
   const displayName = input.displayName?.trim() || path.basename(rootPath);
@@ -101,6 +115,7 @@ export const createFileLibrary = (input: CreateFileLibraryInput): FileLibrary =>
       : null;
 
   const result = insert.run(
+    input.userId,
     rootPath,
     displayName,
     capacityLimit,

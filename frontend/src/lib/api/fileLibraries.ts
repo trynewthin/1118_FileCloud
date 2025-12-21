@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 
 export interface FileLibrary {
   id: number;
+  user_id: number;
   root_path: string;
   display_name: string;
   capacity_limit_bytes: number | null;

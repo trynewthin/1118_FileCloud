@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Folder, ChevronRight, Home, XIcon, Check } from "lucide-react";
+import { Folder, ChevronRight, Home, XIcon, Check, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
@@ -52,6 +54,12 @@ export function FolderPickerDialog({
   const [initialized, setInitialized] = useState(false);
   const systemBreadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // 密钥验证状态（仅 system 模式）
+  const [requireKey, setRequireKey] = useState<boolean | null>(null); // null = 还未检查
+  const [fsAccessKey, setFsAccessKey] = useState("");
+  const [keyVerified, setKeyVerified] = useState(false);
+  const [keyError, setKeyError] = useState("");
+
   const systemBreadcrumbs = useMemo(() => {
     if (!currentPath) return [] as { label: string; path: string }[];
     const sep = currentPath.includes("\\") ? "\\" : "/";
@@ -69,19 +77,40 @@ export function FolderPickerDialog({
     return parts;
   }, [currentPath]);
 
+  // 检查是否需要密钥
+  const checkRequireKey = useCallback(async () => {
+    if (mode !== "system") return;
+    try {
+      const res = await apiClient.get<{ required: boolean }>("/system/fs/require-key");
+      setRequireKey(res.required);
+      if (!res.required) {
+        setKeyVerified(true);
+      }
+    } catch {
+      setRequireKey(false);
+      setKeyVerified(true);
+    }
+  }, [mode]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       if (mode === "system") {
         const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : "";
+        const headers: Record<string, string> = {};
+        if (fsAccessKey) {
+          headers["x-fs-access-key"] = fsAccessKey;
+        }
         const res = await apiClient.get<{ items: any[], separator: string, currentPath: string }>(
-          `/system/fs/list${query}`
+          `/system/fs/list${query}`,
+          { headers }
         );
         setItems(res.items.filter((i: any) => i.is_directory).map((i: any) => ({
           id: i.path,
           name: i.name,
           path: i.path
         })));
+        setKeyError("");
         // System mode breadcrumbs handled simply by splitting path or just showing current
       } else {
         if (!libraryId) return;
@@ -107,21 +136,29 @@ export function FolderPickerDialog({
           setItems(dirs);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (err?.message?.includes("密钥")) {
+        setKeyError(err.message);
+        setKeyVerified(false);
+      }
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [mode, currentPath, currentParentId, libraryId]);
+  }, [mode, currentPath, currentParentId, libraryId, fsAccessKey]);
 
   // 初始化：当对话框打开时，设置初始目录
   useEffect(() => {
     if (open && !initialized) {
+      if (mode === "system") {
+        // 检查是否需要密钥
+        checkRequireKey();
+      }
       if (mode === "library" && initialParentId) {
         // 需要加载初始目录的祖先路径来构建面包屑
         loadInitialBreadcrumbs(initialParentId);
-      } else {
+      } else if (mode === "library") {
         setCurrentParentId(null);
         setBreadcrumbs([]);
         load();
@@ -131,8 +168,19 @@ export function FolderPickerDialog({
     }
     if (!open) {
       setInitialized(false);
+      setRequireKey(null);
+      setKeyVerified(false);
+      setFsAccessKey("");
+      setKeyError("");
     }
-  }, [open, initialized, mode, initialParentId]);
+  }, [open, initialized, mode, initialParentId, checkRequireKey]);
+
+  // 当密钥验证通过后加载目录
+  useEffect(() => {
+    if (open && initialized && mode === "system" && keyVerified) {
+      load();
+    }
+  }, [keyVerified]);
 
   // 加载初始目录的祖先路径
   const loadInitialBreadcrumbs = async (parentId: string) => {
@@ -172,10 +220,19 @@ export function FolderPickerDialog({
 
   // 当 currentParentId 或 currentPath 变化时重新加载
   useEffect(() => {
-    if (open && initialized) {
+    if (open && initialized && (mode === "library" || keyVerified)) {
       load();
     }
   }, [currentParentId, currentPath]);
+
+  // 密钥验证提交
+  const handleKeySubmit = () => {
+    if (!fsAccessKey.trim()) {
+      setKeyError("请输入访问密钥");
+      return;
+    }
+    setKeyVerified(true);
+  };
 
   const handleEnter = (item: FolderItem) => {
     if (mode === "system") {
@@ -237,7 +294,34 @@ export function FolderPickerDialog({
           </DialogHeader>
         </GlassCard>
 
-        {mode === "system" ? (
+        {/* System 模式密钥验证 */}
+        {mode === "system" && requireKey === true && !keyVerified && (
+          <GlassCard variant="lite" className="flex-1 p-6">
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <Lock className="h-12 w-12 text-muted-foreground" />
+              <div className="text-center">
+                <div className="font-medium">访问服务器目录需要密钥</div>
+                <div className="text-sm text-muted-foreground mt-1">请输入管理员提供的访问密钥</div>
+              </div>
+              <div className="w-full max-w-[280px] space-y-3">
+                <Input
+                  type="password"
+                  placeholder="输入访问密钥"
+                  value={fsAccessKey}
+                  onChange={(e) => setFsAccessKey(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleKeySubmit()}
+                />
+                {keyError && <div className="text-sm text-destructive">{keyError}</div>}
+                <Button className="w-full" onClick={handleKeySubmit}>
+                  验证
+                </Button>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* System 模式正常显示 */}
+        {mode === "system" && (requireKey === false || keyVerified) && (
           <GlassCard variant="lite" className="px-3 py-2">
           <div className="flex items-center gap-2 text-sm">
             <GlassIconButton
@@ -279,7 +363,10 @@ export function FolderPickerDialog({
             </div>
           </div>
           </GlassCard>
-        ) : (
+        )}
+
+        {/* Library 模式 */}
+        {mode === "library" && (
           <GlassCard variant="lite" className="px-3 py-2">
           <div className="flex items-center gap-2 text-sm">
             <GlassIconButton
@@ -297,6 +384,8 @@ export function FolderPickerDialog({
           </GlassCard>
         )}
 
+        {/* 目录列表（仅在验证通过或不需要验证时显示） */}
+        {(mode === "library" || requireKey === false || keyVerified) && (
         <GlassCard variant="lite" className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto py-2">
           {loading ? (
@@ -330,6 +419,7 @@ export function FolderPickerDialog({
           )}
         </div>
         </GlassCard>
+        )}
 
         <DialogFooter
           leftButtonIcon={<XIcon className="h-4 w-4" />}

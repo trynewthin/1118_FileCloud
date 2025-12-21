@@ -2,6 +2,7 @@
 export const librarySchema = `
 CREATE TABLE IF NOT EXISTS file_libraries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
   root_path TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
   capacity_limit_bytes INTEGER,
@@ -11,6 +12,9 @@ CREATE TABLE IF NOT EXISTS file_libraries (
   last_scanned_at TEXT,
   last_online_check_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_file_libraries_user_id ON file_libraries(user_id);
 `;
