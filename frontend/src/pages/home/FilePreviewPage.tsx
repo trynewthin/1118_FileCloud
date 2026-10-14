@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
-import { Copy, Move, Trash2, Download, Tag } from "lucide-react";
+import { Copy, Move, Trash2, Download, Tag, Pencil } from "lucide-react";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { getEntry, type FileEntry } from "@/lib/api/files";
 import { PreviewRenderer } from "@/components/preview/PreviewRenderer";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassButtonGroup } from "@/components/common/button/GlassButtonGroup";
-import { DeleteDialog, MoveCopyDialog } from "@/components/filebrowsepage";
+import { DeleteDialog, MoveCopyDialog, RenameDialog } from "@/components/filebrowsepage";
 import { EntryTagDialog, TagInfoCard } from "@/components/tag";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 
@@ -21,7 +21,7 @@ export function FilePreviewPage() {
 
   // 操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
-    type: "delete" | "move" | "copy" | null;
+    type: "delete" | "move" | "copy" | "rename" | null;
   }>({ type: null });
 
   // 标签对话框状态
@@ -30,7 +30,7 @@ export function FilePreviewPage() {
   const [tagRefreshKey, setTagRefreshKey] = useState(0);
 
   // 使用 useFileBrowser 获取操作方法
-  const { remove, move, copy } = useFileBrowser({ 
+  const { remove, move, copy, rename } = useFileBrowser({ 
     libraryId: entry?.library_id ?? null 
   });
 
@@ -66,6 +66,12 @@ export function FilePreviewPage() {
     await remove(entryToDelete.id);
     // 删除成功后返回文件浏览页
     navigate(`/files?libraryId=${entryToDelete.library_id}${entryToDelete.parent_id ? `&parentId=${entryToDelete.parent_id}` : ''}`);
+  };
+
+  // 处理重命名
+  const handleRenameSubmit = async (entryToRename: FileEntry, newName: string, password?: string) => {
+    await rename(entryToRename.id, newName, password);
+    setEntry({ ...entryToRename, original_name: newName });
   };
 
   // 处理移动/复制
@@ -119,6 +125,10 @@ export function FilePreviewPage() {
     <GlassButtonGroup glassVariant="lite">
       <GlassIconButton glassVariant="lite" onClick={handleDownload} title="下载">
         <Download className="h-4 w-4" />
+      </GlassIconButton>
+
+      <GlassIconButton glassVariant="lite" onClick={() => setActionDialog({ type: "rename" })} title="重命名">
+        <Pencil className="h-4 w-4" />
       </GlassIconButton>
 
       <GlassIconButton glassVariant="lite" onClick={() => setActionDialog({ type: "copy" })} title="复制">
@@ -178,6 +188,16 @@ export function FilePreviewPage() {
           open={true}
           onOpenChange={(open) => !open && setActionDialog({ type: null })}
           onSubmit={handleMoveCopySubmit}
+        />
+      )}
+
+      {/* 重命名对话框 */}
+      {actionDialog.type === "rename" && entry && (
+        <RenameDialog
+          entry={entry}
+          open={true}
+          onOpenChange={(open) => !open && setActionDialog({ type: null })}
+          onSubmit={handleRenameSubmit}
         />
       )}
 
