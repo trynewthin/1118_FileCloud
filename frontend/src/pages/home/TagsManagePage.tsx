@@ -14,22 +14,21 @@ import type { FileTag } from "@/lib/api/tags";
 export const TagsManagePage = () => {
   const { tags, loading, error, create, update, remove } = useTagList();
 
-  const [showAddChild, setShowAddChild] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-
-  useEffect(() => {
+  const [initialVisibility] = useState(() => {
     try {
-      const raw = localStorage.getItem("tags_manage_action_visibility");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { showAddChild?: boolean; showEdit?: boolean; showDelete?: boolean };
-      if (typeof parsed.showAddChild === "boolean") setShowAddChild(parsed.showAddChild);
-      if (typeof parsed.showEdit === "boolean") setShowEdit(parsed.showEdit);
-      if (typeof parsed.showDelete === "boolean") setShowDelete(parsed.showDelete);
+      const parsed = JSON.parse(localStorage.getItem("tags_manage_action_visibility") || "{}");
+      return {
+        showAddChild: parsed?.showAddChild === true,
+        showEdit: parsed?.showEdit === true,
+        showDelete: parsed?.showDelete === true,
+      };
     } catch {
-      // ignore
+      return { showAddChild: false, showEdit: false, showDelete: false };
     }
-  }, []);
+  });
+  const [showAddChild, setShowAddChild] = useState(initialVisibility.showAddChild);
+  const [showEdit, setShowEdit] = useState(initialVisibility.showEdit);
+  const [showDelete, setShowDelete] = useState(initialVisibility.showDelete);
 
   useEffect(() => {
     try {

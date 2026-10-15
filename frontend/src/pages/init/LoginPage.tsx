@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
@@ -42,8 +43,8 @@ export function LoginPage({ registerAllowed = false }: LoginPageProps) {
         await loginBySecret(secret);
       }
       navigate("/files");
-    } catch (err: any) {
-      setError(err?.message || "登录失败");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "登录失败"));
     }
   };
 

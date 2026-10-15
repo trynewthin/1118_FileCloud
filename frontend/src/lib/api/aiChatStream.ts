@@ -52,7 +52,7 @@ export interface ToolStartEvent extends StreamEventBase {
   event: "tool_start";
   data: {
     toolName: string;
-    args: Record<string, any>;
+    args: Record<string, unknown>;
     round: number;
     toolIndex: number;
   };
@@ -80,12 +80,12 @@ export interface FinalEvent extends StreamEventBase {
     content: string;
     toolResults: Array<{
       toolName: string;
-      args: Record<string, any>;
-      result: any;
+      args: Record<string, unknown>;
+      result: { type: string; [key: string]: unknown };
       pendingAction?: {
         toolName: string;
         description: string;
-        args: Record<string, any>;
+        args: Record<string, unknown>;
       };
       success: boolean;
       error?: string;

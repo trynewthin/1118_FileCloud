@@ -123,7 +123,7 @@ export function AiChatPage() {
   };
 
   // 工具确认回调
-  const handleToolConfirm = async (action: { toolName: string; args: Record<string, any> }) => {
+  const handleToolConfirm = async (action: { toolName: string; args: Record<string, unknown> }) => {
     try {
       await executeTool(action.toolName, action.args);
     } catch {
@@ -131,7 +131,7 @@ export function AiChatPage() {
     }
   };
 
-  const handleToolCancel = (_action: { toolName: string; args: Record<string, any> }) => {
+  const handleToolCancel = () => {
     // 取消操作，无需处理
   };
 

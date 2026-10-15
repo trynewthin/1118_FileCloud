@@ -9,3 +9,5 @@ export { EntryTagDialog } from "./EntryTagDialog";
 export { BatchTagDialog } from "./BatchTagDialog";
 export { TagInfoCard } from "./TagInfoCard";
 export { TagsBrowseView } from "./TagsBrowseView";
+
+export { PRESET_COLORS } from "./presetColors";

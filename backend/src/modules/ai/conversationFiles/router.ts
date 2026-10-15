@@ -47,7 +47,7 @@ router.post(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "未登录" });
     }
@@ -61,6 +61,7 @@ router.post(
       purpose: string;
     }> = [];
 
+    const filePromises: Promise<void>[] = [];
     try {
       const busboy = Busboy({ headers: req.headers });
 
@@ -104,32 +105,34 @@ router.post(
             return;
           }
 
-          const buffer = Buffer.concat(chunks);
-
-          try {
-            const result = uploadFile({
-              userId,
-              conversationId,
-              originalName: filename,
-              mimeType,
-              buffer,
-            });
-
-            uploads.push({
-              id: result.file.id,
-              originalName: result.file.original_name,
-              mimeType: result.file.mime_type,
-              sizeBytes: result.file.size_bytes,
-              purpose: result.file.purpose,
-            });
-          } catch (err: any) {
-            logger.error(`保存文件失败: ${err.message}`);
-          }
+          // 解析器 finish 不会等待异步存储，收集 Promise 后再发送响应
+          const pending = (async () => {
+            try {
+              const result = await uploadFile({
+                userId,
+                conversationId,
+                originalName: filename,
+                mimeType,
+                buffer: Buffer.concat(chunks),
+              });
+              uploads.push({
+                id: result.file.id,
+                originalName: result.file.original_name,
+                mimeType: result.file.mime_type,
+                sizeBytes: result.file.size_bytes,
+                purpose: result.file.purpose,
+              });
+            } catch (err: any) {
+              logger.error(`保存文件失败: ${err.message}`);
+            }
+          })();
+          filePromises.push(pending);
         });
       });
 
-      busboy.on("finish", () => {
-        res.json({ uploads });
+      busboy.on("finish", async () => {
+        await Promise.all(filePromises);
+        if (!res.headersSent && !res.destroyed) res.json({ uploads });
       });
 
       busboy.on("error", (err) => {
@@ -161,7 +164,7 @@ router.get(
   },
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "未登录" });
     }
@@ -204,7 +207,7 @@ router.get(
   },
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "未登录" });
     }
@@ -249,7 +252,12 @@ router.get(
       res.setHeader("Cache-Control", "private, max-age=31536000");
 
       // 流式输出
-      const stream = getFileReadStream(file);
+      const stream = await getFileReadStream(file);
+      stream.on("error", (error) => {
+        logger.error("读取会话文件失败", error);
+        if (!res.headersSent) res.status(500).json({ message: "获取文件失败" });
+        else res.destroy();
+      });
       stream.pipe(res);
     } catch (err: any) {
       logger.error(`获取文件内容失败: ${err.message}`);
@@ -266,7 +274,7 @@ router.get(
   "/conversations/:conversationId/files",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "未登录" });
     }
@@ -305,7 +313,7 @@ router.post(
   "/batch",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "未登录" });
     }

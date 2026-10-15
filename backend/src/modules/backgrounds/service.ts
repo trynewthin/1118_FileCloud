@@ -5,7 +5,7 @@
  * 图片存储在 database/backgrounds 目录下
  */
 
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from "fs";
+import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "path";
 import { createLogger } from "../../core/logger/index.ts";
 import { getBackgroundsStorageDir } from "../../core/config/paths.ts";
@@ -28,11 +28,10 @@ export interface BackgroundImage {
 /**
  * 获取背景图片存储目录的绝对路径
  */
-export function getBackgroundsDir(): string {
+export async function getBackgroundsDir(): Promise<string> {
   const dir = getBackgroundsStorageDir();
   // 确保目录存在
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+  if (await mkdir(dir, { recursive: true })) {
     logger.info(`创建背景图片目录: ${dir}`);
   }
   return dir;
@@ -66,7 +65,7 @@ export function isAllowedSize(size: number): boolean {
 export async function saveBackgroundImage(
   file: { originalname: string; buffer: Buffer; size: number }
 ): Promise<BackgroundImage> {
-  const dir = getBackgroundsDir();
+  const dir = await getBackgroundsDir();
   const id = generateId();
   const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf("."));
   const filename = `${id}${ext}`;
@@ -88,9 +87,9 @@ export async function saveBackgroundImage(
 /**
  * 获取所有背景图片列表
  */
-export function listBackgroundImages(): BackgroundImage[] {
-  const dir = getBackgroundsDir();
-  const files = readdirSync(dir);
+export async function listBackgroundImages(): Promise<BackgroundImage[]> {
+  const dir = await getBackgroundsDir();
+  const files = await readdir(dir);
 
   const images: BackgroundImage[] = [];
 
@@ -99,7 +98,7 @@ export function listBackgroundImages(): BackgroundImage[] {
     if (!isAllowedExtension(filename)) continue;
 
     const filepath = join(dir, filename);
-    const stat = statSync(filepath);
+    const fileStat = await stat(filepath);
 
     // 从文件名提取 ID（去掉扩展名）
     const id = filename.slice(0, filename.lastIndexOf("."));
@@ -107,8 +106,8 @@ export function listBackgroundImages(): BackgroundImage[] {
     images.push({
       id,
       name: filename,
-      size: stat.size,
-      createdAt: stat.birthtimeMs,
+      size: fileStat.size,
+      createdAt: fileStat.birthtimeMs,
     });
   }
 
@@ -121,9 +120,9 @@ export function listBackgroundImages(): BackgroundImage[] {
 /**
  * 根据 ID 获取背景图片文件路径
  */
-export function getBackgroundImagePath(id: string): string | null {
-  const dir = getBackgroundsDir();
-  const files = readdirSync(dir);
+export async function getBackgroundImagePath(id: string): Promise<string | null> {
+  const dir = await getBackgroundsDir();
+  const files = await readdir(dir);
 
   for (const filename of files) {
     if (filename.startsWith(id + ".")) {
@@ -137,14 +136,14 @@ export function getBackgroundImagePath(id: string): string | null {
 /**
  * 删除背景图片
  */
-export function deleteBackgroundImage(id: string): boolean {
-  const filepath = getBackgroundImagePath(id);
+export async function deleteBackgroundImage(id: string): Promise<boolean> {
+  const filepath = await getBackgroundImagePath(id);
   if (!filepath) {
     return false;
   }
 
   try {
-    unlinkSync(filepath);
+    await unlink(filepath);
     logger.info(`删除背景图片: ${id}`);
     return true;
   } catch (err) {

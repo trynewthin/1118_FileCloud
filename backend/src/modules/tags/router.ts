@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
-import { PermissionLevel } from "../../core/auth/roles.ts";
+import { PermissionLevel, type AuthUser } from "../../core/auth/roles.ts";
+import { AccessError, assertEntryAccess, listAccessibleLibraries } from "../../core/auth/libraryAccess.ts";
 import {
   getTagByIdForUser,
   listAllTagsWithStats,
@@ -20,6 +21,25 @@ import {
 
 const router = express.Router();
 
+const assertOwnTag = (user: AuthUser | undefined, tagId: number): void => {
+  if (!user) throw new AccessError("未登录", 401);
+  if (!getTagByIdForUser(tagId, user.id)) throw new AccessError("标签不存在", 404);
+};
+
+const isEntryAccessible = async (user: AuthUser | undefined, entryId: string): Promise<boolean> => {
+  try {
+    (await assertEntryAccess(user, entryId));
+    return true;
+  } catch (error) {
+    if (error instanceof AccessError) return false;
+    throw error;
+  }
+};
+
+const sendTagError = (res: express.Response, error: unknown, fallback: string) =>
+  res.status(error instanceof AccessError ? error.status : 400)
+    .json({ message: error instanceof Error ? error.message : fallback });
+
 // ============================================================================
 // 标签 CRUD
 // ============================================================================
@@ -29,12 +49,12 @@ router.get(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ message: "未登录" });
     }
-    const tags = listAllTagsWithStats(userId);
+    const tags = listAllTagsWithStats(userId, (await listAccessibleLibraries(req.user)).map((library) => library.id));
     return res.json({ tags });
   }
 );
@@ -195,14 +215,19 @@ router.get(
   "/entry/:entryId",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { entryId } = req.params;
     if (!entryId) {
       return res.status(400).json({ message: "文件 ID 不能为空" });
     }
     
-    const tags = getTagsForEntry(entryId);
-    return res.json({ tags });
+    try {
+      (await assertEntryAccess(req.user, entryId));
+      const tags = getTagsForEntry(entryId).filter((association) => association.tag.user_id === req.user!.id);
+      return res.json({ tags });
+    } catch (error) {
+      return sendTagError(res, error, "读取标签失败");
+    }
   }
 );
 
@@ -211,15 +236,23 @@ router.get(
   "/:id/entries",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
-    const { includeChildren, onlyPrimary } = req.query as { includeChildren?: string; onlyPrimary?: string };
-    const entryIds = getEntriesForTag(id, includeChildren === "true", onlyPrimary === "true");
-    return res.json({ entryIds });
+    try {
+      assertOwnTag(req.user, id);
+      const { includeChildren, onlyPrimary } = req.query as { includeChildren?: string; onlyPrimary?: string };
+      const entryIds: string[] = [];
+      for (const entryId of getEntriesForTag(id, includeChildren === "true", onlyPrimary === "true")) {
+        if (await isEntryAccessible(req.user, entryId)) entryIds.push(entryId);
+      }
+      return res.json({ entryIds });
+    } catch (error) {
+      return sendTagError(res, error, "读取文件标签失败");
+    }
   }
 );
 
@@ -228,7 +261,7 @@ router.post(
   "/entry/:entryId/add",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { entryId } = req.params;
     const { tagId, isPrimary } = req.body as { tagId?: number; isPrimary?: boolean };
     
@@ -236,15 +269,17 @@ router.post(
       return res.status(400).json({ message: "文件 ID 不能为空" });
     }
     
-    if (!tagId || typeof tagId !== "number" || tagId <= 0) {
+    if (typeof tagId !== "number" || !Number.isSafeInteger(tagId) || tagId <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
     try {
-      const entry = addTagToEntry(entryId, tagId, isPrimary ?? false);
+      assertOwnTag(req.user, tagId);
+      (await assertEntryAccess(req.user, entryId));
+      const entry = addTagToEntry(entryId, tagId, isPrimary === true);
       return res.status(201).json({ entry });
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || "添加标签失败" });
+      return sendTagError(res, err, "添加标签失败");
     }
   }
 );
@@ -254,7 +289,7 @@ router.post(
   "/entry/:entryId/remove",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { entryId } = req.params;
     const { tagId } = req.body as { tagId?: number };
     
@@ -262,12 +297,18 @@ router.post(
       return res.status(400).json({ message: "文件 ID 不能为空" });
     }
     
-    if (!tagId || typeof tagId !== "number" || tagId <= 0) {
+    if (typeof tagId !== "number" || !Number.isSafeInteger(tagId) || tagId <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
-    removeTagFromEntry(entryId, tagId);
-    return res.status(204).send();
+    try {
+      assertOwnTag(req.user, tagId);
+      (await assertEntryAccess(req.user, entryId));
+      removeTagFromEntry(entryId, tagId);
+      return res.status(204).send();
+    } catch (error) {
+      return sendTagError(res, error, "移除标签失败");
+    }
   }
 );
 
@@ -276,7 +317,7 @@ router.post(
   "/entry/:entryId/primary",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { entryId } = req.params;
     const { tagId } = req.body as { tagId?: number };
     
@@ -284,15 +325,17 @@ router.post(
       return res.status(400).json({ message: "文件 ID 不能为空" });
     }
     
-    if (!tagId || typeof tagId !== "number" || tagId <= 0) {
+    if (typeof tagId !== "number" || !Number.isSafeInteger(tagId) || tagId <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
     }
     
     try {
+      assertOwnTag(req.user, tagId);
+      (await assertEntryAccess(req.user, entryId));
       setPrimaryTag(entryId, tagId);
       return res.status(204).send();
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || "设置主标签失败" });
+      return sendTagError(res, err, "设置主标签失败");
     }
   }
 );
@@ -302,15 +345,20 @@ router.delete(
   "/entry/:entryId/primary",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { entryId } = req.params;
     
     if (!entryId) {
       return res.status(400).json({ message: "文件 ID 不能为空" });
     }
     
-    clearPrimaryTag(entryId);
-    return res.status(204).send();
+    try {
+      (await assertEntryAccess(req.user, entryId));
+      clearPrimaryTag(entryId, req.user!.id);
+      return res.status(204).send();
+    } catch (error) {
+      return sendTagError(res, error, "清除主标签失败");
+    }
   }
 );
 
@@ -319,7 +367,7 @@ router.post(
   "/:id/batch-add",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
@@ -327,12 +375,19 @@ router.post(
     
     const { entryIds } = req.body as { entryIds?: string[] };
     
-    if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
+    if (!Array.isArray(entryIds) || entryIds.length === 0 || entryIds.some((entryId) => typeof entryId !== "string" || !entryId)) {
       return res.status(400).json({ message: "文件 ID 列表不能为空" });
     }
     
-    addTagToEntries(entryIds, id);
-    return res.status(204).send();
+    try {
+      assertOwnTag(req.user, id);
+      // Validate the whole batch before changing any association.
+      for (const entryId of entryIds) (await assertEntryAccess(req.user, entryId));
+      addTagToEntries(entryIds, id);
+      return res.status(204).send();
+    } catch (error) {
+      return sendTagError(res, error, "添加标签失败");
+    }
   }
 );
 
@@ -341,7 +396,7 @@ router.post(
   "/:id/batch-remove",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const id = parseInt(req.params.id || "", 10);
     if (isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "标签 ID 不合法" });
@@ -349,12 +404,19 @@ router.post(
     
     const { entryIds } = req.body as { entryIds?: string[] };
     
-    if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
+    if (!Array.isArray(entryIds) || entryIds.length === 0 || entryIds.some((entryId) => typeof entryId !== "string" || !entryId)) {
       return res.status(400).json({ message: "文件 ID 列表不能为空" });
     }
     
-    removeTagFromEntries(entryIds, id);
-    return res.status(204).send();
+    try {
+      assertOwnTag(req.user, id);
+      // Validate the whole batch before changing any association.
+      for (const entryId of entryIds) (await assertEntryAccess(req.user, entryId));
+      removeTagFromEntries(entryIds, id);
+      return res.status(204).send();
+    } catch (error) {
+      return sendTagError(res, error, "移除标签失败");
+    }
   }
 );
 

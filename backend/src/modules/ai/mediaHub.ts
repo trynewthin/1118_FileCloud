@@ -11,8 +11,8 @@ export interface FileBase64Result {
 }
 
 // 读取会话文件为 Base64
-export const readConversationFileAsBase64 = (file: ConversationFile): FileBase64Result => {
-  const buffer = readFileAsBuffer(file.relative_path);
+export const readConversationFileAsBase64 = async (file: ConversationFile): Promise<FileBase64Result> => {
+  const buffer = await readFileAsBuffer(file.relative_path);
   const dataBase64 = buffer.toString("base64");
   const mimeType = file.mime_type || "application/octet-stream";
 
@@ -20,7 +20,7 @@ export const readConversationFileAsBase64 = (file: ConversationFile): FileBase64
 };
 
 // 根据 ID 读取会话文件为 Base64
-export const readConversationFileAsBase64ById = (id: number): FileBase64Result => {
+export const readConversationFileAsBase64ById = async (id: number): Promise<FileBase64Result> => {
   const file = getFileById(id);
   if (!file) {
     throw new Error("文件记录不存在");

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useAsyncData } from "./useAsyncData";
+import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import type { FileLibrary, FileLibraryStats } from "@/lib/api/fileLibraries";
 import {
@@ -11,11 +12,6 @@ import {
 } from "@/lib/api/fileLibraries";
 import { indexLibrary } from "@/lib/api/files";
 
-interface FileLibrariesState {
-  items: FileLibrary[];
-  loading: boolean;
-  error: string | null;
-}
 
 interface UseFileLibrariesOptions {
   /** 是否启用自动轮询，默认 true */
@@ -24,37 +20,17 @@ interface UseFileLibrariesOptions {
   refreshInterval?: number;
 }
 
+const fetchData = async () => {
+  const res = await listFileLibraries();
+  return { items: res.items };
+};
+
 // 管理文件库列表及相关操作的 hook
 export const useFileLibraries = (options?: UseFileLibrariesOptions) => {
   const { autoRefresh = true, refreshInterval = 5000 } = options ?? {};
   
-  const [state, setState] = useState<FileLibrariesState>({
-    items: [],
-    loading: true,
-    error: null,
-  });
+  const { state, load } = useAsyncData({ items: [] as FileLibrary[] }, fetchData, "加载文件库失败", true);
 
-  // 用于静默刷新，不显示 loading 状态
-  const isFirstLoad = useRef(true);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-    }
-    try {
-      const res = await listFileLibraries();
-      setState({ items: res.items, loading: false, error: null });
-      isFirstLoad.current = false;
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "加载文件库失败";
-      setState((prev) => ({ ...prev, loading: false, error: message }));
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    load();
-  }, [load]);
 
   // 自动轮询
   useEffect(() => {

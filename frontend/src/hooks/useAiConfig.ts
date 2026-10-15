@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useAsyncData } from "./useAsyncData";
+import { useCallback } from "react";
 import type {
   AiProvider,
   AiChatModel,
@@ -25,48 +26,16 @@ import {
   deleteAiChatPrompt,
 } from "@/lib/api/aiConfig";
 
-interface AiConfigState {
-  providers: AiProvider[];
-  models: AiChatModel[];
-  prompts: AiChatPrompt[];
-  loading: boolean;
-  error: string | null;
-}
+
+const fetchData = async () => {
+  const [providers, models, prompts] = await Promise.all([listAiProviders(), listAiChatModels(), listAiChatPrompts()]);
+  return { providers: providers.items, models: models.items, prompts: prompts.items };
+};
 
 // 管理 AI 供应商 / 模型 / 提示词 配置的 hook，仅负责数据加载与增删改，不涉及 UI
 export const useAiConfig = () => {
-  const [state, setState] = useState<AiConfigState>({
-    providers: [],
-    models: [],
-    prompts: [],
-    loading: true,
-    error: null,
-  });
+  const { state, load } = useAsyncData({ providers: [] as AiProvider[], models: [] as AiChatModel[], prompts: [] as AiChatPrompt[] }, fetchData, "加载 AI 配置失败", true);
 
-  const load = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      const [providersRes, modelsRes, promptsRes] = await Promise.all([
-        listAiProviders(),
-        listAiChatModels(),
-        listAiChatPrompts(),
-      ]);
-      setState({
-        providers: providersRes.items,
-        models: modelsRes.items,
-        prompts: promptsRes.items,
-        loading: false,
-        error: null,
-      });
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "加载 AI 配置失败";
-      setState((prev) => ({ ...prev, loading: false, error: message }));
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const createProviderAction = useCallback(
     async (input: CreateAiProviderRequest) => {

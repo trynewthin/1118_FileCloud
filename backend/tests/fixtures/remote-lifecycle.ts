@@ -1,0 +1,91 @@
+import assert from "node:assert/strict";
+import { createTrackedHttpServer } from "../../src/core/http/serverLifecycle.ts";
+import { once } from "node:events";
+import WebSocket, { WebSocketServer } from "ws";
+import type { Application } from "express";
+import { initWebSocketClient, disconnectClient } from "../../src/modules/remoteProxy/wsClient.ts";
+import { initWebSocketServer, stopWebSocketServer, getConnectedClients, sendRequest } from "../../src/modules/remoteProxy/wsServer.ts";
+const deadline = setTimeout(() => { console.error("Remote fixture timed out"); process.exit(1); }, 12000);
+const waitFor = async (condition: () => boolean) => {
+  const until = Date.now() + 2000;
+  while (!condition()) { assert.ok(Date.now() < until, "Condition timeout"); await Bun.sleep(5); }
+};
+
+// A loopback peer simulates forwarded requests. No real application/data/database.
+const peer = new WebSocketServer({ host: "127.0.0.1", port: 0 });
+await once(peer, "listening");
+const port = (peer.address() as { port: number }).port;
+process.env.REMOTE_CLIENT_SERVER_URL = `ws://127.0.0.1:${port}`;
+let dispatches = 0;
+let finish!: () => void;
+const app = ((_request: unknown, response: any) => {
+  dispatches++;
+  finish = () => response.json({ saved: true });
+}) as unknown as Application;
+const connected = once(peer, "connection");
+initWebSocketClient(app);
+const [socket] = await connected as [WebSocket];
+const responses: any[] = [];
+socket.on("message", data => { responses.push(JSON.parse(data.toString())); });
+socket.send(JSON.stringify({ type: "request", id: "first", action: "POST /mutation", payload: {} }));
+await waitFor(() => dispatches === 1);
+let stopped = false;
+const stopping = disconnectClient().then(() => { stopped = true; });
+socket.send(JSON.stringify({ type: "request", id: "late", action: "POST /mutation", payload: {} }));
+await waitFor(() => responses.some(response => response.id === "late"));
+assert.equal(dispatches, 1);
+assert.equal(stopped, false);
+assert.equal(responses.find(response => response.id === "late").success, false);
+finish();
+await stopping;
+await waitFor(() => responses.some(response => response.id === "first"));
+assert.equal(responses.find(response => response.id === "first").success, true);
+await disconnectClient();
+let reconnected = false;
+peer.on("connection", () => { reconnected = true; });
+await Bun.sleep(5100);
+assert.equal(reconnected, false);
+await new Promise<void>(resolve => peer.close(() => resolve()));
+
+// Server-side shutdown drains outstanding replies before closing upgraded sockets.
+process.env.REMOTE_PROXY_KEY = "isolated-fixture-key";
+let finishHttp!: () => void;
+const httpLifecycle = createTrackedHttpServer((_request, response) => {
+  finishHttp = () => response.end("saved");
+});
+const { server } = httpLifecycle;
+initWebSocketServer(server);
+server.listen(0, "127.0.0.1");
+await once(server, "listening");
+const endpoint = `ws://127.0.0.1:${(server.address() as { port: number }).port}/ws/remote-proxy`;
+const client = new WebSocket(endpoint);
+await once(client, "open");
+client.send(JSON.stringify({ type: "auth", clientId: "fixture", clientName: "fixture", secretKey: "isolated-fixture-key" }));
+await waitFor(() => getConnectedClients().length === 1);
+let forwarded: any;
+client.on("message", data => { const message = JSON.parse(data.toString()); if (message.type === "request") forwarded = message; });
+const response = sendRequest("fixture", "POST /fixture", {}, 2000);
+await waitFor(() => !!forwarded);
+const httpResponse = fetch(`http://127.0.0.1:${(server.address() as { port: number }).port}/slow`);
+await waitFor(() => !!finishHttp);
+let httpDrained = false;
+let serverStopped = false;
+const httpClosed = httpLifecycle.stopAdmission().then(() => { httpDrained = true; });
+const serverStopping = stopWebSocketServer().then(() => { serverStopped = true; });
+await assert.rejects(sendRequest("fixture", "POST /late", {}), /关闭/);
+await Bun.sleep(10);
+assert.equal(serverStopped, false);
+assert.equal(httpDrained, false);
+finishHttp();
+assert.equal(await (await httpResponse).text(), "saved");
+client.send(JSON.stringify({ type: "response", id: forwarded.id, success: true, data: { saved: true } }));
+assert.deepEqual(await response, { saved: true });
+await serverStopping;
+assert.equal(getConnectedClients().length, 0);
+await httpClosed;
+httpLifecycle.closeConnections();
+await waitFor(() => client.readyState === WebSocket.CLOSED);
+await stopWebSocketServer();
+clearTimeout(deadline);
+console.log("Remote lifecycle checks passed");
+process.exit(0);

@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { assertEntryAccess, assertFileMutationAccess, AccessError } from "../../../core/auth/libraryAccess.ts";
+import { checkEntryPasswordIfProtected } from "../../files/index.ts";
 import { listAiToolConfigs, upsertAiToolConfig } from "../service.ts";
 import { getToolKitList } from "../toolkits/index.ts";
 import { createLogger } from "../../../core/logger/index.ts";
@@ -51,13 +53,27 @@ export const executeTool = async (req: Request, res: Response) => {
   }
 
   try {
+    // Match the REST file mutation policy even when called directly, without
+    // a model-generated pending action or conversation ID.
+    assertFileMutationAccess(req.user);
+    if (!["rename_file", "move_file", "delete_file"].includes(toolName)) {
+      return res.status(400).json({ message: "不支持的工具" });
+    }
+    const { entry } = await assertEntryAccess(req.user, args.file_id);
+    const passwordCheck = checkEntryPasswordIfProtected(entry.id, args.password);
+    if (!passwordCheck.ok) throw new AccessError(passwordCheck.message ?? "需要提供访问密码", 403);
+    if (toolName === "move_file" && args.target_parent_id != null) {
+      const { entry: target } = await assertEntryAccess(req.user, args.target_parent_id, { libraryId: entry.library_id, directory: true });
+      const targetCheck = checkEntryPasswordIfProtected(target.id, args.password);
+      if (!targetCheck.ok) throw new AccessError(targetCheck.message ?? "需要提供访问密码", 403);
+    }
     // 导入任务服务
-    const { createTask } = await import("../../tasks/service.ts");
+    const { createTask } = await import("../../tasks/index.ts");
     const {
       TASK_TYPE_FILE_DELETE_ENTRY,
       TASK_TYPE_FILE_RENAME_ENTRY,
       TASK_TYPE_FILE_MOVE_ENTRY,
-    } = await import("../../files/fileOpsTasks.ts");
+    } = await import("../../files/index.ts");
 
     let result: { success: boolean; message: string };
 
@@ -65,7 +81,7 @@ export const executeTool = async (req: Request, res: Response) => {
       case "rename_file": {
         const fileId = args.file_id;
         const newName = args.new_name;
-        if (!fileId || !newName) {
+        if (!fileId || typeof newName !== "string" || !newName.trim() || /[\\/:*?"<>|\x00-\x1f]/.test(newName) || [".", ".."].includes(newName.trim())) {
           return res.status(400).json({ message: "缺少文件 ID 或新名称" });
         }
         createTask({
@@ -114,6 +130,6 @@ export const executeTool = async (req: Request, res: Response) => {
   } catch (err: any) {
     const message = typeof err?.message === "string" ? err.message : "执行工具失败";
     logger.error(`工具执行失败: ${toolName}`, err);
-    return res.status(400).json({ message });
+    return res.status(err.status ?? 400).json({ message });
   }
 };

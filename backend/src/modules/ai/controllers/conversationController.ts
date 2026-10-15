@@ -8,7 +8,7 @@ import {
   deleteAiChatConversation,
   listAiChatMessagesByConversation,
 } from "../service.ts";
-import { getSetting } from "../../settings/service.ts";
+import { getSetting } from "../../settings/index.ts";
 
 /**
  * 会话管理控制器
@@ -145,7 +145,7 @@ export const updateConversation = (req: Request, res: Response) => {
 };
 
 // 删除会话
-export const deleteConversation = (req: Request, res: Response) => {
+export const deleteConversation = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: "未登录" });
   }
@@ -164,7 +164,7 @@ export const deleteConversation = (req: Request, res: Response) => {
     return res.status(403).json({ message: "无权操作该会话" });
   }
 
-  const ok = deleteAiChatConversation(id);
+  const ok = await deleteAiChatConversation(id);
   if (!ok) {
     return res.status(500).json({ message: "删除会话失败" });
   }

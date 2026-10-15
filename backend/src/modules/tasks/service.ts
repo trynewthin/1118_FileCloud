@@ -123,6 +123,7 @@ export const listTasks = (options?: {
   type?: TaskType;
   includeChildren?: boolean;
   onlyTopLevel?: boolean;
+  createdByUserId?: number;
 }): TaskRecord[] => {
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
@@ -134,6 +135,10 @@ export const listTasks = (options?: {
   const conditions: string[] = [];
   const params: any[] = [];
 
+  if (options?.createdByUserId !== undefined) {
+    conditions.push("created_by_user_id = ?");
+    params.push(options.createdByUserId);
+  }
   if (onlyTopLevel) {
     conditions.push("parent_task_id IS NULL");
   }

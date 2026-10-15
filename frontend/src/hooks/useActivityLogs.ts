@@ -1,12 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useAsyncData } from "./useAsyncData";
+import { useEffect } from "react";
 import type { ActivityLog } from "@/lib/api/activityLogs";
 import { listActivityLogs } from "@/lib/api/activityLogs";
 
-interface ActivityLogsState {
-  items: ActivityLog[];
-  loading: boolean;
-  error: string | null;
-}
 
 interface UseActivityLogsOptions {
   /** 是否自动加载，默认 true */
@@ -17,35 +13,17 @@ interface UseActivityLogsOptions {
   refreshInterval?: number;
 }
 
+const fetchData = async () => {
+  const res = await listActivityLogs();
+  return { items: res.items };
+};
+
 // 管理操作日志列表的 hook
 export const useActivityLogs = (options?: UseActivityLogsOptions) => {
   const { auto = true, autoRefresh = true, refreshInterval = 5000 } = options ?? {};
   
-  const [state, setState] = useState<ActivityLogsState>({
-    items: [],
-    loading: auto,
-    error: null,
-  });
+  const { state, load } = useAsyncData({ items: [] as ActivityLog[] }, fetchData, "加载操作日志失败", auto);
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-    }
-    try {
-      const res = await listActivityLogs();
-      setState({ items: res.items, loading: false, error: null });
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "加载操作日志失败";
-      setState((prev) => ({ ...prev, loading: false, error: message }));
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    if (auto) {
-      load();
-    }
-  }, [auto, load]);
 
   // 自动轮询
   useEffect(() => {

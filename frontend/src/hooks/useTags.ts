@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect, useCallback } from "react";
 import {
   listTags,
@@ -29,8 +30,8 @@ export const useTagList = () => {
     try {
       const data = await listTags();
       setTags(data);
-    } catch (err: any) {
-      setError(err.message || "加载标签失败");
+    } catch (err) {
+      setError(getErrorMessage(err, "加载标签失败"));
     } finally {
       setLoading(false);
     }
@@ -88,8 +89,8 @@ export const useEntryTags = (entryId: string | null) => {
     try {
       const data = await getTagsForEntry(entryId);
       setTags(data);
-    } catch (err: any) {
-      setError(err.message || "加载文件标签失败");
+    } catch (err) {
+      setError(getErrorMessage(err, "加载文件标签失败"));
     } finally {
       setLoading(false);
     }

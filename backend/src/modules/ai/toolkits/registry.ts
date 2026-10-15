@@ -17,7 +17,7 @@ import type {
   ToolExecutionResult,
 } from "./types.ts";
 import type { ChatToolDefinition } from "../../../core/ai/client.ts";
-import { getSetting } from "../../settings/service.ts";
+import { getSetting } from "../../settings/index.ts";
 
 // ============================================================================
 // 内部存储

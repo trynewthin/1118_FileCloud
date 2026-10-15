@@ -14,6 +14,22 @@ import { useTagList } from "@/hooks/useTags";
 import { addTagToEntries } from "@/lib/api/tags";
 import type { FileTag } from "@/lib/api/tags";
 
+  const filterTags = (tags: FileTag[], query: string): FileTag[] => {
+    if (!query.trim()) return tags;
+    const lowerQuery = query.toLowerCase();
+    return tags.reduce<FileTag[]>((acc, tag) => {
+      const matchesSelf = tag.name.toLowerCase().includes(lowerQuery);
+      const filteredChildren = tag.children ? filterTags(tag.children, query) : [];
+      if (matchesSelf || filteredChildren.length > 0) {
+        acc.push({
+          ...tag,
+          children: matchesSelf ? tag.children : filteredChildren,
+        });
+      }
+      return acc;
+    }, []);
+  };
+
 interface BatchTagDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,21 +51,7 @@ export const BatchTagDialog = ({
   const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
 
   // 过滤标签（搜索）
-  const filterTags = (tags: FileTag[], query: string): FileTag[] => {
-    if (!query.trim()) return tags;
-    const lowerQuery = query.toLowerCase();
-    return tags.reduce<FileTag[]>((acc, tag) => {
-      const matchesSelf = tag.name.toLowerCase().includes(lowerQuery);
-      const filteredChildren = tag.children ? filterTags(tag.children, query) : [];
-      if (matchesSelf || filteredChildren.length > 0) {
-        acc.push({
-          ...tag,
-          children: matchesSelf ? tag.children : filteredChildren,
-        });
-      }
-      return acc;
-    }, []);
-  };
+
 
   const filteredTags = useMemo(() => filterTags(allTags, searchQuery), [allTags, searchQuery]);
 
@@ -83,8 +85,8 @@ export const BatchTagDialog = ({
       toast.success(`已为 ${fileCount} 个文件添加 ${selectedTagIds.size} 个标签`);
       onSuccess?.();
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message || "批量添加标签失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "批量添加标签失败");
     } finally {
       setOperating(false);
     }

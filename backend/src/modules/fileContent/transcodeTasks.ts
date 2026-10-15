@@ -8,7 +8,7 @@ import {
   markTranscodeCompleted,
   markTranscodeFailed,
 } from "./transcodeService.ts";
-import { getEntryById } from "../files/service.ts";
+import { getEntryById } from "../files/index.ts";
 
 // 任务类型常量
 export const TASK_TYPE_VIDEO_TRANSCODE = "VIDEO_TRANSCODE";

@@ -6,6 +6,7 @@
  */
 
 import WebSocket from "ws";
+import { closeSocket } from "./socketLifecycle.ts";
 import type { Application } from "express";
 import { createLogger } from "../../core/logger/index.ts";
 import {
@@ -23,19 +24,24 @@ let heartbeatTimer: NodeJS.Timeout | null = null;
 let reconnectTimer: NodeJS.Timeout | null = null;
 let isConnecting = false;
 let app: Application | null = null;
+let accepting = false;
+let stopping: Promise<void> | null = null;
+const activeRequests = new Set<Promise<void>>();
 
 const HEARTBEAT_INTERVAL = 30000;
 const RECONNECT_INTERVAL = 5000;
 
 // 初始化客户端模式
 export const initWebSocketClient = (expressApp: Application) => {
+  if (stopping) throw new Error("Remote client is stopping");
+  accepting = true;
   app = expressApp;
   connect();
 };
 
 // 连接到主服务器
 const connect = () => {
-  if (isConnecting || ws?.readyState === WebSocket.OPEN) {
+  if (!accepting || isConnecting || ws?.readyState === WebSocket.OPEN) {
     return;
   }
 
@@ -54,7 +60,7 @@ const connect = () => {
     ws.on("open", () => {
       isConnecting = false;
       logger.info("WebSocket 已连接，发送认证...");
-      sendAuth();
+      if (accepting) sendAuth();
     });
 
     ws.on("message", (data: Buffer) => {
@@ -106,7 +112,7 @@ const handleMessage = async (data: string) => {
       case "auth_result":
         if (message.success) {
           logger.info("认证成功，已连接到主服务器");
-          startHeartbeat();
+          if (accepting) startHeartbeat();
         } else {
           logger.error("认证失败:", message.message);
           ws?.close();
@@ -114,7 +120,13 @@ const handleMessage = async (data: string) => {
         break;
 
       case "request":
-        await handleRequest(message as RequestMessage);
+        if (!accepting) {
+          sendResponse(message.id, false, undefined, "服务正在关闭");
+          break;
+        }
+        const request = handleRequest(message as RequestMessage);
+        activeRequests.add(request);
+        try { await request; } finally { activeRequests.delete(request); }
         break;
 
       default:
@@ -263,7 +275,7 @@ const stopHeartbeat = () => {
 
 // 计划重连
 const scheduleReconnect = () => {
-  if (reconnectTimer) return;
+  if (!accepting || reconnectTimer) return;
 
   logger.info(`${RECONNECT_INTERVAL / 1000} 秒后重连...`);
   reconnectTimer = setTimeout(() => {
@@ -277,15 +289,22 @@ const cleanup = () => {
   stopHeartbeat();
 };
 
-// 断开连接
-export const disconnectClient = () => {
+// Stop new proxy dispatch immediately, then finish already-admitted mutations.
+export const disconnectClient = (): Promise<void> => {
+  if (stopping) return stopping;
+  accepting = false;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
   cleanup();
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
+  stopping = (async () => {
+    await Promise.allSettled([...activeRequests]);
+    const socket = ws;
+    if (socket) await closeSocket(socket);
+    if (ws === socket) ws = null;
+    isConnecting = false;
+    app = null;
+  })().finally(() => { stopping = null; });
+  return stopping;
 };

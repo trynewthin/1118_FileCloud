@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useNavigate, Link } from "react-router-dom";
@@ -48,8 +49,8 @@ export function RegisterPage() {
     try {
       await registerUser(username.trim(), password);
       navigate("/files");
-    } catch (err: any) {
-      setError(err?.message || "注册失败");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "注册失败"));
     }
   };
 

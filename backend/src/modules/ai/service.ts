@@ -1,7 +1,7 @@
 import { db } from "../../core/db/index.ts";
 import type { ChatMessageInput, ChatResult, ChatCallOptions, ChatAttachment } from "../../core/ai/client.ts";
 import { callChatModel } from "../../core/ai/client.ts";
-import { getSetting } from "../settings/service.ts";
+import { getSetting } from "../settings/index.ts";
 import { buildVariableContext } from "./orchestrator.ts";
 import { buildImageAttachmentsFromUploadIds } from "./attachments.ts";
 import { deleteConversationFiles } from "./conversationFiles/service.ts";
@@ -845,9 +845,9 @@ export const updateAiChatConversation = (
   return getAiChatConversationById(id);
 };
 
-export const deleteAiChatConversation = (id: number): boolean => {
+export const deleteAiChatConversation = async (id: number): Promise<boolean> => {
   // 先删除关联的会话文件
-  deleteConversationFiles(id);
+  await deleteConversationFiles(id);
   
   // 删除会话消息
   db.prepare("DELETE FROM ai_chat_messages WHERE conversation_id = ?").run(id);
@@ -1137,7 +1137,7 @@ export const appendUserMessageAndReply = async (
 
   // 优先使用用户直接上传的图片
   if (input.attachmentIds && input.attachmentIds.length > 0) {
-    const attachments = buildImageAttachmentsFromUploadIds(input.attachmentIds);
+    const attachments = await buildImageAttachmentsFromUploadIds(input.attachmentIds);
     if (attachments.length > 0) {
       userMessageAttachments = attachments;
     }
@@ -1147,7 +1147,7 @@ export const appendUserMessageAndReply = async (
   if (!userMessageAttachments) {
     const framesVar = varContext.conversationVars["videoFrames"];
     if (framesVar && framesVar.kind === "image_upload_list" && Array.isArray(framesVar.value)) {
-      const attachments = buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
+      const attachments = await buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
       if (attachments.length > 0) {
         userMessageAttachments = attachments;
       }

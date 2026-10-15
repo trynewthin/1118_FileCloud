@@ -6,6 +6,9 @@ import express from "express";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { db } from "../../core/db/index.ts";
+import type { AuthUser } from "../../core/auth/roles.ts";
+import { listAccessibleLibraries, assertEntryAccess } from "../../core/auth/libraryAccess.ts";
+import { checkEntryPasswordIfProtected } from "../files/index.ts";
 import {
   getAllLibraryStatus,
   isLibraryOnline,
@@ -71,10 +74,8 @@ const mapRowToUnifiedEntry = (
 /**
  * 获取库名称映射
  */
-const getLibraryNameMap = (): Map<number, string> => {
-  const rows = db
-    .prepare("SELECT id, display_name FROM file_libraries")
-    .all() as { id: number; display_name: string }[];
+const getLibraryNameMap = async (user: AuthUser): Promise<Map<number, string>> => {
+  const rows = (await listAccessibleLibraries(user));
 
   const map = new Map<number, string>();
   for (const row of rows) {
@@ -95,8 +96,9 @@ router.get(
   "/libraries/status",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (_req, res) => {
-    const statuses = getAllLibraryStatus();
+  async (req, res) => {
+    const allowed = new Set((await listAccessibleLibraries(req.user!, { allowDisabled: true })).map((lib) => lib.id));
+    const statuses = getAllLibraryStatus().filter((status) => allowed.has(status.id));
 
     const response: {
       libraries: LibraryStatusResponse[];
@@ -132,7 +134,7 @@ router.get(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const {
       parentId,
       libraryIds: libraryIdsStr,
@@ -162,11 +164,22 @@ router.get(
     }
 
     // 获取库名称和状态
-    const libraryNameMap = getLibraryNameMap();
+    const libraryNameMap = (await getLibraryNameMap(req.user!));
     const allStatuses = getAllLibraryStatus();
     const onlineStatusMap = new Map<number, boolean>();
     for (const s of allStatuses) {
       onlineStatusMap.set(s.id, s.isOnline);
+    }
+
+    if (parentId) {
+      try {
+        (await assertEntryAccess(req.user, parentId, { directory: true }));
+      } catch (err: any) {
+        return res.status(err.status ?? 403).json({ message: err.message });
+      }
+      const password = typeof req.query.password === "string" ? req.query.password : undefined;
+      const check = checkEntryPasswordIfProtected(parentId, password);
+      if (!check.ok) return res.status(403).json({ message: check.message });
     }
 
     // 构建查询条件
@@ -205,6 +218,14 @@ router.get(
         JOIN file_libraries l ON e.library_id = l.id
         WHERE e.parent_id IS NULL AND e.is_deleted = 0 AND l.is_enabled = 1
       `;
+    }
+
+    if (req.user!.role !== "admin") {
+      const accessibleIds = [...libraryNameMap.keys()];
+      const scope = accessibleIds.length ? ` AND e.library_id IN (${accessibleIds.map(() => "?").join(",")})` : " AND 0 = 1";
+      sql += scope;
+      countSql += scope;
+      params.push(...accessibleIds);
     }
 
     // 添加库 ID 过滤
@@ -285,7 +306,7 @@ router.get(
   "/search",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const {
       q,
       libraryIds: libraryIdsStr,
@@ -315,7 +336,7 @@ router.get(
     }
 
     // 获取库名称和状态
-    const libraryNameMap = getLibraryNameMap();
+    const libraryNameMap = (await getLibraryNameMap(req.user!));
     const allStatuses = getAllLibraryStatus();
     const onlineStatusMap = new Map<number, boolean>();
     for (const s of allStatuses) {
@@ -331,7 +352,13 @@ router.get(
       JOIN file_index_fts fts ON e.id = fts.file_id
       WHERE fts.name MATCH ? AND e.is_deleted = 0 AND l.is_enabled = 1
     `;
-    const params: any[] = [`"${keyword}"*`];
+    const params: any[] = [`"${keyword.replaceAll('"', '""')}"*`];
+
+    if (req.user!.role !== "admin") {
+      const accessibleIds = [...libraryNameMap.keys()];
+      sql += accessibleIds.length ? ` AND e.library_id IN (${accessibleIds.map(() => "?").join(",")})` : " AND 0 = 1";
+      params.push(...accessibleIds);
+    }
 
     // 类型过滤
     if (type === "file") {

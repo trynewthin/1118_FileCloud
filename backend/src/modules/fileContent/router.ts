@@ -3,6 +3,8 @@ import type { Request, Response } from "express";
 import fs from "node:fs";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
+import { withEntry } from "../../core/middleware/index.ts";
+import { getEntryById, checkEntryPasswordIfProtected } from "../files/index.ts";
 import { resolveFileForStreaming, streamFile } from "./service.ts";
 import { getThumbnailPathForEntry } from "./thumbnails.ts";
 import {
@@ -12,17 +14,25 @@ import {
   createOrResetTranscode,
 } from "./transcodeService.ts";
 import { TASK_TYPE_VIDEO_TRANSCODE } from "./transcodeTasks.ts";
-import { createTask } from "../tasks/service.ts";
-import { getEntryById } from "../files/service.ts";
+import { createTask } from "../tasks/index.ts";
 
 const router = express.Router();
+
+const requireEntryPassword: express.RequestHandler = (req, res, next) => {
+  const password = typeof req.query.password === "string" ? req.query.password : req.body?.password;
+  const check = checkEntryPasswordIfProtected(req.entry!.id, password);
+  if (!check.ok) return res.status(403).json({ message: check.message });
+  next();
+};
 
 // 预览 / 播放 / 下载指定文件内容（支持 Range），普通登录用户即可
 router.get(
   "/:id/stream",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req: Request, res: Response) => {
+  withEntry(),
+  requireEntryPassword,
+  async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
@@ -31,7 +41,7 @@ router.get(
     const password = (req.query as { password?: string }).password;
 
     try {
-      const info = resolveFileForStreaming(id, password);
+      const info = await resolveFileForStreaming(id, password);
       streamFile(req, res, info);
     } catch (err: any) {
       const message = typeof err?.message === "string" ? err.message : "读取文件失败";
@@ -45,7 +55,9 @@ router.get(
   "/:id/thumbnail",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req: Request, res: Response) => {
+  withEntry(),
+  requireEntryPassword,
+  async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
@@ -54,20 +66,21 @@ router.get(
     const password = (req.query as { password?: string }).password;
 
     try {
-      const result = getThumbnailPathForEntry(id, password);
+      const result = await getThumbnailPathForEntry(id, password);
       if (!result) {
         return res.status(404).json({ message: "缩略图不存在" });
       }
 
       const thumbPath = result.thumbnailPath;
 
-      if (!fs.existsSync(thumbPath)) {
-        console.error("[thumbnail] 文件不存在 (existsSync false)", { id, thumbPath });
+      // 获取文件信息用于缓存；文件可能在路径解析后被删除
+      const stat = await fs.promises.stat(thumbPath).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+        throw error;
+      });
+      if (!stat) {
         return res.status(404).json({ message: "缩略图不存在" });
       }
-
-      // 获取文件信息用于缓存
-      const stat = fs.statSync(thumbPath);
       const etag = `"${stat.size}-${stat.mtimeMs}"`;
       const lastModified = stat.mtime.toUTCString();
 
@@ -123,7 +136,9 @@ router.get(
   "/:id/transcode",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req: Request, res: Response) => {
+  withEntry(),
+  requireEntryPassword,
+  async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
@@ -163,7 +178,9 @@ router.post(
   "/:id/transcode",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req: Request, res: Response) => {
+  withEntry(),
+  requireEntryPassword,
+  async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
@@ -212,20 +229,22 @@ router.get(
   "/:id/stream/transcoded",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req: Request, res: Response) => {
+  withEntry(),
+  requireEntryPassword,
+  async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id || typeof id !== "string") {
       return res.status(400).json({ message: "文件索引 ID 不合法" });
     }
 
     // 获取转码文件路径
-    const transcodedPath = getTranscodedFilePath(id);
+    const transcodedPath = await getTranscodedFilePath(id);
     if (!transcodedPath) {
       return res.status(404).json({ message: "转码版本不存在" });
     }
 
     // 获取文件信息
-    const stat = fs.statSync(transcodedPath);
+    const stat = await fs.promises.stat(transcodedPath);
 
     // 使用统一的流式传输
     streamFile(req, res, {

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import fs from "node:fs";
+import { access, mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { getDataDir } from "../../../core/config/paths.ts";
@@ -12,11 +13,7 @@ const CONVERSATION_FILES_ROOT = "ai_conversation_files";
 
 // 获取会话文件存储根目录的绝对路径
 export const getConversationFilesRoot = (): string => {
-  const root = path.join(getDataDir(), CONVERSATION_FILES_ROOT);
-  if (!fs.existsSync(root)) {
-    fs.mkdirSync(root, { recursive: true });
-  }
-  return root;
+  return path.join(getDataDir(), CONVERSATION_FILES_ROOT);
 };
 
 // 构建用户目录路径：u_<userId>
@@ -82,7 +79,7 @@ export const getAbsolutePath = (relativePath: string): string => {
   // 安全检查：确保路径在根目录下
   const normalized = path.normalize(absPath);
   const normalizedRoot = path.normalize(root);
-  if (!normalized.startsWith(normalizedRoot)) {
+  if (normalized !== normalizedRoot && !normalized.startsWith(normalizedRoot + path.sep)) {
     throw new Error("文件路径不合法");
   }
   
@@ -90,98 +87,91 @@ export const getAbsolutePath = (relativePath: string): string => {
 };
 
 // 确保目录存在
-export const ensureDirectoryExists = (relativePath: string): void => {
+export const ensureDirectoryExists = async (relativePath: string): Promise<void> => {
   const absPath = getAbsolutePath(relativePath);
-  const dir = path.dirname(absPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  await mkdir(path.dirname(absPath), { recursive: true });
 };
 
 // 保存文件（从 Buffer）
-export const saveFileFromBuffer = (
+export const saveFileFromBuffer = async (
   relativePath: string,
   buffer: Buffer,
-): { sizeBytes: number; sha256: string } => {
-  ensureDirectoryExists(relativePath);
+): Promise<{ sizeBytes: number; sha256: string }> => {
+  await ensureDirectoryExists(relativePath);
   const absPath = getAbsolutePath(relativePath);
-  
-  fs.writeFileSync(absPath, buffer);
-  
+  await writeFile(absPath, buffer);
+
   const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
-  
-  return {
-    sizeBytes: buffer.length,
-    sha256,
-  };
+  return { sizeBytes: buffer.length, sha256 };
 };
 
 // 保存文件（从字符串内容）
-export const saveFileFromString = (
+export const saveFileFromString = async (
   relativePath: string,
   content: string,
   encoding: BufferEncoding = "utf-8",
-): { sizeBytes: number; sha256: string } => {
-  const buffer = Buffer.from(content, encoding);
-  return saveFileFromBuffer(relativePath, buffer);
+): Promise<{ sizeBytes: number; sha256: string }> => {
+  return saveFileFromBuffer(relativePath, Buffer.from(content, encoding));
 };
 
 // 读取文件为 Buffer
-export const readFileAsBuffer = (relativePath: string): Buffer => {
-  const absPath = getAbsolutePath(relativePath);
-  if (!fs.existsSync(absPath)) {
-    throw new Error("文件不存在");
+export const readFileAsBuffer = async (relativePath: string): Promise<Buffer> => {
+  try {
+    return await readFile(getAbsolutePath(relativePath));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("文件不存在");
+    }
+    throw error;
   }
-  return fs.readFileSync(absPath);
 };
 
 // 读取文件为字符串
-export const readFileAsString = (
+export const readFileAsString = async (
   relativePath: string,
   encoding: BufferEncoding = "utf-8",
-): string => {
-  const buffer = readFileAsBuffer(relativePath);
+): Promise<string> => {
+  const buffer = await readFileAsBuffer(relativePath);
   return buffer.toString(encoding);
 };
 
 // 创建读取流
-export const createReadStream = (relativePath: string): fs.ReadStream => {
+export const createReadStream = async (relativePath: string): Promise<fs.ReadStream> => {
   const absPath = getAbsolutePath(relativePath);
-  if (!fs.existsSync(absPath)) {
-    throw new Error("文件不存在");
+  try {
+    await access(absPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("文件不存在");
+    }
+    throw error;
   }
   return fs.createReadStream(absPath);
 };
 
 // 检查文件是否存在
-export const fileExists = (relativePath: string): boolean => {
+export const fileExists = async (relativePath: string): Promise<boolean> => {
   try {
-    const absPath = getAbsolutePath(relativePath);
-    return fs.existsSync(absPath);
+    await access(getAbsolutePath(relativePath));
+    return true;
   } catch {
     return false;
   }
 };
 
 // 删除文件
-export const deleteFile = (relativePath: string): boolean => {
+export const deleteFile = async (relativePath: string): Promise<boolean> => {
   try {
-    const absPath = getAbsolutePath(relativePath);
-    if (fs.existsSync(absPath)) {
-      fs.unlinkSync(absPath);
-      return true;
-    }
-    return false;
+    await unlink(getAbsolutePath(relativePath));
+    return true;
   } catch {
     return false;
   }
 };
 
 // 获取文件大小
-export const getFileSize = (relativePath: string): number => {
-  const absPath = getAbsolutePath(relativePath);
-  const stat = fs.statSync(absPath);
-  return stat.size;
+export const getFileSize = async (relativePath: string): Promise<number> => {
+  return (await stat(getAbsolutePath(relativePath))).size;
 };
 
 // 根据扩展名推断 MIME 类型

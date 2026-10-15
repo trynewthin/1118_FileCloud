@@ -373,7 +373,7 @@ export const addTagToEntry = (entryId: string, tagId: number, isPrimary: boolean
     // 如果已存在，只更新 is_primary
     if (isPrimary) {
       // 先取消其他主标签
-      db.prepare("UPDATE file_tag_entries SET is_primary = 0 WHERE entry_id = ? AND is_primary = 1").run(entryId);
+      clearPrimaryTag(entryId, tag.user_id);
       db.prepare("UPDATE file_tag_entries SET is_primary = 1 WHERE id = ?").run(existing.id);
     }
     return db.prepare("SELECT * FROM file_tag_entries WHERE id = ?").get(existing.id) as FileTagEntry;
@@ -407,7 +407,7 @@ export const addTagToEntry = (entryId: string, tagId: number, isPrimary: boolean
   
   // 如果设置为主标签，先取消其他主标签
   if (isPrimary) {
-    db.prepare("UPDATE file_tag_entries SET is_primary = 0 WHERE entry_id = ? AND is_primary = 1").run(entryId);
+    clearPrimaryTag(entryId, tag.user_id);
   }
   
   const now = new Date().toISOString();
@@ -431,6 +431,8 @@ export const removeTagFromEntry = (entryId: string, tagId: number): void => {
 
 // 设置文件的主标签
 export const setPrimaryTag = (entryId: string, tagId: number): void => {
+  const tag = getTagById(tagId);
+  if (!tag) throw new Error("标签不存在");
   // 检查关联是否存在
   const existing = db
     .prepare("SELECT id FROM file_tag_entries WHERE tag_id = ? AND entry_id = ?")
@@ -441,15 +443,18 @@ export const setPrimaryTag = (entryId: string, tagId: number): void => {
   }
   
   // 取消其他主标签
-  db.prepare("UPDATE file_tag_entries SET is_primary = 0 WHERE entry_id = ? AND is_primary = 1").run(entryId);
+  clearPrimaryTag(entryId, tag.user_id);
   
   // 设置新的主标签
   db.prepare("UPDATE file_tag_entries SET is_primary = 1 WHERE id = ?").run(existing.id);
 };
 
 // 清除文件的主标签
-export const clearPrimaryTag = (entryId: string): void => {
-  db.prepare("UPDATE file_tag_entries SET is_primary = 0 WHERE entry_id = ? AND is_primary = 1").run(entryId);
+export const clearPrimaryTag = (entryId: string, userId: number): void => {
+  db.prepare(`UPDATE file_tag_entries SET is_primary = 0
+    WHERE entry_id = ? AND is_primary = 1
+      AND tag_id IN (SELECT id FROM file_tags WHERE user_id = ?)`)
+    .run(entryId, userId);
 };
 
 // 批量给文件添加标签
@@ -472,10 +477,14 @@ export const removeTagFromEntries = (entryIds: string[], tagId: number): void =>
 };
 
 // 获取标签统计信息（每个标签下的文件数量）
-export const getTagStats = (): Map<number, number> => {
+export const getTagStats = (libraryIds?: number[]): Map<number, number> => {
+  if (libraryIds?.length === 0) return new Map();
+  const libraryFilter = libraryIds ? ` AND fe.library_id IN (${libraryIds.map(() => "?").join(",")})` : "";
   const rows = db
-    .prepare("SELECT tag_id, COUNT(*) as count FROM file_tag_entries GROUP BY tag_id")
-    .all() as { tag_id: number; count: number }[];
+    .prepare(`SELECT fte.tag_id, COUNT(*) as count FROM file_tag_entries fte
+      JOIN file_entries fe ON fe.id = fte.entry_id
+      WHERE fe.is_deleted = 0${libraryFilter} GROUP BY fte.tag_id`)
+    .all(...(libraryIds ?? [])) as { tag_id: number; count: number }[];
   
   const stats = new Map<number, number>();
   for (const row of rows) {
@@ -485,9 +494,9 @@ export const getTagStats = (): Map<number, number> => {
 };
 
 // 获取用户所有标签（带统计信息）
-export const listAllTagsWithStats = (userId: number): FileTag[] => {
+export const listAllTagsWithStats = (userId: number, libraryIds?: number[]): FileTag[] => {
   const tags = listAllTags(userId);
-  const stats = getTagStats();
+  const stats = getTagStats(libraryIds);
   
   const addStats = (tagList: FileTag[]) => {
     for (const tag of tagList) {

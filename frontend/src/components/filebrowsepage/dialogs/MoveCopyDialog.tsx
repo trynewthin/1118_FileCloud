@@ -13,7 +13,8 @@ import {
 } from "@/components/common/dialog/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { FileEntry } from "@/lib/api/files";
+import { getEntry, listEntries, type FileEntry, type CopyEntryParams } from "@/lib/api/files";
+import { moveCopyParams, submitMoveCopyEntries } from "./moveCopyForm";
 import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -33,23 +34,42 @@ interface MoveCopyDialogProps {
   entry: FileEntry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (entry: FileEntry, targetParentId: string | null, newName?: string, password?: string) => Promise<void>;
-  // 批量模式时显示选中数量
-  batchCount?: number;
+  onSubmit: (entry: FileEntry, params: CopyEntryParams) => Promise<void>;
+  batchEntries?: FileEntry[];
 }
 
-export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batchCount }: MoveCopyDialogProps) {
-  const [newName, setNewName] = useState("");
+export function MoveCopyDialog(props: MoveCopyDialogProps) {
+  return <MoveCopyDialogContent key={`${props.open}-${props.mode}-${props.entry?.id}`} {...props} />;
+}
+
+function MoveCopyDialogContent({ mode, entry, open, onOpenChange, onSubmit, batchEntries }: MoveCopyDialogProps) {
+  const [newName, setNewName] = useState(mode === "copy" ? entry?.original_name ?? "" : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sourcePasswords, setSourcePasswords] = useState<Record<string, string>>({});
+  const [targetPasswords, setTargetPasswords] = useState<Record<string, string>>({});
+  const [unlockedPasswords, setUnlockedPasswords] = useState<Record<string, string>>({});
+  const submitted = useRef(new Set<string>());
+  const sourceEntries = batchEntries ?? (entry ? [entry] : []);
+  const isBatch = !!batchEntries;
 
   // 文件夹选择器状态
-  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+  const [currentParentId, setCurrentParentId] = useState<string | null>(entry?.parent_id ?? null);
   const [items, setItems] = useState<FolderItem[]>([]);
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [folderLoading, setFolderLoading] = useState(false);
+  const [folderError, setFolderError] = useState("");
+  const [folderReload, setFolderReload] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const targetId = selectedId === "__ROOT__" ? null : selectedId || currentParentId;
+  const currentParentPassword = currentParentId ? unlockedPasswords[currentParentId] : undefined;
+  const breadcrumbRequest = useRef(0);
+  const searchRequest = useRef(0);
+  const invalidateSearch = useCallback(() => { searchRequest.current++; }, []);
+  const invalidateRequests = useCallback(() => {
+    breadcrumbRequest.current++;
+    searchRequest.current++;
+  }, []);
 
   // 搜索状态
   const [searchMode, setSearchMode] = useState(false);
@@ -65,6 +85,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
       setSearchResults([]);
       return;
     }
+    const request = ++searchRequest.current;
     setSearchLoading(true);
     try {
       const params = new URLSearchParams({
@@ -75,57 +96,68 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
       const res = await apiClient.get<{ items: SearchResult[] }>(
         `/files/library/${entry.library_id}/folders/search?${params.toString()}`
       );
-      setSearchResults(res.items || []);
+      if (request === searchRequest.current) setSearchResults(res.items || []);
     } catch (err) {
       console.error(err);
-      setSearchResults([]);
+      if (request === searchRequest.current) setSearchResults([]);
     } finally {
-      setSearchLoading(false);
+      if (request === searchRequest.current) setSearchLoading(false);
     }
   }, [entry]);
 
   // 加载当前目录的子文件夹
-  const loadFolders = useCallback(async () => {
-    if (!entry) return;
-    setFolderLoading(true);
-    try {
-      const query = currentParentId ? `?parentId=${encodeURIComponent(currentParentId)}` : "";
-      const res = await apiClient.get<{ items: any[] }>(
-        `/files/library/${entry.library_id}/entries${query}`
-      );
+  useEffect(() => {
+    if (!open || !entry) return;
+    let active = true;
+    const loadFolders = async () => {
+      setFolderLoading(true);
+      setFolderError("");
+      try {
+        const res = await listEntries({ libraryId: entry.library_id,
+          parentId: currentParentId, password: currentParentPassword });
 
-      const dirs = res.items
-        .filter((i: any) => i.is_directory && i.id !== entry.id) // 排除当前文件/文件夹本身
-        .map((i: any) => ({
-          id: i.id,
-          name: i.original_name,
-        }));
+        if (!active) return;
+        const dirs = res.items
+          .filter((i) => i.is_directory && i.id !== entry.id) // 排除当前文件/文件夹本身
+          .map((i) => ({
+            id: i.id,
+            name: i.original_name,
+          }));
 
-      // 根目录下增加一个显式的"根目录"虚拟项
-      if (!currentParentId) {
-        setItems([
-          { id: "__ROOT__", name: "根目录（当前文件库）" },
-          ...dirs,
-        ]);
-      } else {
-        setItems(dirs);
+        // 根目录下增加一个显式的"根目录"虚拟项
+        if (!currentParentId) {
+          setItems([
+            { id: "__ROOT__", name: "根目录（当前文件库）" },
+            ...dirs,
+          ]);
+        } else {
+          setItems(dirs);
+        }
+      } catch (err) {
+        if (!active) return;
+        console.error(err);
+        setItems([]);
+        setFolderError(err instanceof Error ? err.message : "目录加载失败");
+      } finally {
+        if (active) setFolderLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      setItems([]);
-    } finally {
-      setFolderLoading(false);
-    }
-  }, [entry, currentParentId]);
+    };
+    void loadFolders();
+    return () => { active = false; };
+  }, [open, entry, currentParentId, currentParentPassword, folderReload]);
 
   // 加载初始目录的祖先路径并加载文件夹列表
-  const loadInitialBreadcrumbs = useCallback(async (parentId: string) => {
+  const loadInitialBreadcrumbs = useCallback(async (parentId: string, name = "目标目录", password?: string) => {
     if (!entry) return;
-    setFolderLoading(true);
+    const request = ++breadcrumbRequest.current;
+    // Navigation changes the destination before metadata resolves. A denied
+    // password challenge must never redirect a transfer to the library root.
+    setSelectedId(null);
+    setCurrentParentId(parentId);
+    setBreadcrumbs([{ id: parentId, name }]);
     try {
-      const res = await apiClient.get<{ entry: any; ancestors?: { id: string; name: string }[] }>(
-        `/files/entries/${parentId}`
-      );
+      const res = await getEntry(parentId, password);
+      if (request !== breadcrumbRequest.current) return;
       if (res.ancestors && res.ancestors.length > 0) {
         const crumbs = [...res.ancestors, { id: parentId, name: res.entry.original_name }];
         setBreadcrumbs(crumbs);
@@ -134,53 +166,22 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
         setBreadcrumbs([{ id: parentId, name: res.entry.original_name }]);
         setCurrentParentId(parentId);
       }
-    } catch {
-      setCurrentParentId(null);
-      setBreadcrumbs([]);
+    } catch (err) {
+      if (request !== breadcrumbRequest.current) return;
+      setFolderError(err instanceof Error ? err.message : "目录加载失败");
     }
     // 设置完 currentParentId 后会触发 loadFolders
   }, [entry]);
 
-  // 初始化
   useEffect(() => {
-    if (open && entry && !initialized) {
-      setNewName(mode === "copy" ? entry.original_name : "");
-      setError("");
-      setSelectedId(null);
-      setInitialized(true);
-
-      // 展开到文件所在的目录
-      if (entry.parent_id) {
-        loadInitialBreadcrumbs(entry.parent_id);
-      } else {
-        setCurrentParentId(null);
-        setBreadcrumbs([]);
-        loadFolders();
-      }
-    }
-    if (!open) {
-      setInitialized(false);
-      // 重置状态
-      setCurrentParentId(null);
-      setBreadcrumbs([]);
-      setItems([]);
-      // 重置搜索状态
-      setSearchMode(false);
-      setSearchKeyword("");
-      setSearchResults([]);
-    }
-  }, [open, entry, mode, initialized]);
-
-  // 当 currentParentId 变化时重新加载（仅在已初始化后）
-  useEffect(() => {
-    if (open && initialized) {
-      loadFolders();
-    }
-  }, [open, initialized, currentParentId, loadFolders]);
+    if (open && entry?.parent_id) void loadInitialBreadcrumbs(entry.parent_id);
+    return invalidateRequests;
+  }, [open, entry?.parent_id, loadInitialBreadcrumbs, invalidateRequests]);
 
   // 搜索关键词变化时防抖搜索
   useEffect(() => {
     if (!searchMode) return;
+    invalidateSearch();
     
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
@@ -188,6 +189,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
     
     if (!searchKeyword.trim()) {
       setSearchResults([]);
+      setSearchLoading(false);
       return;
     }
     
@@ -196,11 +198,12 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
     }, 300);
     
     return () => {
+      invalidateSearch();
       if (searchDebounceRef.current) {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [searchKeyword, searchMode, searchFolders]);
+  }, [searchKeyword, searchMode, searchFolders, invalidateSearch]);
 
   // 进入搜索模式时聚焦输入框
   useEffect(() => {
@@ -215,11 +218,22 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
     setSearchKeyword("");
     setSearchResults([]);
     // 导航到搜索选中的文件夹，加载其祖先路径并设为当前目录
-    await loadInitialBreadcrumbs(result.id);
+    await loadInitialBreadcrumbs(result.id, result.name, unlockedPasswords[result.id]);
+  };
+
+  const handleUnlockTarget = async () => {
+    if (!targetId || loading) return;
+    const password = targetPasswords[targetId] ?? "";
+    setUnlockedPasswords(previous => ({ ...previous, [targetId]: password }));
+    setFolderReload(previous => previous + 1);
+    const name = items.find(item => item.id === targetId)?.name ??
+      breadcrumbs.find(crumb => crumb.id === targetId)?.name ?? "目标目录";
+    await loadInitialBreadcrumbs(targetId, name, password);
   };
 
   const handleEnter = (item: FolderItem) => {
     if (item.id === "__ROOT__") return; // 根目录虚拟项不能进入
+    breadcrumbRequest.current++;
     setCurrentParentId(item.id);
     setBreadcrumbs(prev => [...prev, { id: item.id, name: item.name }]);
     setSelectedId(null);
@@ -231,32 +245,29 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
     setLoading(true);
     setError("");
     try {
-      // 确定目标目录
-      let targetId: string | null;
-      if (selectedId === "__ROOT__" || (!selectedId && !currentParentId)) {
-        targetId = null; // 根目录
-      } else {
-        targetId = selectedId || currentParentId;
+      if (sourceEntries.some(source => source.library_id !== entry.library_id)) {
+        throw new Error("批量移动或复制只能选择同一文件库中的条目");
       }
-
-      await onSubmit(entry, targetId, newName || undefined, undefined);
-      toast.success(mode === "move" ? "移动成功" : "复制成功");
+      await submitMoveCopyEntries(sourceEntries, submitted.current, source =>
+        onSubmit(source, moveCopyParams(source.id, targetId, sourcePasswords, targetPasswords,
+          mode === "copy" && !isBatch ? newName || undefined : undefined)));
+      toast.success(`${mode === "move" ? "移动" : "复制"}任务已提交`);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || "操作失败");
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : "") || "操作失败";
+      setError(submitted.current.size ? `已提交 ${submitted.current.size} 项，重试只提交剩余条目。${message}` : message);
     } finally {
       setLoading(false);
     }
   };
 
-  const isBatch = batchCount && batchCount > 1;
   const title = isBatch 
-    ? `批量${mode === "move" ? "移动" : "复制"} ${batchCount} 个项目`
+    ? `批量${mode === "move" ? "移动" : "复制"} ${sourceEntries.length} 个项目`
     : (mode === "move" ? "移动文件" : "复制文件");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] h-[550px] flex flex-col" showCloseButton={false}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!loading) onOpenChange(nextOpen); }}>
+      <DialogContent className="sm:max-w-[500px] h-[750px] max-h-[90vh] flex flex-col" showCloseButton={false}>
         <GlassCard variant="lite" className="p-4">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
@@ -301,6 +312,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                 glassVariant="lite"
                 className="h-6 w-6 shrink-0" 
                 onClick={() => {
+                  breadcrumbRequest.current++;
                   setCurrentParentId(null);
                   setBreadcrumbs([]);
                   setSelectedId(null);
@@ -321,6 +333,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
                     onClick={() => {
                       const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
                       setBreadcrumbs(newBreadcrumbs);
+                      breadcrumbRequest.current++;
                       setCurrentParentId(crumb.id);
                       setSelectedId(null);
                     }}
@@ -383,6 +396,8 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
             // 浏览模式
             folderLoading ? (
               <div className="text-center text-muted-foreground py-4">加载中...</div>
+            ) : folderError ? (
+              <div className="text-center text-muted-foreground py-4">{folderError}。可输入目标目录密码后解锁浏览，或返回上层重新选择。</div>
             ) : items.length === 0 ? (
               <div className="text-center text-muted-foreground py-4">空文件夹</div>
             ) : (
@@ -418,7 +433,7 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
         </GlassCard>
 
         {/* 复制时的新名称输入 */}
-        {mode === "copy" && (
+        {mode === "copy" && !isBatch && (
           <GlassCard variant="lite" className="p-4">
             <div className="grid gap-2">
               <Label htmlFor="newName" className="text-xs">新名称（可选）</Label>
@@ -432,6 +447,38 @@ export function MoveCopyDialog({ mode, entry, open, onOpenChange, onSubmit, batc
             </div>
           </GlassCard>
         )}
+
+        <GlassCard variant="lite" className="p-4 max-h-48 overflow-y-auto shrink-0">
+          <div className="grid gap-3">
+            <p className="text-xs text-muted-foreground">未设置密码的条目可留空，源条目与目标目录的密码分别验证</p>
+            {sourceEntries.map(source => (
+              <div key={source.id} className="grid gap-1">
+                <Label htmlFor={`source-password-${source.id}`} className="text-xs">
+                  源条目密码{isBatch ? `：${source.original_name}` : ""}
+                  {submitted.current.has(source.id) ? "（已提交）" : ""}
+                </Label>
+                <Input id={`source-password-${source.id}`} type="password" autoComplete="off"
+                  value={sourcePasswords[source.id] ?? ""}
+                  disabled={loading || submitted.current.has(source.id)}
+                  onChange={event => setSourcePasswords(previous => ({ ...previous, [source.id]: event.target.value }))}
+                  className="h-8 text-sm" />
+              </div>
+            ))}
+            {targetId && (
+              <div className="grid gap-1">
+                <Label htmlFor="target-password" className="text-xs">目标目录密码</Label>
+                <Input id="target-password" type="password" autoComplete="off"
+                  value={targetPasswords[targetId] ?? ""} disabled={loading}
+                  onChange={event => setTargetPasswords(previous => ({ ...previous, [targetId]: event.target.value }))}
+                  className="h-8 text-sm" />
+                <button type="button" className="text-xs text-primary text-left disabled:opacity-50"
+                  disabled={loading || folderLoading} onClick={() => void handleUnlockTarget()}>
+                  解锁并浏览目标目录
+                </button>
+              </div>
+            )}
+          </div>
+        </GlassCard>
 
         {error && (
           <GlassCard variant="lite" className="p-3">

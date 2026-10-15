@@ -22,7 +22,7 @@ router.get(
   "/fs/list",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     // 检查是否需要密钥验证
     const configuredKey = getFsAccessKey();
     if (configuredKey.length > 0) {
@@ -34,7 +34,7 @@ router.get(
 
     const dirPath = req.query.path as string | undefined;
     try {
-      const items = listSystemDirectories(dirPath);
+      const items = (await listSystemDirectories(dirPath));
       return res.json({ 
         items, 
         separator: getPathSeparator(),

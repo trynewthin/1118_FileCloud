@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAiConfig } from "@/hooks/useAiConfig";
 import { useSettings } from "@/hooks/useSettings";
@@ -57,16 +57,16 @@ export function AiSettingsPage() {
   };
 
   // 会话命名相关本地状态，用于编辑后统一保存
-  const [namingContextLocal, setNamingContextLocal] = useState("1");
-  const [namingPromptLocal, setNamingPromptLocal] = useState("");
+  const [namingContextDraft, setNamingContextLocal] = useState<string | null>(null);
+  const [namingPromptDraft, setNamingPromptLocal] = useState<string | null>(null);
+  const namingContextLocal = namingContextDraft ?? settings.find((s) => s.key === "ai.chat.naming.contextMessages")?.value ?? "1";
+  const namingPromptLocal = namingPromptDraft ?? settings.find((s) => s.key === "ai.chat.naming.prompt")?.value ?? "";
 
-  useEffect(() => {
-    const ctx = settings.find((s) => s.key === "ai.chat.naming.contextMessages");
-    const prompt = settings.find((s) => s.key === "ai.chat.naming.prompt");
-
-    setNamingContextLocal(ctx?.value ?? "1");
-    setNamingPromptLocal(prompt?.value ?? "");
-  }, [settings]);
+  const openNamingDialog = () => {
+    setNamingContextLocal(null);
+    setNamingPromptLocal(null);
+    setNamingDialogOpen(true);
+  };
 
   const handleSaveNamingConfig = async () => {
     const ctxValue = namingContextLocal && namingContextLocal.trim().length > 0
@@ -113,7 +113,7 @@ export function AiSettingsPage() {
             {/* 会话命名配置 */}
             <SettingsItemCard
               title="会话命名配置"
-              onClick={() => setNamingDialogOpen(true)}
+              onClick={openNamingDialog}
             />
           </SettingsGroup>
         </div>

@@ -1,7 +1,8 @@
 import fs from "node:fs";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
-import os from "node:os";
 import { getFsAllowedPaths } from "../../core/config/paths.ts";
+import { assertAllowedFilesystemPath, canonicalizeFilesystemPath, isPathWithin } from "../../core/config/pathSecurity.ts";
 
 export interface SystemDirEntry {
   name: string;
@@ -9,46 +10,24 @@ export interface SystemDirEntry {
   is_directory: boolean;
 }
 
-// 检查路径是否在白名单内（包含白名单目录本身及其子目录）
-const isPathAllowed = (targetPath: string, allowedPaths: string[]): boolean => {
-  if (allowedPaths.length === 0) return true; // 无白名单则不限制
-  
-  const normalizedTarget = path.resolve(targetPath).toLowerCase();
-  
-  for (const allowed of allowedPaths) {
-    const normalizedAllowed = path.resolve(allowed).toLowerCase();
-    // 目标路径等于白名单路径，或是其子目录
-    if (normalizedTarget === normalizedAllowed || 
-        normalizedTarget.startsWith(normalizedAllowed + path.sep)) {
-      return true;
-    }
-  }
-  
-  return false;
-};
-
-// 过滤并返回白名单内的目录
-const filterByAllowedPaths = (entries: SystemDirEntry[], allowedPaths: string[]): SystemDirEntry[] => {
+// Only expose configured roots or their navigable ancestors in the initial list.
+const filterByAllowedPaths = async (entries: SystemDirEntry[], allowedPaths: string[]): Promise<SystemDirEntry[]> => {
   if (allowedPaths.length === 0) return entries;
-  
-  return entries.filter((entry) => {
-    const entryPath = path.resolve(entry.path).toLowerCase();
-    
-    for (const allowed of allowedPaths) {
-      const normalizedAllowed = path.resolve(allowed).toLowerCase();
-      // 条目路径等于白名单、是其子目录、或是其父目录（允许导航到白名单）
-      if (entryPath === normalizedAllowed ||
-          entryPath.startsWith(normalizedAllowed + path.sep) ||
-          normalizedAllowed.startsWith(entryPath + path.sep)) {
-        return true;
-      }
-    }
-    
-    return false;
-  });
+  const roots: string[] = [];
+  for (const allowed of allowedPaths) {
+    try { roots.push(await canonicalizeFilesystemPath(allowed)); } catch { /* Fail closed. */ }
+  }
+  const result: SystemDirEntry[] = [];
+  for (const entry of entries) {
+    try {
+      const candidate = await canonicalizeFilesystemPath(entry.path);
+      if (roots.some(root => isPathWithin(root, candidate) || isPathWithin(candidate, root))) result.push(entry);
+    } catch { /* Inaccessible entries cannot be browsed. */ }
+  }
+  return result;
 };
 
-export const listSystemDirectories = (dirPath?: string): SystemDirEntry[] => {
+export const listSystemDirectories = async (dirPath?: string): Promise<SystemDirEntry[]> => {
   const allowedPaths = getFsAllowedPaths();
   
   // 未指定路径时：
@@ -62,7 +41,7 @@ export const listSystemDirectories = (dirPath?: string): SystemDirEntry[] => {
       for (const ch of letters) {
         const drivePath = `${ch}:\\`;
         try {
-          if (fs.existsSync(drivePath)) {
+          if ((await pathExists(drivePath))) {
             drives.push({
               name: drivePath,
               path: drivePath,
@@ -78,7 +57,7 @@ export const listSystemDirectories = (dirPath?: string): SystemDirEntry[] => {
     }
 
     const root = path.parse(process.cwd()).root || "/";
-    const items = fs.readdirSync(root, { withFileTypes: true });
+    const items = (await fs.promises.readdir(root, { withFileTypes: true }));
     const result: SystemDirEntry[] = [];
 
     for (const item of items) {
@@ -94,23 +73,18 @@ export const listSystemDirectories = (dirPath?: string): SystemDirEntry[] => {
     return filterByAllowedPaths(result, allowedPaths);
   }
 
-  const targetPath = path.resolve(dirPath);
-  
-  // 检查目标路径是否在白名单内
-  if (!isPathAllowed(targetPath, allowedPaths)) {
-    throw new Error("无权访问此目录");
-  }
+  const targetPath = (await assertAllowedFilesystemPath(dirPath));
 
-  if (!fs.existsSync(targetPath)) {
+  if (!(await pathExists(targetPath))) {
     throw new Error("路径不存在");
   }
 
-  const stat = fs.statSync(targetPath);
+  const stat = (await fs.promises.stat(targetPath));
   if (!stat.isDirectory()) {
     throw new Error("目标不是文件夹");
   }
 
-  const items = fs.readdirSync(targetPath, { withFileTypes: true });
+  const items = (await fs.promises.readdir(targetPath, { withFileTypes: true }));
   const result: SystemDirEntry[] = [];
 
   for (const item of items) {

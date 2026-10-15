@@ -1,6 +1,8 @@
 import fs from "node:fs";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
+import { assertLibraryRootPath, assertValidPathSegment, PathAccessError, resolvePathWithinLibrary } from "../../core/config/pathSecurity.ts";
 import { isLibraryOnline } from "../coreServices/index.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 // 物理文件保持原始名称，不再使用 [xxxxxx] 后缀
@@ -66,10 +68,10 @@ export interface EnhancedFileEntry extends FileEntry {
 }
 
 // 查询指定文件库下的子项列表（增强版，包含库状态）
-export const listEntriesByParentEnhanced = (params: {
+export const listEntriesByParentEnhanced = async (params: {
   libraryId: number;
   parentId?: string | null;
-}): { items: EnhancedFileEntry[]; library_online: boolean } => {
+}): Promise<{ items: EnhancedFileEntry[]; library_online: boolean }> => {
   const parentId = params.parentId ?? null;
 
   // 获取库信息
@@ -78,7 +80,7 @@ export const listEntriesByParentEnhanced = (params: {
     .get(params.libraryId) as { display_name: string } | undefined;
 
   const libraryName = libRow?.display_name || `库 ${params.libraryId}`;
-  const libraryOnline = isLibraryOnline(params.libraryId);
+  const libraryOnline = (await isLibraryOnline(params.libraryId));
 
   const rows = db
     .prepare(
@@ -101,7 +103,7 @@ export interface TrashEntry extends FileEntry {
 }
 
 // 查询指定文件库中的已删除条目（回收站），按删除时间倒序
-export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => {
+export const listDeletedEntriesByLibrary = async (libraryId: number): Promise<TrashEntry[]> => {
   const libRow = db
     .prepare("SELECT root_path FROM file_libraries WHERE id = ? LIMIT 1")
     .get(libraryId) as { root_path: string } | undefined;
@@ -110,7 +112,7 @@ export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => 
     return [];
   }
 
-  const libraryRootPath = libRow.root_path;
+  const libraryRootPath = (await assertLibraryRootPath(libRow.root_path));
 
   const rows = db
     .prepare(
@@ -118,24 +120,22 @@ export const listDeletedEntriesByLibrary = (libraryId: number): TrashEntry[] => 
     )
     .all(libraryId) as any[];
 
-  return rows
-    .map((row) => {
+  const items: TrashEntry[] = [];
+  for (const row of rows) {
       const entry = mapRowToFileEntry(row);
       const relative = buildRelativePathForEntry(entry);
-      const trashPath = path.join(
-        libraryRootPath,
-        INTERNAL_META_DIR,
-        TRASH_DIR_NAME,
-        relative,
-      );
+      const saved = db.prepare("SELECT relative_path FROM file_trash_locations WHERE entry_id = ?")
+        .get(entry.id) as { relative_path: string } | null;
+      const trashPath = (await resolvePathWithinLibrary(libraryRootPath,
+        saved?.relative_path ?? path.join(INTERNAL_META_DIR, TRASH_DIR_NAME, relative)));
 
-      if (!fs.existsSync(trashPath)) {
-        return null;
+      if (!(await pathExists(trashPath))) {
+        continue;
       }
 
-      return { ...entry, relative_path: relative } as TrashEntry | null;
-    })
-    .filter((item): item is TrashEntry => item !== null);
+      items.push({ ...entry, relative_path: relative });
+  }
+  return items;
 };
 
 // 查询单个索引实体
@@ -167,7 +167,7 @@ export const getEntryByIdIncludingDeleted = (id: string): FileEntry | null => {
  * 非侵入式索引：直接返回原始文件名
  */
 export const getPhysicalName = (entry: FileEntry): string => {
-  return entry.original_name;
+  return assertValidPathSegment(entry.original_name);
 };
 
 /**
@@ -178,9 +178,14 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
   const segments: string[] = [];
 
   let current: FileEntry | null = entry;
+  const seen = new Set<string>();
 
   // 向上追溯父节点，直到虚拟根（parent_id 为空）
   while (current) {
+    if (seen.has(current.id) || current.library_id !== entry.library_id) {
+      throw new PathAccessError("文件父级关系不合法");
+    }
+    seen.add(current.id);
     // 非侵入式索引：直接使用原始文件名
     segments.unshift(getPhysicalName(current));
 
@@ -194,8 +199,8 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
       )
       .get(current.parent_id) as any | undefined;
 
-    if (!parentRow) {
-      break;
+    if (!parentRow || !parentRow.is_directory) {
+      throw new PathAccessError("文件父目录不存在或不合法");
     }
 
     current = mapRowToFileEntry(parentRow);
@@ -208,15 +213,21 @@ export const buildRelativePathForEntry = (entry: FileEntry): string => {
 export const getEntryAncestors = (entry: FileEntry): { id: string; name: string }[] => {
   const ancestors: { id: string; name: string }[] = [];
   let currentParentId = entry.parent_id;
+  const seen = new Set<string>([entry.id]);
 
   while (currentParentId) {
+    if (seen.has(currentParentId)) throw new PathAccessError("文件父级关系不合法");
+    seen.add(currentParentId);
     const parentRow = db
       .prepare(
-        "SELECT id, parent_id, original_name FROM file_entries WHERE id = ?",
+        "SELECT id, library_id, parent_id, original_name, is_directory FROM file_entries WHERE id = ?",
       )
-      .get(currentParentId) as { id: string; parent_id: string | null; original_name: string } | undefined;
+      .get(currentParentId) as { id: string; library_id: number; parent_id: string | null; original_name: string; is_directory: number } | undefined;
 
-    if (!parentRow) break;
+    if (!parentRow || parentRow.library_id !== entry.library_id || !parentRow.is_directory) {
+      throw new PathAccessError("文件父目录不存在或不合法");
+    }
+    assertValidPathSegment(parentRow.original_name);
 
     ancestors.unshift({
       id: parentRow.id,
@@ -230,9 +241,9 @@ export const getEntryAncestors = (entry: FileEntry): { id: string; name: string 
 };
 
 // 解析指定索引对应的真实文件路径（内部使用，接口层不会直接返回）
-export const resolveRealPathForEntry = (entry: FileEntry, libraryRootPath: string): string => {
+export const resolveRealPathForEntry = async (entry: FileEntry, libraryRootPath: string): Promise<string> => {
   const relative = buildRelativePathForEntry(entry);
-  return path.join(libraryRootPath, relative);
+  return (await resolvePathWithinLibrary(libraryRootPath, relative));
 };
 
 // 搜索文件夹（按名称模糊匹配）

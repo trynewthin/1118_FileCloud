@@ -1,7 +1,7 @@
-import fs from "node:fs";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
-import { getEntryById } from "../files/service.ts";
-import { checkEntryPasswordIfProtected } from "../files/security.ts";
+import { assertValidPathSegment, resolvePathWithinLibrary } from "../../core/config/pathSecurity.ts";
+import { getEntryById, checkEntryPasswordIfProtected } from "../files/index.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
 
 const INTERNAL_META_DIR = ".filecloud_meta";
@@ -37,10 +37,10 @@ const getThumbnailExt = (ext: string | null): string => {
 // 注意：getLibraryRoot 已统一从 core/middleware 导入
 
 // 获取指定条目对应的缩略图路径（若不存在或文件不适合缩略图，则返回 null）
-export const getThumbnailPathForEntry = (
+export const getThumbnailPathForEntry = async (
   entryId: string,
   password?: string,
-): { thumbnailPath: string } | null => {
+): Promise<{ thumbnailPath: string } | null> => {
   const entry = getEntryById(entryId);
   if (!entry) {
     throw new Error("文件不存在或已删除");
@@ -55,16 +55,13 @@ export const getThumbnailPathForEntry = (
     throw new Error(pwdCheck.message ?? "访问密码错误");
   }
 
-  const rootPath = getLibraryRoot(entry.library_id);
+  const rootPath = await getLibraryRoot(entry.library_id);
   const thumbExt = getThumbnailExt(entry.extension);
-  const thumbnailPath = path.join(
-    rootPath,
-    INTERNAL_META_DIR,
-    THUMBNAILS_DIR_NAME,
-    `${entryId}${thumbExt}`,
-  );
+  const thumbnailPath = await resolvePathWithinLibrary(rootPath, path.join(
+    INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, assertValidPathSegment(`${entryId}${thumbExt}`),
+  ));
 
-  if (!fs.existsSync(thumbnailPath)) {
+  if (!(await pathExists(thumbnailPath))) {
     return null;
   }
 

@@ -1,3 +1,4 @@
+import { createUrlPreviewAdapter } from "../dialog/previewAdapters";
 import { useState } from "react";
 import { Download, Eye, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,7 +7,6 @@ import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
 import {
   PreviewDialog,
-  createUrlPreviewAdapter,
 } from "@/components/aichat/dialog/PreviewDialog";
 import type { ToolCallResult } from "./types";
 import { formatSize } from "./format";

@@ -4,7 +4,7 @@ import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
-import type { PendingAction } from "./ToolCallRenderer";
+import type { PendingAction, ToolCallResult } from "./ToolCallRenderer";
 import { AssistantMessage, UserMessageBubble, type StreamingStatus } from "./ChatMessageBubbles";
 import { useMemo } from "react";
 
@@ -35,7 +35,7 @@ export function ChatMessageList({
   const processedMessages = useMemo(() => {
     const result: Array<{
       message: AiChatMessage;
-      toolResults: Array<{ result: any; pendingAction?: PendingAction }>;
+      toolResults: Array<{ result: ToolCallResult; pendingAction?: PendingAction }>;
       showAvatar: boolean;
     }> = [];
 
@@ -61,14 +61,14 @@ export function ChatMessageList({
       }
 
       // 从 assistant payload 读取 toolResults
-      let toolResults: Array<{ result: any; pendingAction?: PendingAction }> = [];
+      let toolResults: Array<{ result: ToolCallResult; pendingAction?: PendingAction }> = [];
       if (m.role === "assistant" && m.payload?.toolResults) {
         const payloadToolResults = m.payload.toolResults as Array<{
-          result?: any;
+          result?: ToolCallResult;
           pendingAction?: PendingAction;
         }>;
         toolResults = payloadToolResults
-          .filter((tr) => tr.result)
+          .filter((tr): tr is { result: ToolCallResult; pendingAction?: PendingAction } => Boolean(tr.result))
           .map((tr) => ({ result: tr.result, pendingAction: tr.pendingAction }));
       }
 

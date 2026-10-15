@@ -1,17 +1,23 @@
 import fs from "node:fs";
+import { withLibraryMutation } from "./mutationLock.ts";
+import { getEntryById, resolveRealPathForEntry } from "./service.ts";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import crypto from "node:crypto";
+import { assertValidPathSegment, resolvePathWithinLibrary } from "../../core/config/pathSecurity.ts";
 import { db } from "../../core/db/index.ts";
 import type { TaskContext } from "../../core/tasks/types.ts";
 import { rebuildFtsIndexForLibrary } from "./ftsService.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
-import { cleanupTranscodesForLibrary } from "../fileContent/transcodeService.ts";
+import { cleanupTranscodesForLibrary } from "../fileContent/index.ts";
 
 // ============================================================================
 // 任务类型常量
 // ============================================================================
-export const TASK_TYPE_FILE_INDEX_LIBRARY = "FILE_INDEX_LIBRARY";
-export const TASK_TYPE_FILE_INDEX_SINGLE = "FILE_INDEX_SINGLE";
+export {
+  TASK_TYPE_FILE_INDEX_LIBRARY,
+  TASK_TYPE_FILE_INDEX_SINGLE,
+} from "./taskTypes.ts";
 
 // 内部子任务类型（不单独显示，作为索引任务的子任务）
 const TASK_TYPE_INDEX_SCAN = "INDEX_SCAN"; // 文件扫描阶段
@@ -184,16 +190,17 @@ const getThumbnailExt = (ext: string | null): string => {
   return THUMBNAIL_EXT_IMAGE;
 };
 
-const getThumbnailPath = (rootPath: string, entryId: string, ext: string | null): string => {
+const getThumbnailPath = async (rootPath: string, entryId: string, ext: string | null): Promise<string> => {
   const thumbExt = getThumbnailExt(ext);
-  return path.join(rootPath, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`);
+  assertValidPathSegment(entryId);
+  return (await resolvePathWithinLibrary(rootPath, path.join(INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`)));
 };
 
-const thumbnailExists = (rootPath: string, entryId: string, ext: string | null): boolean => {
-  const thumbPath = getThumbnailPath(rootPath, entryId, ext);
-  if (!fs.existsSync(thumbPath)) return false;
+const thumbnailExists = async (rootPath: string, entryId: string, ext: string | null): Promise<boolean> => {
+  const thumbPath = (await getThumbnailPath(rootPath, entryId, ext));
+  if (!(await pathExists(thumbPath))) return false;
   // 如果缩略图小于 1KB，可能生成失败，视为不存在
-  const stat = fs.statSync(thumbPath);
+  const stat = (await fs.promises.stat(thumbPath));
   return stat.size > 1024;
 };
 
@@ -213,19 +220,20 @@ interface ScanResult {
 /**
  * 递归扫描目录，收集文件信息（非侵入式：不修改物理文件名）
  */
-const scanDirectory = (
+const scanDirectory = async (
   libraryId: number,
   rootPath: string,
   dirPath: string,
   parentEntryId: string | null,
   result: ScanResult,
   onProgress?: (current: number, label: string) => void,
-): void => {
-  if (!fs.existsSync(dirPath)) return;
+): Promise<void> => {
+  dirPath = (await resolvePathWithinLibrary(rootPath, path.relative(rootPath, dirPath)));
+  if (!(await pathExists(dirPath))) return;
 
   let entries: fs.Dirent[];
   try {
-    entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    entries = (await fs.promises.readdir(dirPath, { withFileTypes: true }));
   } catch (err) {
     console.error(`无法读取目录 ${dirPath}:`, err);
     return;
@@ -238,9 +246,21 @@ const scanDirectory = (
     // 跳过内部配置目录
     if (entry.name === INTERNAL_META_DIR && dirPath === rootPath) continue;
 
-    const fullPath = path.join(dirPath, entry.name);
+    // Never follow directory or file links during a scan. Validate each actual
+    // I/O path as well, including a directory replaced after readdir.
+    if (entry.isSymbolicLink()) continue;
+    let fullPath: string;
+    let stat: fs.Stats;
+    try {
+      assertValidPathSegment(entry.name);
+      fullPath = (await resolvePathWithinLibrary(rootPath, path.relative(rootPath, path.join(dirPath, entry.name))));
+      stat = (await fs.promises.lstat(fullPath));
+    } catch {
+      continue;
+    }
+    if (stat.isSymbolicLink()) continue;
 
-    if (entry.isDirectory()) {
+    if (stat.isDirectory()) {
       const entryId = processDirectoryEntry(
         libraryId,
         parentEntryId,
@@ -252,15 +272,8 @@ const scanDirectory = (
       result.totalDirs++;
 
       // 递归扫描子目录
-      scanDirectory(libraryId, rootPath, fullPath, entryId, result, onProgress);
-    } else if (entry.isFile()) {
-      let stat: fs.Stats;
-      try {
-        stat = fs.statSync(fullPath);
-      } catch {
-        continue; // 无法读取文件，跳过
-      }
-
+      (await scanDirectory(libraryId, rootPath, fullPath, entryId, result, onProgress));
+    } else if (stat.isFile()) {
       const { entryId, isNew } = processFileEntry(
         libraryId,
         parentEntryId,
@@ -276,7 +289,7 @@ const scanDirectory = (
       // 检查是否需要生成缩略图
       const extension = path.extname(entry.name).toLowerCase().replace(/^\./, "") || null;
       const category = getFileCategory(extension);
-      if (needsThumbnail(category) && !thumbnailExists(rootPath, entryId, extension)) {
+      if (needsThumbnail(category) && !(await thumbnailExists(rootPath, entryId, extension))) {
         result.thumbnailQueue.push({ entryId, extension: extension! });
       }
 
@@ -296,7 +309,7 @@ const scanDirectory = (
 // ============================================================================
 
 // 导入缩略图生成函数
-import { generateThumbnailForEntry } from "../fileContent/thumbnailTasks.ts";
+import { generateThumbnailForEntry } from "../fileContent/index.ts";
 
 const processThumbnailQueue = async (
   queue: Array<{ entryId: string; extension: string }>,
@@ -344,11 +357,14 @@ export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> =>
   const libraryId = payload.libraryId;
   const forceReindex = payload.forceReindex === true;
 
-  if (!libraryId || typeof libraryId !== "number") {
+  if (typeof libraryId !== "number" || !Number.isSafeInteger(libraryId) || libraryId <= 0) {
     throw new Error("索引任务缺少合法的文件库 ID");
   }
 
-  const rootPath = getLibraryRoot(libraryId);
+  return withLibraryMutation(libraryId, async () => {
+  const rootPath = (await getLibraryRoot(libraryId));
+  // Fail before force-reindex changes the database if the root is unavailable.
+  (await fs.promises.readdir(rootPath));
   log.info(`开始索引文件库 #${libraryId}, 路径: ${rootPath}, 强制重建: ${forceReindex}`);
 
   // 强制索引模式：先标记所有现有索引为已删除，并清理转码文件
@@ -361,7 +377,7 @@ export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> =>
     ).run(now, now, libraryId);
 
     // 清理该文件库的所有转码文件
-    cleanupTranscodesForLibrary(libraryId);
+    (await cleanupTranscodesForLibrary(libraryId));
   }
 
   // 阶段 1：扫描文件系统
@@ -375,9 +391,9 @@ export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> =>
     thumbnailQueue: [],
   };
 
-  scanDirectory(libraryId, rootPath, rootPath, null, result, (current, label) => {
+  (await scanDirectory(libraryId, rootPath, rootPath, null, result, (current, label) => {
     updateDetailProgress(current, 0, label);
-  });
+  }));
 
   // 扫描完成
   log.info(`扫描完成: ${result.totalFiles} 文件, ${result.totalDirs} 目录, ${result.newFiles} 新增`);
@@ -420,6 +436,7 @@ export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> =>
   // 更新文件库的最后扫描时间
   const now = new Date().toISOString();
   db.prepare("UPDATE file_libraries SET last_scanned_at = ?, updated_at = ? WHERE id = ?").run(now, now, libraryId);
+  });
 };
 
 // ============================================================================
@@ -428,11 +445,11 @@ export const handleIndexLibraryTask = async (ctx: TaskContext): Promise<void> =>
 
 export const handleIndexSingleTask = async (ctx: TaskContext): Promise<void> => {
   const { task, updateProgress, log } = ctx;
-  const payload = task.payload as { libraryId?: number; relativePath?: string };
+  const payload = task.payload as { libraryId?: number; relativePath?: string; parentEntryId?: unknown };
   const libraryId = payload.libraryId;
   const relativePath = payload.relativePath;
 
-  if (!libraryId || typeof libraryId !== "number") {
+  if (typeof libraryId !== "number" || !Number.isSafeInteger(libraryId) || libraryId <= 0) {
     throw new Error("单路径索引任务缺少合法的文件库 ID");
   }
 
@@ -440,21 +457,33 @@ export const handleIndexSingleTask = async (ctx: TaskContext): Promise<void> => 
     throw new Error("单路径索引任务缺少合法的相对路径");
   }
 
-  const rootPath = getLibraryRoot(libraryId);
-  const targetPath = path.resolve(rootPath, relativePath);
-
-  // 防止越界
-  if (!targetPath.startsWith(path.resolve(rootPath))) {
-    throw new Error("索引路径越界，不在文件库目录下");
+  return withLibraryMutation(libraryId, async () => {
+  const rootPath = (await getLibraryRoot(libraryId));
+  let targetPath: string;
+  if (payload.parentEntryId !== undefined) {
+    // Upload destinations are stable entry IDs: a queued task follows a renamed
+    // parent, and never falls back to an old path after deletion/reassignment.
+    const parent = typeof payload.parentEntryId === "string" ? getEntryById(payload.parentEntryId) : null;
+    if (!parent || !parent.is_directory || parent.library_id !== libraryId) throw new Error("上传目标目录不存在或不属于当前文件库");
+    targetPath = await resolveRealPathForEntry(parent, rootPath);
+  } else {
+    targetPath = await resolvePathWithinLibrary(rootPath, relativePath);
   }
+  const normalizedRelativePath = path.relative(rootPath, targetPath);
+  const segments = normalizedRelativePath.split(path.sep).filter(Boolean);
+  if (segments[0] === INTERNAL_META_DIR) {
+    throw new Error("不能索引文件库内部元数据");
+  }
+  for (const segment of segments) assertValidPathSegment(segment);
 
-  if (!fs.existsSync(targetPath)) {
+  if (!(await pathExists(targetPath))) {
     throw new Error("目标路径不存在");
   }
 
   log.info(`开始索引路径: ${relativePath}`);
 
-  const stat = fs.statSync(targetPath);
+  const stat = (await fs.promises.lstat(targetPath));
+  if (!stat.isFile() && !stat.isDirectory()) throw new Error("目标必须是文件或文件夹");
   const result: ScanResult = {
     totalFiles: 0,
     totalDirs: 0,
@@ -463,33 +492,28 @@ export const handleIndexSingleTask = async (ctx: TaskContext): Promise<void> => 
     thumbnailQueue: [],
   };
 
+  // Keep the same normalized parent chain for files and directories. Using
+  // the raw path (including '..') would corrupt the stored hierarchy.
+  let parentId: string | null = null;
+  for (const segment of segments.slice(0, -1)) {
+    parentId = processDirectoryEntry(libraryId, parentId, segment);
+  }
+
   if (stat.isDirectory()) {
-    // 找到或创建目录的父级 entry
-    const segments = relativePath.split(/[/\\]/).filter(Boolean);
-    let parentId: string | null = null;
-
-    // 逐级确保父目录存在
-    for (let i = 0; i < segments.length - 1; i++) {
-      const seg = segments[i];
-      if (seg) {
-        parentId = processDirectoryEntry(libraryId, parentId, seg);
-      }
-    }
-
-    const dirName = segments[segments.length - 1] || path.basename(targetPath);
-    const dirEntryId = processDirectoryEntry(libraryId, parentId, dirName);
-
-    scanDirectory(libraryId, rootPath, targetPath, dirEntryId, result);
+    const dirEntryId = segments.length === 0 ? null : processDirectoryEntry(
+      libraryId, parentId, segments[segments.length - 1]!,
+    );
+    (await scanDirectory(libraryId, rootPath, targetPath, dirEntryId, result));
   } else if (stat.isFile()) {
     const baseName = path.basename(targetPath);
-    const { entryId, isNew } = processFileEntry(libraryId, null, baseName, stat.size);
+    const { entryId, isNew } = processFileEntry(libraryId, parentId, baseName, stat.size);
 
     result.totalFiles = 1;
     if (isNew) result.newFiles = 1;
 
     const extension = path.extname(baseName).toLowerCase().replace(/^\./, "") || null;
     const category = getFileCategory(extension);
-    if (needsThumbnail(category) && !thumbnailExists(rootPath, entryId, extension)) {
+    if (needsThumbnail(category) && !(await thumbnailExists(rootPath, entryId, extension))) {
       result.thumbnailQueue.push({ entryId, extension: extension! });
     }
   }
@@ -501,6 +525,7 @@ export const handleIndexSingleTask = async (ctx: TaskContext): Promise<void> => 
 
   log.info(`索引完成: ${result.totalFiles} 文件`);
   updateProgress(90, `索引完成: ${result.totalFiles} 文件`);
+  });
 };
 
 // 导出缩略图后缀常量供其他模块使用

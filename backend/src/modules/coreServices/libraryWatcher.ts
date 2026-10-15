@@ -4,7 +4,10 @@
  */
 import fs from "node:fs";
 import { db } from "../../core/db/index.ts";
+import { assertExistingLibraryRootPathAsync } from "../../core/config/pathSecurity.ts";
 import { createLogger } from "../../core/logger/index.ts";
+
+import { createPollingLoop } from "./pollingLoop.ts";
 
 const logger = createLogger("LibraryWatcher");
 
@@ -22,40 +25,20 @@ export interface LibraryStatus {
 type StatusChangeCallback = (libraryId: number, isOnline: boolean, displayName: string) => void;
 
 // 内存中的状态缓存
-const statusCache = new Map<number, boolean>();
+const statusCache = new Map<number, { rootPath: string; isOnline: boolean }>();
 
 // 状态变化监听器
 const changeListeners: StatusChangeCallback[] = [];
 
-// 定时器句柄
-let watcherTimer: ReturnType<typeof setInterval> | null = null;
-
 // 默认检测间隔（毫秒）
 const DEFAULT_CHECK_INTERVAL = 3000;
+let checkInterval = DEFAULT_CHECK_INTERVAL;
+let probeGeneration = 0;
+const activeProbes = new Set<Promise<boolean>>();
 
 /**
  * 检测单个文件库是否在线
  */
-const checkLibraryOnline = (rootPath: string): boolean => {
-  try {
-    // 1. 检查路径是否存在
-    if (!fs.existsSync(rootPath)) {
-      return false;
-    }
-
-    // 2. 检查是否可读
-    fs.accessSync(rootPath, fs.constants.R_OK);
-
-    // 3. 尝试读取目录（验证实际可访问，处理网络驱动器等情况）
-    const entries = fs.readdirSync(rootPath, { withFileTypes: true });
-    
-    // 能读取到内容（即使是空目录）说明在线
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 /**
  * 获取所有启用的文件库
  */
@@ -85,93 +68,91 @@ const updateLibraryOnlineStatus = (libraryId: number, isOnline: boolean): void =
 /**
  * 执行一次全量检测
  */
-const performCheck = (): void => {
+const checkLibraryOnlineAsync = (rootPath: string): Promise<boolean> => {
+  const probe = (async () => {
+  try {
+    const canonical = await assertExistingLibraryRootPathAsync(rootPath);
+    await fs.promises.access(canonical, fs.constants.R_OK);
+    const directory = await fs.promises.opendir(canonical);
+    await directory.close();
+    return true;
+  } catch { return false; }
+  })();
+  activeProbes.add(probe);
+  return probe.finally(() => { activeProbes.delete(probe); });
+};
+
+const performCheck = async (isCurrent: () => boolean): Promise<void> => {
+  if (!isCurrent()) return;
   const libraries = getEnabledLibraries();
-  const now = new Date().toISOString();
+  const enabledIds = new Set(libraries.map(lib => lib.id));
+  for (const id of statusCache.keys()) if (!enabledIds.has(id)) statusCache.delete(id);
 
+  // One probe at a time bounds storage pressure, including network mounts.
   for (const lib of libraries) {
-    const wasOnline = statusCache.get(lib.id);
-    const isOnline = checkLibraryOnline(lib.root_path);
-
-    // 更新缓存
-    statusCache.set(lib.id, isOnline);
-
-    // 状态发生变化
+    if (!isCurrent()) return;
+    const isOnline = await checkLibraryOnlineAsync(lib.root_path);
+    if (!isCurrent()) return;
+    // A library can be disabled/deleted or have its root changed during I/O.
+    const current = db.prepare("SELECT root_path, is_enabled FROM file_libraries WHERE id = ?").get(lib.id) as
+      { root_path: string; is_enabled: number } | undefined;
+    if (!current || !current.is_enabled || current.root_path !== lib.root_path) {
+      statusCache.delete(lib.id);
+      continue;
+    }
+    const wasOnline = statusCache.get(lib.id)?.isOnline;
+    updateLibraryOnlineStatus(lib.id, isOnline);
+    statusCache.set(lib.id, { rootPath: lib.root_path, isOnline });
     if (wasOnline !== undefined && wasOnline !== isOnline) {
-      // 更新数据库
-      updateLibraryOnlineStatus(lib.id, isOnline);
-
-      // 通知监听器
-      for (const listener of changeListeners) {
-        try {
-          listener(lib.id, isOnline, lib.display_name);
-        } catch (err) {
-          logger.error("监听器执行错误", err);
-        }
-      }
-
-      logger.info(
-        `文件库 "${lib.display_name}" (ID: ${lib.id}) 状态变化: ${wasOnline ? "在线" : "离线"} -> ${isOnline ? "在线" : "离线"}`
-      );
-    } else if (wasOnline === undefined) {
-      // 首次检测，同步数据库状态
-      if (lib.is_online_cached !== (isOnline ? 1 : 0)) {
-        updateLibraryOnlineStatus(lib.id, isOnline);
+      for (const listener of [...changeListeners]) {
+        try { listener(lib.id, isOnline, lib.display_name); }
+        catch (error) { logger.error("监听器执行错误", error); }
       }
     }
   }
 };
 
-/**
- * 启动监控服务
- */
+const polling = createPollingLoop(performCheck, error => logger.error("文件库状态检测失败", error));
+
 export const startLibraryWatcher = (intervalMs: number = DEFAULT_CHECK_INTERVAL): void => {
-  if (watcherTimer) {
-    logger.warn("服务已在运行");
-    return;
-  }
-
-  logger.info(`启动文件库监控服务，检测间隔: ${intervalMs}ms`);
-
-  // 立即执行一次检测
-  performCheck();
-
-  // 启动定时检测
-  watcherTimer = setInterval(performCheck, intervalMs);
+  if (polling.isRunning()) return;
+  polling.start(intervalMs);
+  checkInterval = intervalMs;
 };
 
-/**
- * 停止监控服务
- */
-export const stopLibraryWatcher = (): void => {
-  if (watcherTimer) {
-    clearInterval(watcherTimer);
-    watcherTimer = null;
-    logger.info("文件库监控服务已停止");
-  }
+export const stopLibraryWatcher = async (): Promise<void> => {
+  probeGeneration += 1;
+  await polling.stop();
+  await Promise.all([...activeProbes]);
+  statusCache.clear();
 };
 
 /**
  * 获取指定库的在线状态（从缓存）
  */
-export const isLibraryOnline = (libraryId: number): boolean => {
-  const cached = statusCache.get(libraryId);
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  // 缓存未命中，从数据库读取
+export const isLibraryOnline = async (libraryId: number): Promise<boolean> => {
+  // Recheck membership before using cache: deleted/disabled roots cannot stay online.
   const row = db
-    .prepare("SELECT root_path, is_online_cached FROM file_libraries WHERE id = ?")
-    .get(libraryId) as { root_path: string; is_online_cached: number } | undefined;
-
-  if (!row) {
+    .prepare("SELECT root_path, is_enabled FROM file_libraries WHERE id = ?")
+    .get(libraryId) as { root_path: string; is_enabled: number } | undefined;
+  if (!row || !row.is_enabled) {
+    statusCache.delete(libraryId);
     return false;
   }
+  const cached = statusCache.get(libraryId);
+  if (cached?.rootPath === row.root_path) return cached.isOnline;
 
   // 实时检测并更新缓存
-  const isOnline = checkLibraryOnline(row.root_path);
-  statusCache.set(libraryId, isOnline);
+  const generation = probeGeneration;
+  const isOnline = await checkLibraryOnlineAsync(row.root_path);
+  if (generation !== probeGeneration) return false;
+  const current = db.prepare("SELECT root_path, is_enabled FROM file_libraries WHERE id = ?").get(libraryId) as
+    { root_path: string; is_enabled: number } | undefined;
+  if (!current || !current.is_enabled || current.root_path !== row.root_path) {
+    statusCache.delete(libraryId);
+    return false;
+  }
+  statusCache.set(libraryId, { rootPath: row.root_path, isOnline });
 
   return isOnline;
 };
@@ -182,14 +163,15 @@ export const isLibraryOnline = (libraryId: number): boolean => {
 export const getAllLibraryStatus = (): LibraryStatus[] => {
   const libraries = db
     .prepare(
-      "SELECT id, display_name, root_path, is_enabled, is_online_cached, last_online_check_at FROM file_libraries ORDER BY id"
+      "SELECT id, display_name, root_path, is_enabled, is_online_cached, last_online_check_at, updated_at FROM file_libraries ORDER BY id"
     )
     .all() as any[];
 
   return libraries.map((lib) => {
     // 优先使用缓存状态
-    const cachedOnline = statusCache.get(lib.id);
-    const isOnline = cachedOnline !== undefined ? cachedOnline : Boolean(lib.is_online_cached);
+    const cached = statusCache.get(lib.id);
+    const cachedOnline = cached && cached.rootPath === lib.root_path ? cached.isOnline : undefined;
+    const isOnline = Boolean(lib.is_enabled) && (cachedOnline !== undefined ? cachedOnline : Boolean(lib.is_online_cached));
 
     return {
       id: lib.id,
@@ -206,7 +188,7 @@ export const getAllLibraryStatus = (): LibraryStatus[] => {
  * 注册状态变化监听器
  */
 export const onLibraryStatusChange = (callback: StatusChangeCallback): void => {
-  changeListeners.push(callback);
+  if (!changeListeners.includes(callback)) changeListeners.push(callback);
 };
 
 /**
@@ -222,19 +204,28 @@ export const offLibraryStatusChange = (callback: StatusChangeCallback): void => 
 /**
  * 强制刷新指定库的状态
  */
-export const refreshLibraryStatus = (libraryId: number): boolean => {
+export const refreshLibraryStatus = async (libraryId: number): Promise<boolean> => {
   const row = db
-    .prepare("SELECT root_path, display_name FROM file_libraries WHERE id = ?")
+    .prepare("SELECT root_path, display_name FROM file_libraries WHERE id = ? AND is_enabled = 1")
     .get(libraryId) as { root_path: string; display_name: string } | undefined;
 
   if (!row) {
+    statusCache.delete(libraryId);
     return false;
   }
 
-  const wasOnline = statusCache.get(libraryId);
-  const isOnline = checkLibraryOnline(row.root_path);
+  const wasOnline = statusCache.get(libraryId)?.isOnline;
+  const generation = probeGeneration;
+  const isOnline = await checkLibraryOnlineAsync(row.root_path);
+  if (generation !== probeGeneration) return false;
+  const current = db.prepare("SELECT root_path, is_enabled FROM file_libraries WHERE id = ?").get(libraryId) as
+    { root_path: string; is_enabled: number } | undefined;
+  if (!current || !current.is_enabled || current.root_path !== row.root_path) {
+    statusCache.delete(libraryId);
+    return false;
+  }
 
-  statusCache.set(libraryId, isOnline);
+  statusCache.set(libraryId, { rootPath: row.root_path, isOnline });
   updateLibraryOnlineStatus(libraryId, isOnline);
 
   // 如果状态变化，通知监听器
@@ -255,5 +246,5 @@ export const refreshLibraryStatus = (libraryId: number): boolean => {
  * 获取检测间隔配置
  */
 export const getCheckInterval = (): number => {
-  return DEFAULT_CHECK_INTERVAL;
+  return checkInterval;
 };

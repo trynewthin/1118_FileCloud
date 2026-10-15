@@ -144,7 +144,7 @@ export function BlurFade({
           radialBlur && "bg-transparent",
           className
         )}
-        style={{ ...(style as any), ...(radialStyle as any) }}
+        style={{ ...style, ...radialStyle }}
         {...restProps}
       >
         {children}

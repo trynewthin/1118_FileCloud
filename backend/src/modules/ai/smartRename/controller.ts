@@ -31,6 +31,6 @@ export const smartRename = async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error("智能重命名失败:", err);
     const message = parseErrorMessage(err);
-    return res.status(400).json({ message });
+    return res.status(err.status ?? 400).json({ message });
   }
 };

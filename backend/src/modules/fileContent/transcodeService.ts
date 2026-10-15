@@ -1,8 +1,10 @@
-import fs from "node:fs";
+import fs from "node:fs/promises";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
-import { getEntryById, buildRelativePathForEntry } from "../files/service.ts";
+import { assertSafeDirectoryTree, assertValidPathSegment, resolveMutationPathWithinLibrary, resolvePathWithinLibrary } from "../../core/config/pathSecurity.ts";
+import { getEntryById, resolveRealPathForEntry } from "../files/index.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
 import { createLogger } from "../../core/logger/index.ts";
 
@@ -121,17 +123,17 @@ export const markTranscodeFailed = (entryId: string, errorMessage: string): void
 };
 
 // 删除转码记录（原始文件被删除时调用）
-export const deleteTranscodeForEntry = (entryId: string): void => {
+export const deleteTranscodeForEntry = async (entryId: string): Promise<void> => {
   const record = getTranscodeForEntry(entryId);
   if (record?.output_path) {
     // 尝试删除转码文件
     try {
       const entry = getEntryById(entryId);
       if (entry) {
-        const rootPath = getLibraryRoot(entry.library_id);
-        const fullPath = path.join(rootPath, INTERNAL_META_DIR, TRANSCODED_DIR_NAME, record.output_path);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
+        const rootPath = await getLibraryRoot(entry.library_id);
+        const fullPath = await resolveMutationPathWithinLibrary(rootPath, path.join(INTERNAL_META_DIR, TRANSCODED_DIR_NAME, assertValidPathSegment(record.output_path)));
+        if (await pathExists(fullPath)) {
+          await fs.unlink(fullPath);
         }
       }
     } catch (err) {
@@ -142,7 +144,7 @@ export const deleteTranscodeForEntry = (entryId: string): void => {
 };
 
 // 清理指定文件库的所有转码记录和文件
-export const cleanupTranscodesForLibrary = (libraryId: number): number => {
+export const cleanupTranscodesForLibrary = async (libraryId: number): Promise<number> => {
   // 获取该库的所有转码记录
   const records = db
     .prepare("SELECT * FROM file_transcodes WHERE library_id = ?")
@@ -157,10 +159,11 @@ export const cleanupTranscodesForLibrary = (libraryId: number): number => {
       .get(libraryId) as { root_path: string } | undefined;
 
     if (library) {
-      const transcodedDir = path.join(library.root_path, INTERNAL_META_DIR, TRANSCODED_DIR_NAME);
-      if (fs.existsSync(transcodedDir)) {
+      const transcodedDir = await resolveMutationPathWithinLibrary(library.root_path, path.join(INTERNAL_META_DIR, TRANSCODED_DIR_NAME));
+      if (await pathExists(transcodedDir)) {
         // 删除整个转码目录
-        fs.rmSync(transcodedDir, { recursive: true, force: true });
+        await assertSafeDirectoryTree(library.root_path, transcodedDir);
+        await fs.rm(transcodedDir, { recursive: true, force: true });
       }
     }
   } catch (err) {
@@ -182,17 +185,15 @@ export const cleanupTranscodesForLibrary = (libraryId: number): number => {
 // ============================================================================
 
 // 获取转码输出目录
-const getTranscodedDir = (libraryRootPath: string): string => {
-  const dir = path.join(libraryRootPath, INTERNAL_META_DIR, TRANSCODED_DIR_NAME);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+const getTranscodedDir = async (libraryRootPath: string): Promise<string> => {
+  const dir = await resolveMutationPathWithinLibrary(libraryRootPath, path.join(INTERNAL_META_DIR, TRANSCODED_DIR_NAME));
+  await fs.mkdir(dir, { recursive: true });
   return dir;
 };
 
 // 获取转码输出文件名
 const getTranscodedFileName = (entryId: string): string => {
-  return `${entryId}${TRANSCODE_EXT}`;
+  return assertValidPathSegment(`${entryId}${TRANSCODE_EXT}`);
 };
 
 // 执行 FFmpeg 转码
@@ -209,30 +210,30 @@ export const executeTranscode = async (
     return { success: false, error: "不支持对目录进行转码" };
   }
 
-  const rootPath = getLibraryRoot(entry.library_id);
-  const relativePath = buildRelativePathForEntry(entry);
-  const inputPath = path.join(rootPath, relativePath);
+  const rootPath = await getLibraryRoot(entry.library_id);
+  const inputPath = await resolveRealPathForEntry(entry, rootPath);
 
-  if (!fs.existsSync(inputPath)) {
+  if (!(await pathExists(inputPath))) {
     return { success: false, error: "源文件不存在" };
   }
 
-  const transcodedDir = getTranscodedDir(rootPath);
+  const transcodedDir = await getTranscodedDir(rootPath);
   const outputFileName = getTranscodedFileName(entryId);
-  const outputPath = path.join(transcodedDir, outputFileName);
+  const outputPath = await resolveMutationPathWithinLibrary(rootPath, path.relative(rootPath, path.join(transcodedDir, outputFileName)));
 
   // 临时输出路径（.mp4 后缀，让 FFmpeg 自动识别格式）
-  const tempOutputPath = outputPath.replace(/\.webcompat$/, ".mp4");
+  const tempOutputPath = await resolveMutationPathWithinLibrary(rootPath, path.relative(rootPath, outputPath.replace(/\.webcompat$/, ".mp4")));
 
   // 如果已存在旧的转码文件，先删除
-  if (fs.existsSync(outputPath)) {
-    fs.unlinkSync(outputPath);
+  if (await pathExists(outputPath)) {
+    await fs.unlink(outputPath);
   }
-  if (fs.existsSync(tempOutputPath)) {
-    fs.unlinkSync(tempOutputPath);
+  if (await pathExists(tempOutputPath)) {
+    await fs.unlink(tempOutputPath);
   }
 
-  return new Promise((resolve) => {
+  let stderrLog = ""; // 收集完整日志
+  const result = await new Promise<{ code: number | null; error?: Error }>((resolve) => {
     // 1080p 转码，宽度自动适应且为偶数 (-2)
     const ffmpegArgs = [
       "-i", inputPath,
@@ -254,7 +255,7 @@ export const executeTranscode = async (
 
     let duration = 0;
     let lastProgress = 0;
-    let stderrLog = ""; // 收集完整日志
+    let progressError: Error | undefined;
 
     // 解析 stderr 获取总时长，同时收集日志
     ffmpeg.stderr.on("data", (data: Buffer) => {
@@ -282,58 +283,53 @@ export const executeTranscode = async (
         const progress = Math.min(99, Math.floor((currentSec / duration) * 100));
         if (progress > lastProgress) {
           lastProgress = progress;
-          onProgress?.(progress);
-        }
-      }
-    });
-
-    ffmpeg.on("error", (err) => {
-      logger.error("FFmpeg 启动失败", err);
-      resolve({ success: false, error: `FFmpeg 启动失败: ${err.message}` });
-    });
-
-    ffmpeg.on("close", (code) => {
-      if (code === 0 && fs.existsSync(tempOutputPath)) {
-        // 转码成功，将 .mp4 重命名为 .webcompat
-        try {
-          fs.renameSync(tempOutputPath, outputPath);
-          const stat = fs.statSync(outputPath);
-          onProgress?.(100);
-          resolve({
-            success: true,
-            outputPath: outputFileName,
-            outputSize: stat.size,
-          });
-        } catch (renameErr: any) {
-          logger.error("重命名失败", renameErr);
-          resolve({ success: false, error: `重命名失败: ${renameErr.message}` });
-        }
-      } else {
-        // 打印最后一部分日志帮助排查
-        logger.error(`FFmpeg 失败，退出码: ${code}`);
-        logger.error(`错误日志 (Last 20 lines):\n${stderrLog.split("\n").slice(-20).join("\n")}`);
-        
-        // 清理可能存在的不完整文件
-        if (fs.existsSync(tempOutputPath)) {
           try {
-            fs.unlinkSync(tempOutputPath);
-          } catch {
-            // 忽略
+            onProgress?.(progress);
+          } catch (error) {
+            // 取消/进度回调失败必须进入任务失败及临时文件清理路径
+            progressError = error instanceof Error ? error : new Error(String(error));
+            ffmpeg.kill();
           }
         }
-        // 返回包含部分日志的错误信息
-        const shortLog = stderrLog.split("\n").slice(-5).join("\n");
-        resolve({ success: false, error: `FFmpeg 退出码 ${code}: ${shortLog}` });
       }
     });
+
+    ffmpeg.once("error", (error) => resolve({ code: null, error }));
+    ffmpeg.once("close", (code) => resolve({ code, error: progressError }));
   });
+
+  if (result.error) {
+    logger.error("FFmpeg 执行失败", result.error);
+    await fs.unlink(tempOutputPath).catch(() => {});
+    return { success: false, error: `FFmpeg 执行失败: ${result.error.message}` };
+  }
+
+  if (result.code === 0) {
+    // 文件操作在进程 Promise 完成后执行，失败始终返回给任务调用者
+    try {
+      await fs.rename(tempOutputPath, outputPath);
+      const stat = await fs.stat(outputPath);
+      onProgress?.(100);
+      return { success: true, outputPath: outputFileName, outputSize: stat.size };
+    } catch (error: any) {
+      logger.error("转码输出处理失败", error);
+      await fs.unlink(tempOutputPath).catch(() => {});
+      return { success: false, error: `转码输出处理失败: ${error.message}` };
+    }
+  }
+
+  logger.error(`FFmpeg 失败，退出码: ${result.code}`);
+  logger.error(`错误日志 (Last 20 lines):\n${stderrLog.split("\n").slice(-20).join("\n")}`);
+  await fs.unlink(tempOutputPath).catch(() => {});
+  const shortLog = stderrLog.split("\n").slice(-5).join("\n");
+  return { success: false, error: `FFmpeg 退出码 ${result.code}: ${shortLog}` };
 };
 
 // ============================================================================
 // 获取转码版本的流式播放路径
 // ============================================================================
 
-export const getTranscodedFilePath = (entryId: string): string | null => {
+export const getTranscodedFilePath = async (entryId: string): Promise<string | null> => {
   const record = getTranscodeForEntry(entryId);
   if (!record || record.status !== "completed" || !record.output_path) {
     return null;
@@ -344,12 +340,12 @@ export const getTranscodedFilePath = (entryId: string): string | null => {
     return null;
   }
 
-  const rootPath = getLibraryRoot(entry.library_id);
-  const fullPath = path.join(rootPath, INTERNAL_META_DIR, TRANSCODED_DIR_NAME, record.output_path);
+  const rootPath = await getLibraryRoot(entry.library_id);
+  const fullPath = await resolvePathWithinLibrary(rootPath, path.join(INTERNAL_META_DIR, TRANSCODED_DIR_NAME, assertValidPathSegment(record.output_path)));
 
-  if (!fs.existsSync(fullPath)) {
+  if (!(await pathExists(fullPath))) {
     // 转码文件不存在，清理记录
-    deleteTranscodeForEntry(entryId);
+    await deleteTranscodeForEntry(entryId);
     return null;
   }
 

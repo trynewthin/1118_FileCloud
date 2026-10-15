@@ -1,3 +1,5 @@
+import { getErrorMessage } from "@/lib/api/errors";
+import type { FileLibrary } from "@/lib/api/fileLibraries";
 /**
  * 远程文件库浏览页面
  * 显示远程客户端的文件库列表和文件浏览
@@ -23,7 +25,7 @@ export function RemoteBrowserPage() {
   const parentIdParam = searchParams.get("parentId");
 
   const [client, setClient] = useState<RemoteClient | null>(null);
-  const [libraries, setLibraries] = useState<any[]>([]);
+  const [libraries, setLibraries] = useState<FileLibrary[]>([]);
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +44,8 @@ export function RemoteBrowserPage() {
       if (!found) {
         setError("远程客户端不在线");
       }
-    } catch (err: any) {
-      setError(err.message || "加载客户端信息失败");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "加载客户端信息失败"));
     }
   }, [clientId]);
 
@@ -55,8 +57,8 @@ export function RemoteBrowserPage() {
     try {
       const res = await getRemoteLibraries(clientId);
       setLibraries(res.items || []);
-    } catch (err: any) {
-      setError(err.message || "加载远程文件库失败");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "加载远程文件库失败"));
     } finally {
       setLoading(false);
     }
@@ -70,8 +72,8 @@ export function RemoteBrowserPage() {
     try {
       const res = await getRemoteEntries(clientId, activeLibraryId, parentIdParam || undefined);
       setEntries(res.items || []);
-    } catch (err: any) {
-      setError(err.message || "加载目录内容失败");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "加载目录内容失败"));
     } finally {
       setLoading(false);
     }

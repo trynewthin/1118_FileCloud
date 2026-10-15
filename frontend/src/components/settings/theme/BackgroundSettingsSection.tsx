@@ -97,7 +97,7 @@ export function BackgroundSettingsSection() {
       }
       await loadLocalImages();
       toast.success("背景图片上传成功");
-    } catch (err) {
+    } catch {
       toast.error("上传背景图片失败");
     } finally {
       setUploading(false);
@@ -119,7 +119,7 @@ export function BackgroundSettingsSection() {
       }
       await loadLocalImages();
       toast.success("背景图片已删除");
-    } catch (err) {
+    } catch {
       toast.error("删除背景图片失败");
     }
   };

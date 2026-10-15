@@ -4,6 +4,8 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { db } from "../db/index.ts";
+import { assertEntryAccess } from "../auth/libraryAccess.ts";
+import { assertLibraryRootPath } from "../config/pathSecurity.ts";
 import type { LibraryContext } from "./library.ts";
 
 // 条目上下文类型
@@ -50,6 +52,7 @@ interface EntryRow {
 interface LibraryRow {
   id: number;
   root_path: string;
+  user_id: number;
   display_name: string;
   is_enabled: number;
 }
@@ -87,7 +90,7 @@ const getEntryById = (id: string, includeDeleted: boolean): EntryContext | null 
 const getLibraryById = (id: number): LibraryContext | null => {
   const row = db
     .prepare(
-      "SELECT id, root_path, display_name, is_enabled FROM file_libraries WHERE id = ? LIMIT 1"
+      "SELECT id, user_id, root_path, display_name, is_enabled FROM file_libraries WHERE id = ? LIMIT 1"
     )
     .get(id) as LibraryRow | undefined;
 
@@ -96,6 +99,7 @@ const getLibraryById = (id: number): LibraryContext | null => {
   return {
     id: row.id,
     rootPath: row.root_path,
+    userId: row.user_id,
     displayName: row.display_name,
     isEnabled: Boolean(row.is_enabled),
   };
@@ -118,7 +122,7 @@ export const withEntry = (options?: {
   const includeDeleted = options?.includeDeleted ?? false;
   const requireLibraryEnabled = options?.requireLibraryEnabled ?? true;
 
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     // 获取条目 ID
     let entryId: string | undefined;
     if (paramName) {
@@ -133,26 +137,17 @@ export const withEntry = (options?: {
       return res.status(400).json({ message: "条目 ID 不合法" });
     }
 
-    // 查询条目
-    const entry = getEntryById(entryId, includeDeleted);
-    if (!entry) {
-      return res.status(404).json({ message: "文件或目录不存在" });
+    try {
+      (await assertEntryAccess(req.user, entryId, { includeDeleted, allowDisabled: !requireLibraryEnabled }));
+      const entry = getEntryById(entryId, includeDeleted)!;
+      const library = getLibraryById(entry.libraryId)!;
+      library.rootPath = (await assertLibraryRootPath(library.rootPath));
+      req.entry = entry;
+      req.library = library;
+    } catch (err: any) {
+      return res.status(err.status ?? 403).json({ message: err.message });
     }
 
-    // 加载关联的文件库
-    const library = getLibraryById(entry.libraryId);
-    if (!library) {
-      return res.status(404).json({ message: "关联的文件库不存在" });
-    }
-
-    // 校验文件库启用状态
-    if (requireLibraryEnabled && !library.isEnabled) {
-      return res.status(403).json({ message: "文件库未启用" });
-    }
-
-    // 挂载到请求上下文
-    req.entry = entry;
-    req.library = library;
     next();
   };
 };
@@ -161,12 +156,12 @@ export const withEntry = (options?: {
  * 直接校验条目（非中间件形式）
  * 用于需要手动校验的场景
  */
-export const ensureEntryExists = (
+export const ensureEntryExists = async (
   entryId: string,
   options?: { includeDeleted?: boolean; requireLibraryEnabled?: boolean }
 ): 
-  | { ok: true; entry: EntryContext; library: LibraryContext }
-  | { ok: false; message: string } => {
+  Promise<| { ok: true; entry: EntryContext; library: LibraryContext }
+  | { ok: false; message: string }> => {
   const includeDeleted = options?.includeDeleted ?? false;
   const requireLibraryEnabled = options?.requireLibraryEnabled ?? true;
 
@@ -188,5 +183,10 @@ export const ensureEntryExists = (
     return { ok: false, message: "文件库未启用" };
   }
 
+  try {
+    library.rootPath = (await assertLibraryRootPath(library.rootPath));
+  } catch (err: any) {
+    return { ok: false, message: err.message };
+  }
   return { ok: true, entry, library };
 };

@@ -75,7 +75,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    const anyVideo = videoEl as any;
+    const anyVideo = videoEl as HTMLVideoElement & { webkitDisplayingFullscreen?: boolean; webkitExitFullscreen?: () => void; webkitEnterFullscreen?: () => void };
 
     // 已在系统全屏中：尝试退出
     if (document.fullscreenElement) {
@@ -170,7 +170,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
     const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handleFsChange);
 
-    const video = videoRef.current as any;
+    const video = videoRef.current;
     const handleWebkitBegin = () => setIsFullscreen(true);
     const handleWebkitEnd = () => setIsFullscreen(false);
 

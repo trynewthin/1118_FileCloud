@@ -48,13 +48,13 @@ function loadInitialSettings(): BackgroundSettings {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<BackgroundSettings>;
+        const parsed = JSON.parse(raw) as Partial<BackgroundSettings> & { glowStyle?: unknown };
         // 兼容旧数据：
         // - 旧：mode=glow + glowStyle=aurora => 新：mode=aurora
         // - 旧：mode=glow + glowStyle=ambient/undefined => 新：mode=glow
         // - 旧：mode=image => 新：mode=image
         const legacyMode = parsed.mode;
-        const legacyGlowStyle = (parsed as any).glowStyle as any;
+        const legacyGlowStyle = parsed.glowStyle;
         const mode: BackgroundMode =
           legacyMode === "image"
             ? "image"

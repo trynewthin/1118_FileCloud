@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
@@ -39,9 +40,9 @@ export function TextPreview({ entry }: TextPreviewProps) {
         } else {
           setContent(text);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "加载失败");
+        setError(getErrorMessage(err, "加载失败"));
       } finally {
         setLoading(false);
       }

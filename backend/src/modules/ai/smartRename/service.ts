@@ -1,6 +1,8 @@
+import { assertEntryAccess, resolveAuthUser, AccessError } from "../../../core/auth/libraryAccess.ts";
+import { checkEntryPasswordIfProtected } from "../../files/index.ts";
 import { createLogger } from "../../../core/logger/index.ts";
 import { callChatModel } from "../../../core/ai/client.ts";
-import { getSetting } from "../../settings/service.ts";
+import { getSetting } from "../../settings/index.ts";
 import { getAiChatModelById, getAiProviderById } from "../service.ts";
 import type { SmartRenameRequest, SmartRenameResult, FileContextInfo } from "./types.ts";
 
@@ -11,11 +13,14 @@ const logger = createLogger("AI/SmartRename");
  */
 
 // 获取文件上下文信息
-export const getFileContext = async (entryId: string): Promise<FileContextInfo> => {
+export const getFileContext = async (entryId: string, userId: number): Promise<FileContextInfo> => {
+  const { entry: authorizedEntry } = await assertEntryAccess(resolveAuthUser(userId), entryId);
+  const check = checkEntryPasswordIfProtected(authorizedEntry.id);
+  if (!check.ok) throw new AccessError(check.message ?? "需要提供访问密码", 403);
   const result: FileContextInfo = {};
 
   try {
-    const { getEntryById, listEntriesByParent } = await import("../../files/service.ts");
+    const { getEntryById, listEntriesByParent } = await import("../../files/index.ts");
     const entry = getEntryById(entryId);
 
     if (!entry) {
@@ -26,7 +31,7 @@ export const getFileContext = async (entryId: string): Promise<FileContextInfo> 
     // 获取父目录信息
     if (entry.parent_id) {
       const parentEntry = getEntryById(entry.parent_id);
-      if (parentEntry) {
+      if (parentEntry && parentEntry.library_id === authorizedEntry.library_id) {
         result.parentName = parentEntry.original_name;
         logger.debug(`父目录: ${parentEntry.original_name}`);
       }
@@ -227,7 +232,7 @@ export const performSmartRename = async (
   let contextInfo = "";
   if (entryId) {
     logger.debug(`开始获取文件上下文信息 - entryId: ${entryId}`);
-    const context = await getFileContext(entryId);
+    const context = await getFileContext(entryId, userId);
     contextInfo = buildContextString(context);
   } else {
     logger.debug("未提供 entryId，跳过上下文信息获取");

@@ -12,22 +12,53 @@
  * - delete_file: 删除文件（需确认）
  */
 
-import type { ToolKit, ToolDefinition } from "./types.ts";
-import { listEntriesByParent, getEntryById } from "../../files/service.ts";
-import { searchByFts } from "../../files/ftsService.ts";
-import { db } from "../../../core/db/index.ts";
+import type { ToolKit, ToolDefinition, ToolExecutionContext } from "./types.ts";
+import { listEntriesByParent, getEntryById, searchByFts, checkEntryPasswordIfProtected } from "../../files/index.ts";
+import { AccessError, resolveAuthUser, listAccessibleLibraries, assertLibraryAccess, assertEntryAccess, assertFileMutationAccess } from "../../../core/auth/libraryAccess.ts";
 
 // ============================================================================
 // 辅助函数
 // ============================================================================
 
 /** 获取启用的文件库列表 */
-const getFileLibraries = () => {
-  const rows = db
-    .prepare("SELECT id, display_name, root_path FROM file_libraries WHERE is_enabled = 1")
-    .all() as { id: number; display_name: string; root_path: string }[];
-  return rows;
-};
+const getFileLibraries = (context: ToolExecutionContext) => listAccessibleLibraries(resolveAuthUser(context.userId));
+
+// AI arguments never confer access. Revalidate all referenced resources before
+// reading names, returning a pending action, or handing it off for execution.
+const authorizeTool = (tool: ToolDefinition): ToolDefinition => ({
+  ...tool,
+  executor: async (args, context) => {
+    try {
+      const user = resolveAuthUser(context.userId);
+      if (tool.callType === "modify") assertFileMutationAccess(user);
+      if (args.library_id !== undefined && args.library_id !== null) {
+        await assertLibraryAccess(user, args.library_id);
+      }
+      const checkEntry = async (id: unknown, options?: { libraryId?: number; directory?: boolean }) => {
+        const result = await assertEntryAccess(user, id, options);
+        // This tool surface has no password challenge. Protected entries must
+        // be opened through the regular file UI instead of bypassing the lock.
+        const check = checkEntryPasswordIfProtected(result.entry.id);
+        if (!check.ok) throw new AccessError(check.message ?? "需要提供访问密码", 403);
+        return result.entry;
+      };
+      const source = args.file_id !== undefined ? await checkEntry(args.file_id) : undefined;
+      if (args.file_ids !== undefined) {
+        if (!Array.isArray(args.file_ids)) throw new AccessError("文件 ID 列表不合法", 400);
+        for (const id of args.file_ids) await checkEntry(id);
+      }
+      if (args.parent_id !== undefined && args.parent_id !== null) {
+        await checkEntry(args.parent_id, { libraryId: args.library_id, directory: true });
+      }
+      if (args.target_parent_id !== undefined && args.target_parent_id !== null) {
+        await checkEntry(args.target_parent_id, { libraryId: source?.library_id, directory: true });
+      }
+      return await tool.executor(args, context);
+    } catch (err: any) {
+      return { success: false, error: err?.message ?? "无权访问" };
+    }
+  },
+});
 
 // ============================================================================
 // 工具定义
@@ -48,8 +79,8 @@ const listLibrariesTool: ToolDefinition = {
       },
     },
   },
-  executor: async () => {
-    const libraries = getFileLibraries();
+  executor: async (_args, context) => {
+    const libraries = await getFileLibraries(context);
     return {
       success: true,
       result: {
@@ -88,12 +119,12 @@ const listDirectoryTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const libraryId = args.library_id;
     const parentId = args.parent_id;
 
     if (!libraryId) {
-      const libraries = getFileLibraries();
+      const libraries = await getFileLibraries(context);
       return {
         success: true,
         result: {
@@ -149,7 +180,7 @@ const getFileInfoTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const fileId = args.file_id;
     if (!fileId) {
       return { success: false, error: "请提供文件 ID" };
@@ -236,7 +267,7 @@ const searchFilesTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const keyword = args.keyword;
     const keywords = args.keywords;
     const libraryId = args.library_id;
@@ -390,7 +421,7 @@ const searchFilesTool: ToolDefinition = {
     }
 
     // 跨库搜索
-    const libraries = getFileLibraries();
+    const libraries = await getFileLibraries(context);
     const allResults: Array<{
       id: string;
       name: string;
@@ -488,7 +519,7 @@ const showFilesTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const fileIds = args.file_ids as string[];
     const title = args.title as string | undefined;
 
@@ -562,7 +593,7 @@ const renameFileTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const fileId = args.file_id;
     const newName = args.new_name;
 
@@ -623,7 +654,7 @@ const moveFileTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const fileId = args.file_id;
     const targetParentId = args.target_parent_id || null;
 
@@ -690,7 +721,7 @@ const deleteFileTool: ToolDefinition = {
       },
     },
   },
-  executor: async (args) => {
+  executor: async (args, context) => {
     const fileId = args.file_id;
 
     if (!fileId) {
@@ -746,5 +777,5 @@ export const fileLibraryToolKit: ToolKit = {
     renameFileTool,
     moveFileTool,
     deleteFileTool,
-  ],
+  ].map(authorizeTool),
 };

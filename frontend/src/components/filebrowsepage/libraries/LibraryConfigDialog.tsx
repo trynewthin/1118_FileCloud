@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Settings, XIcon, Check, Trash2, RefreshCw, HardDrive, File, Folder, Database } from "lucide-react";
 import {
@@ -66,27 +66,29 @@ export function LibraryConfigDialog({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [error, setError] = useState("");
 
+  const loadStats = useCallback(async (signal?: AbortSignal) => {
+    setStatsLoading(true);
+    try {
+      const statsData = await getStats(library.id);
+      if (!signal?.aborted) setStats(statsData);
+    } catch (err) {
+      console.error("加载统计信息失败", err);
+    } finally {
+      if (!signal?.aborted) setStatsLoading(false);
+    }
+  }, [getStats, library.id]);
+
   // 加载统计信息
   useEffect(() => {
+    const controller = new AbortController();
     if (open) {
       setDisplayName(library.display_name);
       setIsEnabled(library.is_enabled);
       setError("");
-      loadStats();
+      void loadStats(controller.signal);
     }
-  }, [open, library]);
-
-  const loadStats = async () => {
-    setStatsLoading(true);
-    try {
-      const statsData = await getStats(library.id);
-      setStats(statsData);
-    } catch (err) {
-      console.error("加载统计信息失败", err);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
+    return () => controller.abort();
+  }, [open, library, loadStats]);
 
   // 保存配置
   const handleSave = async () => {
@@ -102,8 +104,8 @@ export function LibraryConfigDialog({
       toast.success("文件库配置已更新");
       onOpenChange(false);
       onUpdated?.();
-    } catch (err: any) {
-      setError(err?.message || "保存失败");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "保存失败");
     } finally {
       setLoading(false);
     }
@@ -119,8 +121,8 @@ export function LibraryConfigDialog({
       setDeleteConfirmOpen(false);
       onOpenChange(false);
       onDeleted?.();
-    } catch (err: any) {
-      toast.error(err?.message || "删除失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "删除失败");
     } finally {
       setLoading(false);
     }
@@ -136,8 +138,8 @@ export function LibraryConfigDialog({
       await loadStats();
       toast.success("状态已刷新");
       onUpdated?.();
-    } catch (err: any) {
-      toast.error(err?.message || "刷新失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "刷新失败");
     } finally {
       setLoading(false);
     }
@@ -150,8 +152,8 @@ export function LibraryConfigDialog({
 
     try {
       await reindex(library.id);
-    } catch (err: any) {
-      toast.error(err?.message || "创建索引任务失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "创建索引任务失败");
     } finally {
       setLoading(false);
     }

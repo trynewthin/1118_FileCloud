@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect, useCallback } from "react";
 import type { FileEntry } from "@/lib/api/files";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
@@ -50,10 +51,11 @@ export function VideoPreview({ entry }: VideoPreviewProps) {
     fetchTranscodeState();
   }, [fetchTranscodeState]);
 
+  const transcodeStatus = transcodeState?.status;
+
   // 轮询转码进度
   useEffect(() => {
-    if (!transcodeState) return;
-    if (transcodeState.status !== "pending" && transcodeState.status !== "processing") return;
+    if (transcodeStatus !== "pending" && transcodeStatus !== "processing") return;
 
     const interval = setInterval(async () => {
       try {
@@ -71,7 +73,7 @@ export function VideoPreview({ entry }: VideoPreviewProps) {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [entry.id, transcodeState?.status]);
+  }, [entry.id, transcodeStatus]);
 
   // 触发转码
   const handleStartTranscode = async () => {
@@ -82,8 +84,8 @@ export function VideoPreview({ entry }: VideoPreviewProps) {
       toast.success("转码任务已创建");
       // 刷新状态
       await fetchTranscodeState();
-    } catch (err: any) {
-      toast.error(err.message || "创建转码任务失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "创建转码任务失败"));
     } finally {
       setLoading(false);
     }

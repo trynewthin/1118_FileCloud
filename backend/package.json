@@ -5,7 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "start": "bun run src/server.ts"
+    "start": "bun run src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check:boundaries": "bun ../scripts/check-boundaries.mjs",
+    "test:boundaries": "bun test ../scripts/check-boundaries.test.mjs",
+    "check": "bun run test && bun run typecheck && bun run test:boundaries && bun run check:boundaries && (cd ../frontend && bun run lint && bun run test && bun run build)"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -19,6 +24,7 @@
   },
   "dependencies": {
     "busboy": "^1.6.0",
+    "drizzle-orm": "0.45.4",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.3"

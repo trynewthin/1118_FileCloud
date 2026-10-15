@@ -85,6 +85,9 @@ let taskService: TaskService | null = null;
 
 // 执行器是否已启动
 let isStarted = false;
+let pollTimer: ReturnType<typeof setInterval> | undefined;
+const drainWaiters = new Set<() => void>();
+const scheduleProcessing = () => { setTimeout(() => tryProcessTasks(), 0); };
 
 // ============================================================================
 // 公共 API
@@ -143,7 +146,7 @@ export const startExecutor = (): void => {
     throw new Error("任务服务未注入，请先调用 injectTaskService");
   }
 
-  isStarted = true;
+  if (runningTaskIds.size > 0) throw new Error("Executor is still draining");
   logger.info("任务执行器启动");
 
   // 崩溃恢复：重置所有 RUNNING 状态的任务
@@ -152,19 +155,25 @@ export const startExecutor = (): void => {
     logger.info(`崩溃恢复：重置 ${resetCount} 个中断的任务`);
   }
 
-  // 监听任务创建事件
-  emitter.on(TASK_CREATED_EVENT, () => {
-    // 使用 setTimeout(0) 避免阻塞创建者
-    setTimeout(() => tryProcessTasks(), 0);
-  });
+  isStarted = true;
+  emitter.on(TASK_CREATED_EVENT, scheduleProcessing);
 
   // 启动兜底轮询
-  setInterval(() => {
+  pollTimer = setInterval(() => {
     tryProcessTasks();
   }, config.pollIntervalMs);
 
   // 立即尝试处理一次
   tryProcessTasks();
+};
+
+/** Stop admission and polling; let already-running tasks finish naturally. */
+export const stopExecutor = async (): Promise<void> => {
+  isStarted = false;
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = undefined;
+  emitter.off(TASK_CREATED_EVENT, scheduleProcessing);
+  if (runningTaskIds.size > 0) await new Promise<void>(resolve => drainWaiters.add(resolve));
 };
 
 /**
@@ -190,7 +199,7 @@ export const getExecutorStatus = (): {
  * 尝试处理待执行的任务
  */
 const tryProcessTasks = (): void => {
-  if (!taskService) return;
+  if (!taskService || !isStarted) return;
 
   // 获取待执行任务
   const pendingTasks = taskService.listPendingTasks(20);
@@ -357,6 +366,10 @@ const runTask = async (task: TaskRecord, category: TaskCategory): Promise<void> 
     runningCounts[category]--;
     runningTaskIds.delete(task.id);
     cancelledTaskIds.delete(task.id);
+    if (runningTaskIds.size === 0) {
+      for (const resolve of drainWaiters) resolve();
+      drainWaiters.clear();
+    }
 
     // 尝试处理更多任务
     setTimeout(() => tryProcessTasks(), 0);

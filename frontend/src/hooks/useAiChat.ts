@@ -1,3 +1,5 @@
+import { createRequestLifecycle } from "./requestLifecycle";
+import { getErrorMessage, getErrorStatus, isAbortError } from "@/lib/api/errors";
 import { useCallback, useEffect, useState, useRef } from "react";
 import type {
   AiChatConversation,
@@ -119,26 +121,32 @@ export const useAiChat = () => {
           currentConversationId: nextCurrent,
         };
       });
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "加载会话列表失败";
+    } catch (err) {
+      const message = getErrorMessage(err, "加载会话列表失败");
       setState((prev) => ({ ...prev, loadingConversations: false, error: message }));
     }
   }, []);
 
+  const messagesLifecycleRef = useRef(createRequestLifecycle<number>());
+
   const reloadMessages = useCallback(async (conversationId?: number) => {
     const targetId = conversationId ?? state.currentConversationId;
     if (!targetId) return;
+    const request = messagesLifecycleRef.current.begin(targetId);
+    if (request === null) return;
 
     setState((prev) => ({ ...prev, loadingMessages: true, error: null }));
     try {
       const res = await listAiMessages(targetId);
+      if (!messagesLifecycleRef.current.isCurrent(request)) return;
       setState((prev) => ({
         ...prev,
         messages: res.items,
         loadingMessages: false,
       }));
-    } catch (err: any) {
-      const status = typeof err?.status === "number" ? err.status : undefined;
+    } catch (err) {
+      if (!messagesLifecycleRef.current.isCurrent(request)) return;
+      const status = getErrorStatus(err);
       // 如果会话不存在（可能是数据库重建或会话被删除后本地仍保留旧 ID），静默清理状态
       if (status === 404) {
         try {
@@ -155,7 +163,7 @@ export const useAiChat = () => {
         return;
       }
 
-      const message = typeof err?.message === "string" ? err.message : "加载消息失败";
+      const message = getErrorMessage(err, "加载消息失败");
       setState((prev) => ({ ...prev, loadingMessages: false, error: message }));
     }
   }, [state.currentConversationId]);
@@ -169,8 +177,8 @@ export const useAiChat = () => {
         toolkits: res.items,
         loadingToolkits: false,
       }));
-    } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "加载工具包列表失败";
+    } catch (err) {
+      const message = getErrorMessage(err, "加载工具包列表失败");
       setState((prev) => ({
         ...prev,
         loadingToolkits: false,
@@ -189,13 +197,16 @@ export const useAiChat = () => {
 
   // 当 currentConversationId 变化时自动加载消息
   useEffect(() => {
+    const lifecycle = messagesLifecycleRef.current;
     if (state.currentConversationId) {
-      reloadMessages(state.currentConversationId);
+      lifecycle.activate(state.currentConversationId);
+      void reloadMessages(state.currentConversationId);
     }
-  }, [state.currentConversationId]); // 注意：不依赖 reloadMessages 避免循环
+    return () => lifecycle.deactivate();
+  }, [state.currentConversationId, reloadMessages]);
 
   const selectConversation = useCallback(async (id: number) => {
-    setState((prev) => ({ ...prev, currentConversationId: id }));
+    setState((prev) => prev.currentConversationId === id ? prev : ({ ...prev, currentConversationId: id, messages: [], loadingMessages: true }));
     // 保存到 localStorage
     try {
       localStorage.setItem("ai_current_conversation_id", String(id));
@@ -225,8 +236,8 @@ export const useAiChat = () => {
         }
         // 消息加载由 effect 自动触发
         return conv;
-      } catch (err: any) {
-        const message = typeof err?.message === "string" ? err.message : "创建会话失败";
+      } catch (err) {
+        const message = getErrorMessage(err, "创建会话失败");
         setError(message);
         throw err;
       }
@@ -250,7 +261,7 @@ export const useAiChat = () => {
 
   const updateToolkitsConfig = useCallback(
     async (id: number, toolkitsConfig: ToolKitsConfig | null) => {
-      return updateConversationAction(id, { toolkitsConfig } as any);
+      return updateConversationAction(id, { toolkitsConfig });
     },
     [updateConversationAction],
   );
@@ -347,7 +358,7 @@ export const useAiChat = () => {
         role: "assistant",
         content: "",
         tool_name: null,
-        payload: { streaming: true } as any,
+        payload: { streaming: true },
         created_at: now,
       };
 
@@ -504,14 +515,13 @@ export const useAiChat = () => {
             activeConversationIdRef.current = null;
           },
         });
-      } catch (err: any) {
+      } catch (err) {
         // 清理临时附件
         localAttachmentsRef.current.delete(tempUserId);
         setLocalAttachments(new Map(localAttachmentsRef.current));
         
         // 如果是请求被中止，静默处理
-        const isAborted = err?.name === "AbortError" || 
-          (typeof err?.message === "string" && err.message.includes("aborted"));
+        const isAborted = isAbortError(err);
         
         if (isAborted) {
           setState((prev) => ({
@@ -530,7 +540,7 @@ export const useAiChat = () => {
           return;
         }
         
-        const message = typeof err?.message === "string" ? err.message : "发送消息失败";
+        const message = getErrorMessage(err, "发送消息失败");
         setState((prev) => ({
           ...prev,
           sending: false,
@@ -552,7 +562,7 @@ export const useAiChat = () => {
 
   // 执行工具操作
   const executeTool = useCallback(
-    async (toolName: string, args: Record<string, any>) => {
+    async (toolName: string, args: Record<string, unknown>) => {
       try {
         const result = await executeAiTool({
           toolName,
@@ -560,8 +570,8 @@ export const useAiChat = () => {
           conversationId: state.currentConversationId ?? undefined,
         });
         return result;
-      } catch (err: any) {
-        const message = typeof err?.message === "string" ? err.message : "执行工具失败";
+      } catch (err) {
+        const message = getErrorMessage(err, "执行工具失败");
         setError(message);
         throw err;
       }

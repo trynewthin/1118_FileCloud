@@ -1,10 +1,11 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import { Copy, Move, Trash2, Download, Tag, Pencil } from "lucide-react";
 import { getAuthToken, buildApiUrl } from "@/lib/api/client";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { getEntry, type FileEntry } from "@/lib/api/files";
+import { getEntry, type FileEntry, type CopyEntryParams } from "@/lib/api/files";
 import { PreviewRenderer } from "@/components/preview/PreviewRenderer";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { GlassButtonGroup } from "@/components/common/button/GlassButtonGroup";
@@ -51,9 +52,9 @@ export function FilePreviewPage() {
         // 目前假设已解锁或无需密码，或者后续完善密码输入 UI
         const res = await getEntry(id);
         setEntry(res.entry);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "加载文件详情失败");
+        setError(getErrorMessage(err, "加载文件详情失败"));
       } finally {
         setLoading(false);
       }
@@ -77,15 +78,15 @@ export function FilePreviewPage() {
   // 处理移动/复制
   const handleMoveCopySubmit = async (
     entryToMove: FileEntry,
-    targetParentId: string | null,
-    newName?: string
+    params: CopyEntryParams,
   ) => {
+    const { targetParentId } = params;
     if (actionDialog.type === "move") {
-      await move(entryToMove.id, { targetParentId });
+      await move(entryToMove.id, params);
       // 移动成功后返回目标目录
       navigate(`/files?libraryId=${entryToMove.library_id}${targetParentId ? `&parentId=${targetParentId}` : ''}`);
     } else if (actionDialog.type === "copy") {
-      await copy(entryToMove.id, { targetParentId, newName });
+      await copy(entryToMove.id, params);
       // 复制成功后可以留在当前页面，或者跳转到目标目录
     }
   };

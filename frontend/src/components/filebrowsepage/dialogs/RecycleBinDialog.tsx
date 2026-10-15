@@ -19,8 +19,8 @@ interface RecycleBinDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   libraryId: number | null;
-  onRestore: (id: string) => Promise<any>;
-  onDestroy: (id: string) => Promise<any>;
+  onRestore: (id: string) => Promise<unknown>;
+  onDestroy: (id: string) => Promise<unknown>;
 }
 
 export function RecycleBinDialog({
@@ -43,6 +43,7 @@ export function RecycleBinDialog({
   }, [error]);
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
       if (!open || !libraryId) {
         setItems([]);
@@ -53,15 +54,16 @@ export function RecycleBinDialog({
       setError(null);
       try {
         const res = await listTrashEntries(libraryId);
-        setItems(res.items);
-      } catch (err: any) {
-        setError(err?.message || "加载回收站失败");
+        if (active) setItems(res.items);
+      } catch (err: unknown) {
+        if (active) setError((err instanceof Error ? err.message : "") || "加载回收站失败");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    load();
+    void load();
+    return () => { active = false; };
   }, [open, libraryId]);
 
   const handleRestore = async (id: string) => {
@@ -73,9 +75,9 @@ export function RecycleBinDialog({
         const res = await listTrashEntries(libraryId);
         setItems(res.items);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.message || "还原失败");
+      toast.error((err instanceof Error ? err.message : "") || "还原失败");
     } finally {
       setWorkingId(null);
     }
@@ -91,9 +93,9 @@ export function RecycleBinDialog({
         const res = await listTrashEntries(libraryId);
         setItems(res.items);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.message || "删除失败");
+      toast.error((err instanceof Error ? err.message : "") || "删除失败");
     } finally {
       setWorkingId(null);
     }

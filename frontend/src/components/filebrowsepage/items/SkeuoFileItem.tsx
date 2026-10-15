@@ -15,9 +15,8 @@ import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/lib/api/files";
 import { buildApiUrl } from "@/lib/api/client";
 import { THUMBNAIL_EXTS } from "@/configs/fileTypeIcons";
-import { getFileIconGroup, type FileIconGroupKey } from "@/configs/fileTypeIcons";
+import { getFileIconGroup, FILE_ICON_COMPONENTS, FILE_ICON_DEFAULT_COMPONENT, type FileIconGroupKey } from "@/configs/fileTypeIcons";
 import {
-  getSkeuoFileIconComponent,
   SKEUO_FILE_STYLE_TOKENS,
   type SkeuoFileTypeKey,
 } from "@/configs/skeuoFileDesign";
@@ -29,6 +28,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
 import { DS } from "@/theme/design-system";
+
+const FILE_ICONS: Record<SkeuoFileTypeKey, typeof FILE_ICON_DEFAULT_COMPONENT> = {
+  ...FILE_ICON_COMPONENTS,
+  default: FILE_ICON_DEFAULT_COMPONENT,
+};
 
 export interface SkeuoFileItemProps {
   // 兼容用法（测试/静态渲染）
@@ -93,7 +97,7 @@ export function SkeuoFileItem({
   const groupFromExt = realExt ? getFileIconGroup(realExt) : undefined;
   const fileTypeKey: SkeuoFileTypeKey = (fileType ?? groupFromExt ?? "default") as SkeuoFileTypeKey;
   const tokens = SKEUO_FILE_STYLE_TOKENS[fileTypeKey];
-  const IconComponent = getSkeuoFileIconComponent(fileTypeKey);
+  const IconComponent = FILE_ICONS[fileTypeKey];
 
   const disabled = libraryOffline;
 

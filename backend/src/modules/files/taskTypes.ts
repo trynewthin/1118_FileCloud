@@ -1,0 +1,9 @@
+/** Stable task identifiers. Keep this contract independent of task implementations. */
+export const TASK_TYPE_FILE_DELETE_ENTRY = "FILE_DELETE_ENTRY";
+export const TASK_TYPE_FILE_RESTORE_ENTRY = "FILE_RESTORE_ENTRY";
+export const TASK_TYPE_FILE_DESTROY_ENTRY = "FILE_DESTROY_ENTRY";
+export const TASK_TYPE_FILE_RENAME_ENTRY = "FILE_RENAME_ENTRY";
+export const TASK_TYPE_FILE_MOVE_ENTRY = "FILE_MOVE_ENTRY";
+export const TASK_TYPE_FILE_COPY_ENTRY = "FILE_COPY_ENTRY";
+export const TASK_TYPE_FILE_INDEX_LIBRARY = "FILE_INDEX_LIBRARY";
+export const TASK_TYPE_FILE_INDEX_SINGLE = "FILE_INDEX_SINGLE";

@@ -1,10 +1,13 @@
 /**
  * 缩略图生成任务处理器
  */
-import fs from "node:fs";
+import fs from "node:fs/promises";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { db } from "../../core/db/index.ts";
+import { assertValidPathSegment, resolveMutationPathWithinLibrary } from "../../core/config/pathSecurity.ts";
+import { getEntryById, resolveRealPathForEntry } from "../files/index.ts";
 import type { TaskContext } from "../../core/tasks/types.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
 
@@ -57,30 +60,53 @@ const getThumbnailExt = (ext: string | null): string => {
 };
 
 // 根据 entryId 和扩展名构建缩略图路径
-const getThumbnailPath = (libraryRoot: string, entryId: string, ext: string | null): string => {
+const getThumbnailPath = async (libraryRoot: string, entryId: string, ext: string | null): Promise<string> => {
   const thumbExt = getThumbnailExt(ext);
-  return path.join(libraryRoot, INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, `${entryId}${thumbExt}`);
+  return resolveMutationPathWithinLibrary(libraryRoot, path.join(INTERNAL_META_DIR, THUMBNAILS_DIR_NAME, assertValidPathSegment(`${entryId}${thumbExt}`)));
 };
 
 // 根据 entry 构建实际文件路径（非侵入式：直接使用 original_name）
-const buildRealPathFromEntryRow = (
+const buildRealPathFromEntryRow = async (
   libraryRoot: string,
   entryRow: any,
-  stmt: any,
-): string => {
-  const segments: string[] = [];
-  let current: any | undefined = entryRow;
+): Promise<string> => {
+  const entry = getEntryById(entryRow.id);
+  if (!entry) throw new Error("文件不存在或已删除");
+  return resolveRealPathForEntry(entry, libraryRoot);
+};
 
-  while (current) {
-    // 非侵入式索引：直接使用原始文件名
-    segments.unshift(current.original_name);
-    if (!current.parent_id) break;
-    const parentRow = stmt.get(current.parent_id) as any | undefined;
-    if (!parentRow) break;
-    current = parentRow;
+// 等待进程退出后再执行异步文件操作，避免事件回调中的拒绝丢失
+const runThumbnailProcess = (args: string[]): Promise<number | null> => {
+  return new Promise((resolve, reject) => {
+    const child = spawn("ffmpeg", args, { stdio: "ignore" });
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+};
+
+const getTemporaryThumbnailPath = async (finalOutputPath: string): Promise<string> => {
+  const outputDir = path.dirname(finalOutputPath);
+  await fs.mkdir(outputDir, { recursive: true });
+  return resolveMutationPathWithinLibrary(outputDir, path.basename(finalOutputPath.replace(/\.[^.]+$/, ".jpg")));
+};
+
+const promoteThumbnail = async (
+  tempOutputPath: string,
+  finalOutputPath: string,
+  minimumSize: number,
+): Promise<boolean> => {
+  try {
+    if ((await fs.stat(tempOutputPath)).size > minimumSize) {
+      if (tempOutputPath !== finalOutputPath) {
+        await fs.rename(tempOutputPath, finalOutputPath);
+      }
+      return true;
+    }
+  } catch {
+    // 无效或未成功生成的文件交由下面的清理处理
   }
-
-  return path.join(libraryRoot, ...segments);
+  await fs.unlink(tempOutputPath).catch(() => {});
+  return false;
 };
 
 // 使用 ffmpeg 提取音频文件的嵌入封面
@@ -88,49 +114,19 @@ const extractAudioCover = async (
   inputPath: string,
   finalOutputPath: string,
 ): Promise<boolean> => {
-  const outputDir = path.dirname(finalOutputPath);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
-
-  return new Promise((resolve) => {
-    // 尝试提取嵌入的封面图片
-    const args = [
-      "-y",
-      "-i", inputPath,
-      "-an",                    // 禁用音频
-      "-vcodec", "mjpeg",       // 输出 JPEG
+  const tempOutputPath = await getTemporaryThumbnailPath(finalOutputPath);
+  try {
+    await runThumbnailProcess([
+      "-y", "-i", inputPath,
+      "-an", "-vcodec", "mjpeg",
       "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
-      "-frames:v", "1",
-      tempOutputPath,
-    ];
-
-    const child = spawn("ffmpeg", args, { stdio: "ignore" });
-
-    child.on("error", () => resolve(false));
-    child.on("close", () => {
-      if (fs.existsSync(tempOutputPath)) {
-        try {
-          const stat = fs.statSync(tempOutputPath);
-          if (stat.size > 100) {
-            // 成功提取到封面
-            if (tempOutputPath !== finalOutputPath) {
-              fs.renameSync(tempOutputPath, finalOutputPath);
-            }
-            resolve(true);
-            return;
-          }
-        } catch {
-          // 忽略
-        }
-        // 文件太小，可能是空的，删除它
-        try { fs.unlinkSync(tempOutputPath); } catch { /* 忽略 */ }
-      }
-      resolve(false);
-    });
-  });
+      "-frames:v", "1", tempOutputPath,
+    ]);
+  } catch {
+    await fs.unlink(tempOutputPath).catch(() => {});
+    return false;
+  }
+  return promoteThumbnail(tempOutputPath, finalOutputPath, 100);
 };
 
 // 使用 ffmpeg 生成 PDF 首页预览图
@@ -138,100 +134,42 @@ const generatePdfThumbnail = async (
   inputPath: string,
   finalOutputPath: string,
 ): Promise<void> => {
-  const outputDir = path.dirname(finalOutputPath);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
+  const tempOutputPath = await getTemporaryThumbnailPath(finalOutputPath);
+  const code = await runThumbnailProcess([
+    "-y", "-i", inputPath,
+    "-frames:v", "1",
+    "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+    tempOutputPath,
+  ]);
+  if (!(await promoteThumbnail(tempOutputPath, finalOutputPath, 100))) {
+    throw new Error(`PDF 缩略图生成失败，退出码 ${code}`);
   }
-
-  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
-
-  return new Promise((resolve, reject) => {
-    // ffmpeg 可以读取 PDF 首页（需要系统安装了 poppler 或 ffmpeg 编译时启用了 PDF 支持）
-    const args = [
-      "-y",
-      "-i", inputPath,
-      "-frames:v", "1",
-      "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
-      tempOutputPath,
-    ];
-
-    const child = spawn("ffmpeg", args, { stdio: "ignore" });
-
-    child.on("error", (err) => reject(err));
-    child.on("close", (code) => {
-      if (fs.existsSync(tempOutputPath)) {
-        try {
-          const stat = fs.statSync(tempOutputPath);
-          if (stat.size > 100) {
-            if (tempOutputPath !== finalOutputPath) {
-              fs.renameSync(tempOutputPath, finalOutputPath);
-            }
-            resolve();
-            return;
-          }
-        } catch {
-          // 忽略
-        }
-        try { fs.unlinkSync(tempOutputPath); } catch { /* 忽略 */ }
-      }
-      reject(new Error(`PDF 缩略图生成失败，退出码 ${code}`));
-    });
-  });
 };
 
-// 使用 ffmpeg 生成缩略图（对于视频，尝试截取第 5 秒以避免黑屏）
-// 先生成 .jpg 临时文件，成功后重命名为目标后缀
+// 视频先尝试第 5 秒，失败再从头开始；成功后才发布目标文件
 const generateThumbnailWithFfmpeg = async (
   inputPath: string,
   finalOutputPath: string,
   isVideo: boolean,
 ): Promise<void> => {
-  const outputDir = path.dirname(finalOutputPath);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  // 临时文件使用 .jpg 后缀，让 ffmpeg 自动识别格式
-  const tempOutputPath = finalOutputPath.replace(/\.[^.]+$/, ".jpg");
-
-  const runFfmpeg = (seekTime: string | null): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const args = ["-y"]; // 覆盖输出
-
-      if (seekTime) {
-        args.push("-ss", seekTime);
-      }
-
-      args.push(
-        "-i", inputPath,
-        "-frames:v", "1",
-        "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
-        tempOutputPath,
-      );
-
-      const child = spawn("ffmpeg", args, { stdio: "ignore" });
-
-      child.on("error", (err) => reject(err));
-      child.on("close", (code) => {
-        // 如果已经成功生成了非空的缩略图文件，则视为成功，忽略非 0 退出码
-        if (fs.existsSync(tempOutputPath)) {
-          try {
-            const stat = fs.statSync(tempOutputPath);
-            if (stat.size > 0) {
-              resolve();
-              return;
-            }
-          } catch {
-            // stat 失败则继续按退出码处理
-          }
-        }
-
-        reject(new Error(`ffmpeg 退出码 ${code}`));
-      });
-    });
+  const tempOutputPath = await getTemporaryThumbnailPath(finalOutputPath);
+  const runFfmpeg = async (seekTime: string | null): Promise<void> => {
+    const args = ["-y"];
+    if (seekTime) args.push("-ss", seekTime);
+    args.push(
+      "-i", inputPath,
+      "-frames:v", "1",
+      "-vf", "scale=320:-1:force_original_aspect_ratio=decrease",
+      tempOutputPath,
+    );
+    const code = await runThumbnailProcess(args);
+    // 非零退出码仍可能生成有效图片，保留原有行为
+    const outputStat = await fs.stat(tempOutputPath).catch(() => null);
+    if (!outputStat || outputStat.size <= 0) {
+      throw new Error(`ffmpeg 退出码 ${code}`);
+    }
   };
 
-  // 视频先尝试 seek 到 5 秒，失败则从头开始
   if (isVideo) {
     try {
       await runFfmpeg("00:00:05");
@@ -241,10 +179,8 @@ const generateThumbnailWithFfmpeg = async (
   } else {
     await runFfmpeg(null);
   }
-
-  // 生成成功后，重命名为目标后缀
   if (tempOutputPath !== finalOutputPath) {
-    fs.renameSync(tempOutputPath, finalOutputPath);
+    await fs.rename(tempOutputPath, finalOutputPath);
   }
 };
 
@@ -288,20 +224,16 @@ export const handleGenerateThumbnailTask = async (ctx: TaskContext): Promise<voi
     return;
   }
 
-  const libraryRoot = getLibraryRoot(entryRow.library_id);
-  const thumbnailPath = getThumbnailPath(libraryRoot, entryId, entryRow.extension);
+  const libraryRoot = await getLibraryRoot(entryRow.library_id);
+  const thumbnailPath = await getThumbnailPath(libraryRoot, entryId, entryRow.extension);
 
-  if (fs.existsSync(thumbnailPath)) {
+  if ((await pathExists(thumbnailPath))) {
     return;
   }
 
-  const pathStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix FROM file_entries WHERE id = ?",
-  );
+  const fullPath = await buildRealPathFromEntryRow(libraryRoot, entryRow);
 
-  const fullPath = buildRealPathFromEntryRow(libraryRoot, entryRow, pathStmt);
-
-  if (!fs.existsSync(fullPath)) {
+  if (!(await pathExists(fullPath))) {
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 
@@ -360,24 +292,20 @@ export const generateThumbnailForEntry = async (entryId: string): Promise<void> 
     throw new Error("不支持的文件类型");
   }
 
-  const libraryRoot = getLibraryRoot(entryRow.library_id);
-  const thumbnailPath = getThumbnailPath(libraryRoot, entryId, entryRow.extension);
+  const libraryRoot = await getLibraryRoot(entryRow.library_id);
+  const thumbnailPath = await getThumbnailPath(libraryRoot, entryId, entryRow.extension);
 
   // 已存在缩略图则跳过
-  if (fs.existsSync(thumbnailPath)) {
-    const stat = fs.statSync(thumbnailPath);
+  if ((await pathExists(thumbnailPath))) {
+    const stat = await fs.stat(thumbnailPath);
     if (stat.size > 1024) {
       return; // 缩略图已存在且有效
     }
   }
 
-  const pathStmt = db.prepare(
-    "SELECT id, library_id, parent_id, is_directory, original_name, index_suffix FROM file_entries WHERE id = ?",
-  );
+  const fullPath = await buildRealPathFromEntryRow(libraryRoot, entryRow);
 
-  const fullPath = buildRealPathFromEntryRow(libraryRoot, entryRow, pathStmt);
-
-  if (!fs.existsSync(fullPath)) {
+  if (!(await pathExists(fullPath))) {
     throw new Error("原始文件不存在，无法生成缩略图");
   }
 

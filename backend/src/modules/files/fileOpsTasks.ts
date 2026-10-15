@@ -1,6 +1,7 @@
 /**
  * 文件操作任务处理器
  */
+import { assertEntryAccess, assertFileMutationAccess, resolveAuthUser } from "../../core/auth/libraryAccess.ts";
 import type { TaskContext } from "../../core/tasks/types.ts";
 import {
   moveEntryToTrash,
@@ -10,15 +11,26 @@ import {
   moveEntry,
   copyEntry,
 } from "./fileOps.ts";
-import { deleteTranscodeForEntry } from "../fileContent/transcodeService.ts";
+import { deleteTranscodeForEntry } from "../fileContent/index.ts";
+
+// Queued work must not outlive the creator's authority. Null creators denote
+// trusted internal jobs, never a principal supplied by an HTTP/AI caller.
+const authorizeMutationTask = async (ctx: TaskContext, entryId: string, includeDeleted = false, targetParentId?: string | null): Promise<void> => {
+  if (ctx.task.created_by_user_id === null) return;
+  const user = assertFileMutationAccess(resolveAuthUser(ctx.task.created_by_user_id));
+  const { entry } = (await assertEntryAccess(user, entryId, { includeDeleted }));
+  if (targetParentId) (await assertEntryAccess(user, targetParentId, { libraryId: entry.library_id, directory: true }));
+};
 
 // 任务类型常量
-export const TASK_TYPE_FILE_DELETE_ENTRY = "FILE_DELETE_ENTRY";
-export const TASK_TYPE_FILE_RESTORE_ENTRY = "FILE_RESTORE_ENTRY";
-export const TASK_TYPE_FILE_DESTROY_ENTRY = "FILE_DESTROY_ENTRY";
-export const TASK_TYPE_FILE_RENAME_ENTRY = "FILE_RENAME_ENTRY";
-export const TASK_TYPE_FILE_MOVE_ENTRY = "FILE_MOVE_ENTRY";
-export const TASK_TYPE_FILE_COPY_ENTRY = "FILE_COPY_ENTRY";
+export {
+  TASK_TYPE_FILE_DELETE_ENTRY,
+  TASK_TYPE_FILE_RESTORE_ENTRY,
+  TASK_TYPE_FILE_DESTROY_ENTRY,
+  TASK_TYPE_FILE_RENAME_ENTRY,
+  TASK_TYPE_FILE_MOVE_ENTRY,
+  TASK_TYPE_FILE_COPY_ENTRY,
+} from "./taskTypes.ts";
 
 export const handleDeleteEntryTask = async (ctx: TaskContext): Promise<void> => {
   const { task, log } = ctx;
@@ -29,8 +41,9 @@ export const handleDeleteEntryTask = async (ctx: TaskContext): Promise<void> => 
     throw new Error("删除任务缺少合法的文件索引 ID");
   }
 
+  (await authorizeMutationTask(ctx, entryId));
   log.info(`删除文件: ${entryId}`);
-  moveEntryToTrash(entryId);
+  (await moveEntryToTrash(entryId));
 };
 
 export const handleRestoreEntryTask = async (ctx: TaskContext): Promise<void> => {
@@ -42,8 +55,9 @@ export const handleRestoreEntryTask = async (ctx: TaskContext): Promise<void> =>
     throw new Error("还原任务缺少合法的文件索引 ID");
   }
 
+  (await authorizeMutationTask(ctx, entryId, true));
   log.info(`还原文件: ${entryId}`);
-  restoreEntryFromTrash(entryId);
+  (await restoreEntryFromTrash(entryId));
 };
 
 export const handleDestroyEntryTask = async (ctx: TaskContext): Promise<void> => {
@@ -55,11 +69,12 @@ export const handleDestroyEntryTask = async (ctx: TaskContext): Promise<void> =>
     throw new Error("彻底删除任务缺少合法的文件索引 ID");
   }
 
+  (await authorizeMutationTask(ctx, entryId, true));
   log.info(`彻底删除文件: ${entryId}`);
   
   // 先删除转码文件
-  deleteTranscodeForEntry(entryId);
-  permanentlyDeleteEntry(entryId);
+  (await deleteTranscodeForEntry(entryId));
+  (await permanentlyDeleteEntry(entryId));
 };
 
 export const handleRenameEntryTask = async (ctx: TaskContext): Promise<void> => {
@@ -75,8 +90,9 @@ export const handleRenameEntryTask = async (ctx: TaskContext): Promise<void> => 
     throw new Error("重命名任务缺少新名称");
   }
 
+  (await authorizeMutationTask(ctx, entryId));
   log.info(`重命名文件: ${entryId} -> ${newName}`);
-  renameEntry(entryId, newName);
+  (await renameEntry(entryId, newName));
 };
 
 export const handleMoveEntryTask = async (ctx: TaskContext): Promise<void> => {
@@ -88,8 +104,9 @@ export const handleMoveEntryTask = async (ctx: TaskContext): Promise<void> => {
     throw new Error("移动任务缺少合法的文件索引 ID");
   }
 
+  (await authorizeMutationTask(ctx, entryId, false, targetParentId));
   log.info(`移动文件: ${entryId} -> ${targetParentId ?? "根目录"}`);
-  moveEntry(entryId, targetParentId ?? null);
+  (await moveEntry(entryId, targetParentId ?? null));
 };
 
 export const handleCopyEntryTask = async (ctx: TaskContext): Promise<void> => {
@@ -105,6 +122,7 @@ export const handleCopyEntryTask = async (ctx: TaskContext): Promise<void> => {
     throw new Error("复制任务缺少合法的文件索引 ID");
   }
 
+  (await authorizeMutationTask(ctx, entryId, false, targetParentId));
   log.info(`复制文件: ${entryId} -> ${targetParentId ?? "根目录"}`);
-  copyEntry(entryId, targetParentId ?? null, newName);
+  (await copyEntry(entryId, targetParentId ?? null, newName));
 };

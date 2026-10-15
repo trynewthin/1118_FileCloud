@@ -70,8 +70,8 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
 
       setNewName(suggestedFullName);
       toast.success("已生成智能建议");
-    } catch (err: any) {
-      const message = err.message || "智能重命名失败";
+    } catch (err: unknown) {
+      const message = (err instanceof Error ? err.message : "") || "智能重命名失败";
       toast.error(message);
     } finally {
       setAiLoading(false);
@@ -101,8 +101,8 @@ export function RenameDialog({ entry, open, onOpenChange, onSubmit }: RenameDial
       await onSubmit(entry, trimmed, password || undefined);
       toast.success("重命名成功");
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || "重命名失败");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "重命名失败");
     } finally {
       setLoading(false);
     }

@@ -116,9 +116,9 @@ backgroundsRouter.get(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     try {
-      const images = listBackgroundImages();
+      const images = await listBackgroundImages();
       return res.json({ images });
     } catch (err) {
       console.error("获取背景图片列表失败:", err);
@@ -131,10 +131,10 @@ backgroundsRouter.get(
  * GET /api/backgrounds/:id
  * 获取背景图片文件（无需鉴权，用于 img src）
  */
-backgroundsRouter.get("/:id", (req, res) => {
+backgroundsRouter.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const filepath = getBackgroundImagePath(id);
+    const filepath = await getBackgroundImagePath(id);
 
     if (!filepath) {
       return res.status(404).json({ error: "背景图片不存在" });
@@ -170,10 +170,10 @@ backgroundsRouter.delete(
   "/:id",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     try {
       const { id } = req.params;
-      const success = deleteBackgroundImage(id as string);
+      const success = await deleteBackgroundImage(id as string);
 
       if (!success) {
         return res.status(404).json({ error: "背景图片不存在" });

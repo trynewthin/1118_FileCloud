@@ -79,7 +79,7 @@ const createMarkdownFileTool: ToolDefinition = {
     }
 
     try {
-      const result = createGeneratedFile({
+      const result = await createGeneratedFile({
         userId: context.userId,
         conversationId: context.conversationId,
         originalName: `${cleanFilename}.md`,
@@ -186,7 +186,7 @@ const createHtmlFileTool: ToolDefinition = {
     }
 
     try {
-      const result = createGeneratedFile({
+      const result = await createGeneratedFile({
         userId: context.userId,
         conversationId: context.conversationId,
         originalName: `${cleanFilename}.html`,

@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AiChatConversation } from "@/lib/api/aiChat";
@@ -51,8 +52,8 @@ export function AiMobileConversationManager({
     try {
       await onDelete(confirmDeleteId);
       toast.success("会话已删除");
-    } catch (err: any) {
-      toast.error(err?.message || "删除失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "删除失败"));
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);

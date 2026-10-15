@@ -9,16 +9,16 @@
  * 5. 启动 HTTP 服务
  */
 
-import http from "node:http";
+import { createTrackedHttpServer } from "./core/http/serverLifecycle.ts";
 import { app } from "./app.ts";
 import { initDatabase } from "./core/db/index.ts";
 import { createLogger, setProductionMode } from "./core/logger/index.ts";
-import { registerModules, bootstrapModules } from "./core/module-loader/index.ts";
-import { injectTaskService, startExecutor, configureExecutor } from "./core/tasks/executor.ts";
+import { registerModules, bootstrapModules, shutdownModules } from "./core/module-loader/index.ts";
+import { injectTaskService, startExecutor, stopExecutor, configureExecutor } from "./core/tasks/executor.ts";
 import { allModules } from "./modules/index.ts";
 import { getTaskWorkerConfig } from "./modules/settings/service.ts";
 import * as taskService from "./modules/tasks/service.ts";
-import { initWebSocketServer, initWebSocketClient } from "./modules/remoteProxy/index.ts";
+import { initWebSocketServer, initWebSocketClient, stopRemoteProxy } from "./modules/remoteProxy/index.ts";
 import { getRemoteProxyKey, isRemoteClientEnabled, getRemoteClientServerUrl } from "./core/config/paths.ts";
 
 const logger = createLogger("Server");
@@ -53,7 +53,8 @@ const bootstrap = async () => {
   logger.info("任务执行器已启动");
 
   // 5. 创建 HTTP 服务器
-  const server = http.createServer(app);
+  const httpLifecycle = createTrackedHttpServer(app);
+  const { server } = httpLifecycle;
 
   // 6. 初始化 WebSocket 服务（服务端模式）或连接主服务器（客户端模式）
   const clientModeEnabled = isRemoteClientEnabled();
@@ -75,6 +76,33 @@ const bootstrap = async () => {
   } else {
     logger.debug("远程代理未配置，WebSocket 服务未启用");
   }
+
+  // Stop admission first, then drain work and module hooks. Network filesystems
+  // may never answer; bound process shutdown rather than overlapping probes.
+  let stopping = false;
+  const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
+    const deadline = setTimeout(() => {
+      logger.error("关闭超时；未完成任务将在下次启动恢复");
+      process.exit(1);
+    }, 30_000);
+    deadline.unref();
+    // Proxy dispatch bypasses HTTP, so close its admission gate immediately too.
+    const remoteStopped = stopRemoteProxy();
+    const closed = httpLifecycle.stopAdmission();
+    try {
+      await Promise.all([closed, remoteStopped, stopExecutor(), shutdownModules()]);
+      httpLifecycle.closeConnections();
+      clearTimeout(deadline);
+      process.exit(0);
+    } catch (error) {
+      logger.error("关闭失败", error);
+      process.exit(1);
+    }
+  };
+  process.once("SIGTERM", () => { void shutdown(); });
+  process.once("SIGINT", () => { void shutdown(); });
 
   // 7. 启动 HTTP 服务
   server.listen(PORT, () => {

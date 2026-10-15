@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { DS } from "@/theme/design-system";
 import { GlassCard } from "@/components/common/GlassCard";
 import { GlassIconButton } from "@/components/common/button/GlassButton";
-import { ToolCallRenderer, type PendingAction } from "./ToolCallRenderer";
+import { ToolCallRenderer, type PendingAction, type ToolCallResult } from "./ToolCallRenderer";
 import { buildApiUrl } from "@/lib/api/client";
 import { getAuthToken } from "@/lib/api/client";
 import { getToolDisplayName } from "@/configs/aiToolDisplay";
@@ -24,7 +24,7 @@ const buildUploadImageUrl = (uploadId: number): string => {
 };
 
 // 需要放在消息下方的工具结果类型（用户交互类）
-export const BOTTOM_TOOL_TYPES = new Set(["file_display"]);
+const BOTTOM_TOOL_TYPES = new Set(["file_display"]);
 
 // 用户消息气泡组件
 export function UserMessageBubble({
@@ -92,7 +92,7 @@ export type StreamingStatus = "idle" | "thinking" | "streaming" | "tool";
 // AI 消息组件：Markdown 渲染 + 工具调用结果 + 操作按钮
 interface AssistantMessageProps {
   content: string;
-  toolResults?: Array<{ result: any; pendingAction?: PendingAction }>;
+  toolResults?: Array<{ result: ToolCallResult; pendingAction?: PendingAction }>;
   onToolConfirm?: (action: PendingAction) => void;
   onToolCancel?: (action: PendingAction) => void;
   loading?: boolean;

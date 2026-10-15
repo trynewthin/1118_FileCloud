@@ -1,4 +1,5 @@
 import express from "express";
+import { withLibrary } from "../../core/middleware/index.ts";
 import { PermissionLevel } from "../../core/auth/roles.ts";
 import { authenticate, requirePermission } from "../../core/auth/permission.ts";
 import {
@@ -42,7 +43,7 @@ router.post(
   "/",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  async (req, res) => {
     const { rootPath, displayName, capacityLimitBytes, userId: targetUserId } = req.body as {
       rootPath?: string;
       displayName?: string;
@@ -75,14 +76,15 @@ router.post(
     }
 
     try {
-      const lib = createFileLibrary({
+      const lib = (await createFileLibrary({
         userId: ownerId,
         rootPath,
         displayName,
         capacityLimitBytes: capacityLimitBytes ?? null,
-      });
+      }));
       return res.status(201).json({ library: lib });
     } catch (err: any) {
+      if (err?.status === 403) return res.status(403).json({ message: err.message });
       if (typeof err?.message === "string" && err.message.includes("UNIQUE")) {
         return res.status(409).json({ message: "该路径的文件库已存在" });
       }
@@ -96,6 +98,7 @@ router.patch(
   "/:id",
   authenticate,
   requirePermission(PermissionLevel.User),
+  withLibrary({ paramName: "id", allowDisabled: true, metadataOnly: true }),
   (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -146,6 +149,7 @@ router.delete(
   "/:id",
   authenticate,
   requirePermission(PermissionLevel.User),
+  withLibrary({ paramName: "id", allowDisabled: true, metadataOnly: true }),
   (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -176,7 +180,8 @@ router.post(
   "/:id/refresh",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  withLibrary({ paramName: "id", allowDisabled: true }),
+  async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "文件库 ID 不合法" });
@@ -191,7 +196,7 @@ router.post(
       return res.status(403).json({ message: "无权操作此文件库" });
     }
 
-    const lib = refreshFileLibraryStatus(id);
+    const lib = (await refreshFileLibraryStatus(id));
     if (!lib) {
       return res.status(404).json({ message: "文件库不存在" });
     }
@@ -205,7 +210,8 @@ router.get(
   "/:id/stats",
   authenticate,
   requirePermission(PermissionLevel.User),
-  (req, res) => {
+  withLibrary({ paramName: "id", allowDisabled: true }),
+  async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "文件库 ID 不合法" });
@@ -220,7 +226,7 @@ router.get(
       return res.status(403).json({ message: "无权查看此文件库" });
     }
 
-    const stats = getFileLibraryStats(id);
+    const stats = (await getFileLibraryStats(id));
     if (!stats) {
       return res.status(404).json({ message: "文件库不存在" });
     }

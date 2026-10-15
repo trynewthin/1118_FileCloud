@@ -1,5 +1,6 @@
 import { db } from "../../core/db/index.ts";
 import { hashSecret } from "../../core/security/hash.ts";
+export { assertLibraryRootOwnership } from "../../core/auth/libraryOwnership.ts";
 
 export interface FileEntrySecurity {
   entry_id: string;

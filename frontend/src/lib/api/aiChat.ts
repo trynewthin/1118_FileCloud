@@ -5,7 +5,7 @@ export interface AiChatConversation {
   user_id: number;
   model_id: number;
   title: string | null;
-  metadata: any | null;
+  metadata: Record<string, unknown> | null;
   system_prompt: string | null;
   max_context_messages: number | null;
   memory_enabled: boolean;
@@ -21,7 +21,7 @@ export interface AiChatMessage {
   role: string;
   content: string | null;
   tool_name: string | null;
-  payload: any | null;
+  payload: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -36,7 +36,7 @@ export interface ListAiMessagesResponse {
 export interface CreateAiConversationRequest {
   modelId?: number;
   title?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   systemPrompt?: string | null;
   maxContextMessages?: number | null;
   memoryEnabled?: boolean;
@@ -55,13 +55,13 @@ export interface ToolKitsConfig {
 export interface UpdateAiConversationRequest {
   modelId?: number;
   title?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   systemPrompt?: string | null;
   maxContextMessages?: number | null;
   memoryEnabled?: boolean;
   memoryStrategy?: string | null;
   isArchived?: boolean;
-  toolkitsConfig?: ToolKitsConfig;
+  toolkitsConfig?: ToolKitsConfig | null;
 }
 
 export interface AppendMessageRequest {
@@ -130,7 +130,7 @@ export const listAiConversations = async (): Promise<ListAiConversationsResponse
 export const createAiConversation = async (
   body: CreateAiConversationRequest,
 ): Promise<{ conversation: AiChatConversation }> => {
-  return apiClient.post<{ conversation: AiChatConversation }>("/ai/conversations", body as any);
+  return apiClient.post<{ conversation: AiChatConversation }>("/ai/conversations", body);
 };
 
 export const updateAiConversation = async (
@@ -139,7 +139,7 @@ export const updateAiConversation = async (
 ): Promise<{ conversation: AiChatConversation }> => {
   return apiClient.patch<{ conversation: AiChatConversation }>(
     `/ai/conversations/${id}`,
-    body as any,
+    body,
   );
 };
 
@@ -230,7 +230,7 @@ export const buildFileDownloadUrl = (fileId: number, token: string): string => {
 // 执行工具操作
 export interface ExecuteToolRequest {
   toolName: string;
-  args: Record<string, any>;
+  args: Record<string, unknown>;
   conversationId?: number;
 }
 

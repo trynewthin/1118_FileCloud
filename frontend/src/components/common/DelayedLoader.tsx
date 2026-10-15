@@ -18,6 +18,12 @@ export function DelayedLoader({
 }: DelayedLoaderProps) {
   const [showFallback, setShowFallback] = useState(false);
 
+  const [previousLoading, setPreviousLoading] = useState(loading);
+  if (previousLoading !== loading) {
+    setPreviousLoading(loading);
+    setShowFallback(false);
+  }
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -25,8 +31,6 @@ export function DelayedLoader({
       timer = setTimeout(() => {
         setShowFallback(true);
       }, delay);
-    } else {
-      setShowFallback(false);
     }
 
     return () => {

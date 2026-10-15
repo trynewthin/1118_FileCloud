@@ -41,7 +41,7 @@ export const GlassButtonGroup = forwardRef<HTMLDivElement, GlassButtonGroupProps
 
       // 已经是 GlassIconButton：统一注入组内缩小尺寸
       if (child.type === GlassIconButton) {
-        const el = child as React.ReactElement<any>;
+        const el = child as React.ReactElement<{ className?: string }>;
         return React.cloneElement(el, {
           className: cn(groupButtonClassName, el.props?.className),
         });

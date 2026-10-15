@@ -1,9 +1,9 @@
 import fs from "node:fs";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import zlib from "node:zlib";
 import type { Request, Response } from "express";
-import { getEntryById, buildRelativePathForEntry } from "../files/service.ts";
-import { checkEntryPasswordIfProtected } from "../files/security.ts";
+import { getEntryById, resolveRealPathForEntry, checkEntryPasswordIfProtected } from "../files/index.ts";
 import { getLibraryRoot } from "../../core/middleware/index.ts";
 
 // ============================================================================
@@ -114,10 +114,10 @@ const parseRangeHeader = (
 };
 
 // 获取真实文件路径和基本信息（含密码校验），失败时抛出错误
-export const resolveFileForStreaming = (
+export const resolveFileForStreaming = async (
   entryId: string,
   password?: string,
-): { realPath: string; contentType: string; size: number; mtime: Date } => {
+): Promise<{ realPath: string; contentType: string; size: number; mtime: Date }> => {
   const entry = getEntryById(entryId);
   if (!entry) {
     throw new Error("文件不存在或已删除");
@@ -132,17 +132,16 @@ export const resolveFileForStreaming = (
     throw new Error(pwdCheck.message ?? "访问密码错误");
   }
 
-  const rootPath = getLibraryRoot(entry.library_id);
+  const rootPath = await getLibraryRoot(entry.library_id);
 
-  // 使用 files.service 中的 buildRelativePathForEntry 构建物理路径
-  const relativePath = buildRelativePathForEntry(entry);
-  const realPath = path.join(rootPath, relativePath);
+  // 校验完整父级链及真实路径，防止越界或符号链接逃逸
+  const realPath = await resolveRealPathForEntry(entry, rootPath);
 
-  if (!fs.existsSync(realPath)) {
+  if (!(await pathExists(realPath))) {
     throw new Error("实际文件不存在");
   }
 
-  const stat = fs.statSync(realPath);
+  const stat = await fs.promises.stat(realPath);
   const contentType = guessContentType(realPath);
 
   return { realPath, contentType, size: stat.size, mtime: stat.mtime };
@@ -302,15 +301,15 @@ export const streamFile = (
  * 以流式方式输出文件内容，支持 Range 请求
  * @deprecated 请使用 streamFile 函数
  */
-export const streamFileWithRange = (
+export const streamFileWithRange = async (
   req: Request,
   res: Response,
   opts: { realPath: string; contentType: string; size: number },
-): void => {
+): Promise<void> => {
   // 获取文件修改时间
   let mtime: Date;
   try {
-    const stat = fs.statSync(opts.realPath);
+    const stat = await fs.promises.stat(opts.realPath);
     mtime = stat.mtime;
   } catch {
     mtime = new Date();

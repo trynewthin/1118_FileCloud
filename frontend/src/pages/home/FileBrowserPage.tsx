@@ -1,6 +1,8 @@
+import { getErrorMessage } from "@/lib/api/errors";
+import { useBrowserLocation } from "./fileBrowser/useBrowserLocation";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useFileLibraries } from "@/hooks/useFileLibraries";
 import { useFileBrowser } from "@/hooks/useFileBrowser";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -25,7 +27,7 @@ import {
   getFileTypeCategory,
 } from "@/components/filebrowsepage";
 import { EntryTagDialog, BatchTagDialog, TagsBrowseView } from "@/components/tag";
-import { downloadEntry, type FileEntry, indexLibrary as indexLibraryApi } from "@/lib/api/files";
+import { downloadEntry, type FileEntry, type CopyEntryParams, indexLibrary as indexLibraryApi } from "@/lib/api/files";
 import type { FileLibrary } from "@/lib/api/fileLibraries";
 import { GlassButton } from "@/components/common/button/GlassButton";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -43,38 +45,8 @@ import {
 
 export function FileBrowserPage() {
   const navigate = useNavigate();
-  // URL 参数控制当前库，便于分享链接
-  const [searchParams, setSearchParams] = useSearchParams();
-  const libraryIdParam = searchParams.get("libraryId");
-  const parentIdParam = searchParams.get("parentId");
-  const virtualParam = searchParams.get("virtual");
-  const isVirtualTags = virtualParam === "tags";
-  
-  const { items: libraries, loading: libsLoading } = useFileLibraries();
-  
-  // 当前选中的文件库 ID（从 URL 读取，不再使用 localStorage 缓存）
-  // null 表示在根目录（文件库列表）
-  const [activeLibraryId, setActiveLibraryId] = useState<number | null>(() => {
-    if (virtualParam) return null;
-    if (libraryIdParam) {
-      return parseInt(libraryIdParam);
-    }
-    return null; // 默认显示文件库列表
-  });
-
-  // 同步 URL 中的 libraryId 到状态（处理跨库跳转场景）
-  useEffect(() => {
-    if (virtualParam) {
-      if (activeLibraryId !== null) {
-        setActiveLibraryId(null);
-      }
-      return;
-    }
-    const newLibraryId = libraryIdParam ? parseInt(libraryIdParam) : null;
-    if (newLibraryId !== activeLibraryId) {
-      setActiveLibraryId(newLibraryId);
-    }
-  }, [libraryIdParam, virtualParam]); // 仅依赖 URL 参数变化
+  const { items: libraries, loading: libsLoading, error: librariesError } = useFileLibraries();
+  const { activeLibraryId, currentParentId, isVirtualTags, setSearchParams } = useBrowserLocation(libraries, libsLoading, librariesError);
 
   // 视图模式持久化
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
@@ -114,19 +86,14 @@ export function FileBrowserPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // 滚动位置缓存 key
   const SCROLL_CACHE_KEY = "file_browser_scroll_positions";
-  // 最近一次访问的库与目录缓存 key（用于跨页面返回保持层级）
-  const LAST_PATH_CACHE_KEY = "file_browser_last_path";
-  // 避免重复恢复上次路径
-  const hasRestoredLastPath = useRef(false);
-
   // 文件操作对话框状态
   const [actionDialog, setActionDialog] = useState<{
     type: "rename" | "delete" | "move" | "copy" | null;
-    entry: any;
+    entry: FileEntry | null;
   }>({ type: null, entry: null });
 
   // 标签对话框状态
-  const [tagDialogEntry, setTagDialogEntry] = useState<any>(null);
+  const [tagDialogEntry, setTagDialogEntry] = useState<FileEntry | null>(null);
 
   // 批量模式状态
   const [batchMode, setBatchMode] = useState(false);
@@ -135,6 +102,7 @@ export function FileBrowserPage() {
   // 批量操作对话框状态
   const [batchActionDialog, setBatchActionDialog] = useState<{
     type: "move" | "copy" | "delete" | null;
+    entries?: FileEntry[];
   }>({ type: null });
 
   // 筛选排序状态（持久化到 localStorage）
@@ -161,8 +129,6 @@ export function FileBrowserPage() {
     ancestors,
     loading: entriesLoading,
     error: entriesError,
-    currentParentId,
-    setCurrentParentId,
     reload,
     indexLibrary,
     rename,
@@ -174,7 +140,7 @@ export function FileBrowserPage() {
     upload,
     createFolder,
     getCachedPassword,
-  } = useFileBrowser({ libraryId: activeLibraryId });
+  } = useFileBrowser({ libraryId: activeLibraryId, parentId: currentParentId });
 
   // 错误时显示 toast
   useEffect(() => {
@@ -211,7 +177,7 @@ export function FileBrowserPage() {
     items.push(...ancestors.map(a => ({ id: a.id, name: a.name })));
     
     return items;
-  }, [activeLibrary, ancestors]);
+  }, [activeLibrary, ancestors, isVirtualTags]);
 
   const currentPathLabel = useMemo(() => {
     if (isVirtualTags) return "标签浏览";
@@ -222,77 +188,18 @@ export function FileBrowserPage() {
     return breadcrumbItems.map((b) => b.name).join(" / ");
   }, [isVirtualTags, activeLibraryId, currentParentId, breadcrumbItems]);
 
-  // 初始化同步：如果 URL 有 parentId，设置给 hook
-  useEffect(() => {
-    if (virtualParam) return;
-    if (parentIdParam && parentIdParam !== currentParentId) {
-      setCurrentParentId(parentIdParam);
-    }
-  }, [parentIdParam]); // 这里不能依赖 currentParentId，否则会死循环，只依赖 URL 变化
-
-  // 当库列表加载完成后，如果 URL 中的 libraryId 不存在于库列表中，重置为根目录
-  useEffect(() => {
-    if (!libsLoading && activeLibraryId) {
-      const libraryExists = libraries.some(l => l.id === activeLibraryId);
-      if (!libraryExists) {
-        // 文件库不存在，返回根目录
-        setActiveLibraryId(null);
-        setSearchParams({});
-        setCurrentParentId(null);
-      }
-    }
-  }, [libsLoading, libraries, activeLibraryId, setSearchParams]);
-
-  // 当 URL 未包含库与目录参数时，从缓存恢复上次访问的层级（组件首次渲染即触发）
-  useEffect(() => {
-    if (virtualParam) return;
-    if (hasRestoredLastPath.current) return;
-    // 仅在 URL 无参数时尝试恢复，避免覆盖显式传入的链接
-    if (libraryIdParam || parentIdParam) return;
-
-    try {
-      const cached = localStorage.getItem(LAST_PATH_CACHE_KEY);
-      if (!cached) return;
-
-      const { libraryId: cachedLibraryId, parentId: cachedParentId } = JSON.parse(cached) as {
-        libraryId: number | null;
-        parentId: string | null;
-      };
-
-      if (cachedLibraryId) {
-        setActiveLibraryId(cachedLibraryId);
-        setCurrentParentId(cachedParentId || null);
-        // 同步到 URL，便于刷新或分享
-        if (cachedParentId) {
-          setSearchParams({ libraryId: cachedLibraryId.toString(), parentId: cachedParentId });
-        } else {
-          setSearchParams({ libraryId: cachedLibraryId.toString() });
-        }
-        hasRestoredLastPath.current = true;
-      }
-    } catch {
-      // 解析失败则忽略
-    }
-  }, [libraryIdParam, parentIdParam, setSearchParams]);
-
   // 进入文件库（从根目录点击文件库）
   const handleEnterLibrary = (libraryId: number) => {
-    setActiveLibraryId(libraryId);
     setSearchParams({ libraryId: libraryId.toString() });
-    setCurrentParentId(null);
   };
 
   const handleEnterVirtualTags = () => {
-    setActiveLibraryId(null);
-    setCurrentParentId(null);
     setSearchParams({ virtual: "tags" });
   };
 
   // 返回根目录（文件库列表）
   const handleBackToRoot = () => {
-    setActiveLibraryId(null);
     setSearchParams({});
-    setCurrentParentId(null);
   };
 
   // 文件库操作处理
@@ -306,7 +213,7 @@ export function FileBrowserPage() {
       // 直接触发重建索引
       indexLibraryApi(libraryId, { forceReindex: true })
         .then(() => toast.success("索引任务已创建，请在任务中心查看进度"))
-        .catch((err: any) => toast.error(err?.message || "创建索引任务失败"));
+        .catch((err: unknown) => toast.error(getErrorMessage(err, "创建索引任务失败")));
     } else if (action === "delete") {
       // 打开配置对话框，在里面删除
       setLibraryConfigDialog({ open: true, library });
@@ -335,20 +242,6 @@ export function FileBrowserPage() {
       }
     }
   }, [activeLibraryId, currentParentId]);
-
-  // 记录最近访问的库与目录，便于跨页面返回时恢复
-  useEffect(() => {
-    if (libsLoading) return;
-    try {
-      const payload = {
-        libraryId: activeLibraryId,
-        parentId: currentParentId,
-      };
-      localStorage.setItem(LAST_PATH_CACHE_KEY, JSON.stringify(payload));
-    } catch {
-      // localStorage 不可用时忽略
-    }
-  }, [libsLoading, activeLibraryId, currentParentId]);
 
   // 从 sessionStorage 恢复滚动位置
   const restoreScrollPosition = useCallback(() => {
@@ -382,7 +275,6 @@ export function FileBrowserPage() {
   // 进入目录
   const handleEnterDirectory = (entry: { id: string; original_name: string }) => {
     saveScrollPosition();
-    setCurrentParentId(entry.id);
     setSearchParams({ 
       libraryId: activeLibraryId!.toString(), 
       parentId: entry.id 
@@ -413,12 +305,10 @@ export function FileBrowserPage() {
         handleBackToRoot();
       } else if (breadcrumbItems.length === 1) {
         // 只有一级，返回文件库根目录
-        setCurrentParentId(null);
         setSearchParams({ libraryId: activeLibraryId.toString() });
       } else {
         // 返回上一级（倒数第二个）
         const parentItem = breadcrumbItems[breadcrumbItems.length - 2];
-        setCurrentParentId(parentItem.id);
         setSearchParams({ 
           libraryId: activeLibraryId.toString(), 
           parentId: parentItem.id 
@@ -439,7 +329,6 @@ export function FileBrowserPage() {
     
     // 如果点击的是文件库项（以 library- 开头），返回文件库根目录
     if (item.id.startsWith("library-")) {
-      setCurrentParentId(null);
       setSearchParams({ libraryId: activeLibraryId!.toString() });
       return;
     }
@@ -447,7 +336,6 @@ export function FileBrowserPage() {
     // 如果点击的是当前项，不做任何事
     if (item.id === currentParentId) return;
     
-    setCurrentParentId(item.id);
     setSearchParams({ 
       libraryId: activeLibraryId!.toString(), 
       parentId: item.id 
@@ -455,7 +343,7 @@ export function FileBrowserPage() {
   };
 
   // 文件操作（暂未实现具体逻辑）
-  const handleFileAction = (action: string, entry: any) => {
+  const handleFileAction = (action: string, entry: FileEntry) => {
     if (action === "download") {
       if (entry.is_directory) return;
 
@@ -485,26 +373,24 @@ export function FileBrowserPage() {
   };
 
   // 处理重命名提交
-  const handleRenameSubmit = async (entry: any, newName: string, password?: string) => {
+  const handleRenameSubmit = async (entry: FileEntry, newName: string, password?: string) => {
     await rename(entry.id, newName, password);
   };
 
   // 处理删除提交
-  const handleDeleteSubmit = async (entry: any, password?: string) => {
+  const handleDeleteSubmit = async (entry: FileEntry, password?: string) => {
     await remove(entry.id, password);
   };
 
   // 处理移动/复制提交
   const handleMoveCopySubmit = async (
-    entry: any, 
-    targetParentId: string | null, 
-    newName?: string, 
-    password?: string
+    entry: FileEntry,
+    params: CopyEntryParams,
   ) => {
     if (actionDialog.type === "move") {
-      await move(entry.id, { targetParentId, password });
+      await move(entry.id, params);
     } else if (actionDialog.type === "copy") {
-      await copy(entry.id, { targetParentId, newName, password });
+      await copy(entry.id, params);
     }
   };
 
@@ -516,13 +402,13 @@ export function FileBrowserPage() {
     try {
       await indexLibrary({ forceReindex });
       // 索引任务将在后台执行，用户可在任务中心查看进度
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("索引触发失败", err);
     }
   };
 
   // 批量选择处理
-  const handleBatchSelect = (entry: any, selected: boolean) => {
+  const handleBatchSelect = (entry: FileEntry, selected: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (selected) {
@@ -612,13 +498,13 @@ export function FileBrowserPage() {
   // 批量移动处理
   const handleBatchMove = () => {
     if (selectedEntries.length === 0) return;
-    setBatchActionDialog({ type: "move" });
+    setBatchActionDialog({ type: "move", entries: [...selectedEntries] });
   };
 
   // 批量复制处理
   const handleBatchCopy = () => {
     if (selectedEntries.length === 0) return;
-    setBatchActionDialog({ type: "copy" });
+    setBatchActionDialog({ type: "copy", entries: [...selectedEntries] });
   };
 
   // 批量标签处理（只选择文件，不包括文件夹）
@@ -643,20 +529,11 @@ export function FileBrowserPage() {
   };
 
   // 批量移动/复制提交
-  const handleBatchMoveCopySubmit = async (targetParentId: string | null) => {
-    try {
-      for (const entry of selectedEntries) {
-        if (batchActionDialog.type === "move") {
-          await move(entry.id, { targetParentId });
-        } else if (batchActionDialog.type === "copy") {
-          await copy(entry.id, { targetParentId });
-        }
-      }
-      toast.success(`已${batchActionDialog.type === "move" ? "移动" : "复制"} ${selectedEntries.length} 个项目`);
-      setBatchActionDialog({ type: null });
-      handleBatchModeChange(false);
-    } catch (err) {
-      console.error("批量操作失败", err);
+  const handleBatchMoveCopySubmit = async (entry: FileEntry, params: CopyEntryParams) => {
+    if (batchActionDialog.type === "move") {
+      await move(entry.id, params);
+    } else if (batchActionDialog.type === "copy") {
+      await copy(entry.id, params);
     }
   };
 
@@ -1032,16 +909,19 @@ export function FileBrowserPage() {
       </AlertDialog>
 
       {/* 批量移动/复制对话框 */}
-      {(batchActionDialog.type === "move" || batchActionDialog.type === "copy") && selectedEntries.length > 0 && (
+      {(batchActionDialog.type === "move" || batchActionDialog.type === "copy") && !!batchActionDialog.entries?.length && (
         <MoveCopyDialog
           mode={batchActionDialog.type}
-          entry={selectedEntries[0]}
+          entry={batchActionDialog.entries[0]}
           open={true}
-          onOpenChange={(open) => !open && setBatchActionDialog({ type: null })}
-          onSubmit={async (_entry, targetParentId) => {
-            await handleBatchMoveCopySubmit(targetParentId);
+          onOpenChange={(open) => {
+            if (!open) {
+              setBatchActionDialog({ type: null });
+              handleBatchModeChange(false);
+            }
           }}
-          batchCount={selectedEntries.length}
+          onSubmit={handleBatchMoveCopySubmit}
+          batchEntries={batchActionDialog.entries}
         />
       )}
 

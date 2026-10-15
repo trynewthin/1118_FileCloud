@@ -82,30 +82,30 @@ export function NewLibraryDialog({
   // 远程文件库状态
   const { clients: remoteClients, loading: clientsLoading } = useRemoteClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [remoteLibraries, setRemoteLibraries] = useState<any[]>([]);
-  const [selectedRemoteLibrary, setSelectedRemoteLibrary] = useState<any | null>(null);
-  const [loadingRemoteLibs, setLoadingRemoteLibs] = useState(false);
+  const [remoteLibraries, setRemoteLibraries] = useState<{ id: number; display_name: string; root_path: string }[]>([]);
+  const [selectedRemoteLibrary, setSelectedRemoteLibrary] = useState<{ id: number; display_name: string; root_path: string } | null>(null);
+  const [loadedClientId, setLoadedClientId] = useState<string | null>(null);
+  const loadingRemoteLibs = selectedClientId !== null && loadedClientId !== selectedClientId;
   
-  // 加载远程客户端的文件库列表
+  // Ignore results from clients that have been deselected or dialogs that unmounted.
   useEffect(() => {
-    if (selectedClientId) {
-      setLoadingRemoteLibs(true);
-      setSelectedRemoteLibrary(null);
-      getRemoteLibraries(selectedClientId)
-        .then((res) => {
-          setRemoteLibraries(res.items || []);
-        })
-        .catch(() => {
-          setRemoteLibraries([]);
-        })
-        .finally(() => {
-          setLoadingRemoteLibs(false);
-        });
-    } else {
-      setRemoteLibraries([]);
-    }
+    if (!selectedClientId) return;
+    let active = true;
+    getRemoteLibraries(selectedClientId)
+      .then((res) => { if (active) setRemoteLibraries(res.items || []); })
+      .catch(() => { if (active) setRemoteLibraries([]); })
+      .finally(() => { if (active) setLoadedClientId(selectedClientId); });
+    return () => { active = false; };
   }, [selectedClientId]);
-  
+
+  const selectClient = (id: string | null) => {
+    if (id === selectedClientId) return;
+    setSelectedClientId(id);
+    setSelectedRemoteLibrary(null);
+    setRemoteLibraries([]);
+    setLoadedClientId(null);
+  };
+
   // 重置状态
   const resetState = () => {
     setLibraryType("local");
@@ -134,8 +134,8 @@ export function NewLibraryDialog({
         resetState();
         toast.success("文件库创建成功，正在后台建立索引");
         onSuccess?.();
-      } catch (err: any) {
-        setError(err?.message || "创建失败");
+      } catch (err: unknown) {
+        setError((err instanceof Error ? err.message : "") || "创建失败");
       }
     } else {
       // 远程文件库：目前只是导航到远程浏览页面
@@ -268,7 +268,7 @@ export function NewLibraryDialog({
                         <button
                           key={client.id}
                           type="button"
-                          onClick={() => setSelectedClientId(client.id)}
+                          onClick={() => selectClient(client.id)}
                           className={cn(
                             "w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors text-left",
                             selectedClientId === client.id

@@ -18,7 +18,7 @@ export const coreServicesModule: ModuleDefinition = {
     logger.info("常驻服务已启动");
   },
   onShutdown: async () => {
-    stopLibraryWatcher();
+    await stopLibraryWatcher();
     logger.info("常驻服务已停止");
   },
 };

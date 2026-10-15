@@ -70,8 +70,8 @@ export function UploadDialog({ open, onOpenChange, targetPathLabel, onSubmit }: 
       onOpenChange(false);
       setFileList([]);
       setProgress(null);
-    } catch (err: any) {
-      setError(err?.message || "上传失败（后端未实现或发生错误）");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "上传失败（后端未实现或发生错误）");
     } finally {
       setLoading(false);
     }

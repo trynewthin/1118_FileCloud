@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { AiChatConversation, ToolKitListItem, ToolKitsConfig } from "@/lib/api/aiChat";
@@ -30,7 +31,7 @@ export function AiToolkitsDialog({
     return [...toolkits].sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
   }, [toolkits]);
 
-  const initialConfig = (conversation?.metadata as any)?.toolkitsConfig as ToolKitsConfig | undefined;
+  const initialConfig = conversation?.metadata?.toolkitsConfig as ToolKitsConfig | undefined;
 
   const [mode, setMode] = useState<ToolKitsConfig["mode"]>(initialConfig?.mode ?? "inherit");
   const [disabledKeys, setDisabledKeys] = useState<Set<string>>(new Set(initialConfig?.disabled ?? []));
@@ -48,7 +49,7 @@ export function AiToolkitsDialog({
   useEffect(() => {
     if (!open) return;
 
-    const cfg = (conversation?.metadata as any)?.toolkitsConfig as ToolKitsConfig | undefined;
+    const cfg = conversation?.metadata?.toolkitsConfig as ToolKitsConfig | undefined;
     setMode(cfg?.mode ?? "inherit");
     setDisabledKeys(new Set(cfg?.disabled ?? []));
     setEnabledKeys(
@@ -59,7 +60,7 @@ export function AiToolkitsDialog({
             .map((t) => t.key),
       ),
     );
-  }, [open, conversation?.id, toolkits]);
+  }, [open, conversation?.id, conversation?.metadata, toolkits]);
 
   const handleToggle = (key: string, nextChecked: boolean) => {
     if (mode === "inherit") {
@@ -113,8 +114,8 @@ export function AiToolkitsDialog({
       await onSave(payload);
       toast.success("已保存工具包配置");
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || "保存失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "保存失败"));
     } finally {
       setSaving(false);
     }

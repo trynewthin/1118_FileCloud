@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,14 +28,15 @@ export function CreateFolderDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 对话框关闭时重置状态
-  useEffect(() => {
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) {
+    setPreviousOpen(open);
     if (!open) {
       setName("");
       setError("");
       setLoading(false);
     }
-  }, [open]);
+  }
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -63,10 +64,10 @@ export function CreateFolderDialog({
         .then(() => toast.success("文件夹创建成功"))
         .catch((err) => {
           console.error("创建文件夹失败", err);
-          toast.error(err?.message || "创建文件夹失败");
+          toast.error((err instanceof Error ? err.message : "") || "创建文件夹失败");
         });
-    } catch (err: any) {
-      setError(err?.message || "创建失败");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "创建失败");
       setLoading(false);
     }
   };

@@ -106,14 +106,14 @@ export const listAiChatModels = async (): Promise<ListAiChatModelsResponse> => {
 export const createAiChatModel = async (
   body: CreateAiChatModelRequest,
 ): Promise<{ model: AiChatModel }> => {
-  return apiClient.post<{ model: AiChatModel }>("/ai/models", body as any);
+  return apiClient.post<{ model: AiChatModel }>("/ai/models", body);
 };
 
 export const updateAiChatModel = async (
   id: number,
   body: UpdateAiChatModelRequest,
 ): Promise<{ model: AiChatModel }> => {
-  return apiClient.put<{ model: AiChatModel }>(`/ai/models/${id}`, body as any);
+  return apiClient.put<{ model: AiChatModel }>(`/ai/models/${id}`, body);
 };
 
 export const deleteAiChatModel = async (id: number): Promise<void> => {
@@ -156,14 +156,14 @@ export const listAiChatPrompts = async (): Promise<ListAiChatPromptsResponse> =>
 export const createAiChatPrompt = async (
   body: CreateAiChatPromptRequest,
 ): Promise<{ prompt: AiChatPrompt }> => {
-  return apiClient.post<{ prompt: AiChatPrompt }>("/ai/prompts", body as any);
+  return apiClient.post<{ prompt: AiChatPrompt }>("/ai/prompts", body);
 };
 
 export const updateAiChatPrompt = async (
   id: number,
   body: UpdateAiChatPromptRequest,
 ): Promise<{ prompt: AiChatPrompt }> => {
-  return apiClient.put<{ prompt: AiChatPrompt }>(`/ai/prompts/${id}`, body as any);
+  return apiClient.put<{ prompt: AiChatPrompt }>(`/ai/prompts/${id}`, body);
 };
 
 export const deleteAiChatPrompt = async (id: number): Promise<void> => {

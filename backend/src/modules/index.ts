@@ -6,6 +6,8 @@
 
 import type { ModuleDefinition } from "../core/module-loader/index.ts";
 
+import { coreServicesModule } from "./coreServices/module.ts";
+
 // 导入所有模块定义
 import { authModule } from "./auth/module.ts";
 import { fileLibrariesModule } from "./fileLibraries/module.ts";
@@ -42,4 +44,5 @@ export const allModules: ModuleDefinition[] = [
   entriesModule,
   backgroundsModule,
   remoteProxyModule,
+  coreServicesModule,
 ];

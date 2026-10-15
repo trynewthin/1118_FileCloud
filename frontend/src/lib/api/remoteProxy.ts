@@ -1,3 +1,5 @@
+import type { FileLibrary } from "./fileLibraries";
+import type { FileEntry } from "./files";
 /**
  * 远程代理 API
  */
@@ -23,11 +25,11 @@ export const disconnectRemoteClient = async (clientId: string): Promise<{ messag
 };
 
 // 代理请求到远程客户端
-export const proxyRequest = async <T = any>(
+export const proxyRequest = async <T = unknown>(
   clientId: string,
   method: string,
   path: string,
-  body?: any
+  body?: unknown
 ): Promise<T> => {
   const url = `/remote-proxy/clients/${clientId}/proxy${path}`;
   
@@ -53,7 +55,7 @@ export const proxyRequest = async <T = any>(
 
 // 获取远程客户端的文件库列表
 export const getRemoteLibraries = async (clientId: string) => {
-  return proxyRequest<{ items: any[] }>(clientId, "GET", "/api/file-libraries");
+  return proxyRequest<{ items: FileLibrary[] }>(clientId, "GET", "/api/file-libraries");
 };
 
 // 获取远程文件库目录内容
@@ -63,7 +65,7 @@ export const getRemoteEntries = async (
   parentId?: string
 ) => {
   const query = parentId ? `?parentId=${encodeURIComponent(parentId)}` : "";
-  return proxyRequest<{ items: any[] }>(
+  return proxyRequest<{ items: FileEntry[] }>(
     clientId,
     "GET",
     `/api/files/library/${libraryId}/entries${query}`
@@ -72,5 +74,5 @@ export const getRemoteEntries = async (
 
 // 获取远程文件信息
 export const getRemoteEntry = async (clientId: string, entryId: string) => {
-  return proxyRequest<{ entry: any }>(clientId, "GET", `/api/entries/${entryId}`);
+  return proxyRequest<{ entry: FileEntry }>(clientId, "GET", `/api/entries/${entryId}`);
 };

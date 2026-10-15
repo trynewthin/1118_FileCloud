@@ -1,23 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
-import type { AuthUser } from "@/lib/api/auth";
+import { AuthContext, type AuthState, type AuthContextValue } from "./authContext";
 import { getMe, loginWithPassword, loginWithSecret, register } from "@/lib/api/auth";
 import { setAuthToken, getAuthToken } from "@/lib/api/client";
-
-interface AuthState {
-  user: AuthUser | null;
-  loading: boolean;
-}
-
-interface AuthContextValue extends AuthState {
-  loginByPassword: (username: string, password: string) => Promise<void>;
-  loginBySecret: (secret: string) => Promise<void>;
-  registerUser: (username: string, password: string) => Promise<void>;
-  refreshMe: () => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_STORAGE_KEY = "filecloud_auth_token";
 
@@ -91,10 +76,3 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = (): AuthContextValue => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth 必须在 AuthProvider 内部使用");
-  }
-  return ctx;
-};

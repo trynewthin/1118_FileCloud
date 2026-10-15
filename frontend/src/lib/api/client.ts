@@ -1,3 +1,4 @@
+import { getErrorMessage } from "./errors";
 export interface ApiError extends Error {
   status: number;
   statusText: string;
@@ -68,7 +69,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const message =
-      typeof (data as any)?.message === "string" ? (data as any).message : "请求失败";
+      getErrorMessage(data, "请求失败");
     const error: ApiError = Object.assign(new Error(message), {
       status: res.status,
       statusText: res.statusText,

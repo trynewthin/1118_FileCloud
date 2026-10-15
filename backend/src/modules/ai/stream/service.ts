@@ -34,7 +34,7 @@ const logger = createLogger("AI/StreamService");
 // ============================================================================
 
 /** 从上传 ID 列表构建图片附件 */
-function buildImageAttachmentsFromUploadIds(uploadIds: number[]): ChatAttachment[] {
+async function buildImageAttachmentsFromUploadIds(uploadIds: number[]): Promise<ChatAttachment[]> {
   const files = getConversationFilesByIds(uploadIds);
   const attachments: ChatAttachment[] = [];
 
@@ -42,7 +42,7 @@ function buildImageAttachmentsFromUploadIds(uploadIds: number[]): ChatAttachment
     if (!file.mime_type?.startsWith("image/")) continue;
 
     try {
-      const buffer = readFileAsBuffer(file.relative_path);
+      const buffer = await readFileAsBuffer(file.relative_path);
       if (buffer) {
         attachments.push({
           kind: "image",
@@ -156,7 +156,7 @@ export async function streamMessageAndReply(
     // 构建附件
     let userMessageAttachments: ChatAttachment[] | undefined;
     if (input.attachmentIds && input.attachmentIds.length > 0) {
-      const attachments = buildImageAttachmentsFromUploadIds(input.attachmentIds);
+      const attachments = await buildImageAttachmentsFromUploadIds(input.attachmentIds);
       if (attachments.length > 0) {
         userMessageAttachments = attachments;
       }
@@ -164,7 +164,7 @@ export async function streamMessageAndReply(
     if (!userMessageAttachments) {
       const framesVar = varContext.conversationVars["videoFrames"];
       if (framesVar && framesVar.kind === "image_upload_list" && Array.isArray(framesVar.value)) {
-        const attachments = buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
+        const attachments = await buildImageAttachmentsFromUploadIds(framesVar.value as number[]);
         if (attachments.length > 0) {
           userMessageAttachments = attachments;
         }

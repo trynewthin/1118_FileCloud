@@ -4,6 +4,7 @@
  */
 
 import { WebSocketServer, WebSocket } from "ws";
+import { closeSocket } from "./socketLifecycle.ts";
 import type { Server } from "http";
 import { createLogger } from "../../core/logger/index.ts";
 import { getRemoteProxyKey } from "../../core/config/paths.ts";
@@ -31,6 +32,9 @@ const pendingRequests = new Map<string, {
 }>();
 
 let wss: WebSocketServer | null = null;
+let accepting = false;
+let stopping: Promise<void> | null = null;
+const activeRequests = new Set<Promise<unknown>>();
 
 // 生成唯一ID
 const generateId = () => {
@@ -39,9 +43,12 @@ const generateId = () => {
 
 // 初始化 WebSocket 服务
 export const initWebSocketServer = (server: Server) => {
+  if (stopping || wss) throw new Error("Remote server is already running or stopping");
+  accepting = true;
   wss = new WebSocketServer({ server, path: "/ws/remote-proxy" });
 
   wss.on("connection", (ws: WebSocket) => {
+    if (!accepting) { ws.terminate(); return; }
     let clientId: string | null = null;
     let authenticated = false;
 
@@ -61,6 +68,7 @@ export const initWebSocketServer = (server: Server) => {
 
         // 未认证时只接受认证消息
         if (!authenticated) {
+          if (!accepting) return;
           if (message.type === "auth") {
             handleAuth(ws, message as AuthMessage, authTimeout).then((id) => {
               if (id) {
@@ -188,7 +196,8 @@ export const sendRequest = <T = any>(
   payload: any,
   timeoutMs = 30000
 ): Promise<T> => {
-  return new Promise((resolve, reject) => {
+  if (!accepting) return Promise.reject(new Error("服务正在关闭"));
+  const request = new Promise<T>((resolve, reject) => {
     const client = clients.get(clientId);
     if (!client) {
       reject(new Error("客户端未连接"));
@@ -210,8 +219,16 @@ export const sendRequest = <T = any>(
 
     pendingRequests.set(requestId, { resolve, reject, timeout });
 
-    client.ws.send(JSON.stringify(message));
+    client.ws.send(JSON.stringify(message), error => {
+      if (!error) return;
+      clearTimeout(timeout);
+      pendingRequests.delete(requestId);
+      reject(error);
+    });
   });
+  activeRequests.add(request);
+  void request.then(() => activeRequests.delete(request), () => activeRequests.delete(request));
+  return request;
 };
 
 // 获取已连接的客户端列表
@@ -233,4 +250,23 @@ export const disconnectClient = (clientId: string): boolean => {
     return true;
   }
   return false;
+};
+
+
+/** Stop outgoing admission but retain response handling while requests drain. */
+export const stopWebSocketServer = (): Promise<void> => {
+  if (stopping) return stopping;
+  accepting = false;
+  stopping = (async () => {
+    await Promise.allSettled([...activeRequests]);
+    const server = wss;
+    if (server) {
+      const closed = new Promise<void>(resolve => server.close(() => resolve()));
+      await Promise.all([...server.clients].map(closeSocket));
+      await closed;
+      if (wss === server) wss = null;
+    }
+    clients.clear();
+  })().finally(() => { stopping = null; });
+  return stopping;
 };

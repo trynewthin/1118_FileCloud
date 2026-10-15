@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useCallback, useEffect, useState } from "react";
 import type { TaskRecord, TaskStatus } from "@/lib/api/tasks";
 import { listTasks } from "@/lib/api/tasks";
@@ -30,8 +31,8 @@ export const useTasks = (options?: UseTasksOptions) => {
       try {
         const res = await listTasks({ status: effectiveStatus });
         setState({ items: res.items, loading: false, error: null });
-      } catch (err: any) {
-        const message = typeof err?.message === "string" ? err.message : "加载任务失败";
+      } catch (err) {
+        const message = getErrorMessage(err, "加载任务失败");
         setState((prev) => ({ ...prev, loading: false, error: message }));
       }
     },

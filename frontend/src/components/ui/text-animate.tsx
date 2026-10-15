@@ -1,4 +1,4 @@
-import { memo, type ElementType } from "react"
+import { memo, forwardRef, type HTMLAttributes, type ElementType } from "react"
 import { AnimatePresence, motion, type MotionProps, type Variants } from "motion/react"
 
 import { cn } from "@/lib/utils"
@@ -300,6 +300,12 @@ const defaultItemAnimationVariants: Record<
   },
 }
 
+const TextContainer = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & { as: ElementType }>(
+  ({ as: Component, ...props }, ref) => <Component ref={ref} {...props} />,
+)
+TextContainer.displayName = "TextContainer"
+const MotionTextContainer = motion.create(TextContainer)
+
 const TextAnimateBase = ({
   children,
   delay = 0,
@@ -315,7 +321,6 @@ const TextAnimateBase = ({
   accessible = true,
   ...props
 }: TextAnimateProps) => {
-  const MotionComponent = motion.create(Component)
 
   let segments: string[] = []
   switch (by) {
@@ -381,7 +386,8 @@ const TextAnimateBase = ({
 
   return (
     <AnimatePresence mode="popLayout">
-      <MotionComponent
+      <MotionTextContainer
+        as={Component}
         variants={finalVariants.container as Variants}
         initial="hidden"
         whileInView={startOnView ? "show" : undefined}
@@ -408,7 +414,7 @@ const TextAnimateBase = ({
             {segment}
           </motion.span>
         ))}
-      </MotionComponent>
+      </MotionTextContainer>
     </AnimatePresence>
   )
 }

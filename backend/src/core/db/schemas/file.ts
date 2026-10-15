@@ -19,6 +19,12 @@ CREATE INDEX IF NOT EXISTS idx_file_entries_library_parent ON file_entries(libra
 CREATE INDEX IF NOT EXISTS idx_file_entries_library_name ON file_entries(library_id, is_deleted, original_name);
 CREATE INDEX IF NOT EXISTS idx_file_entries_library_suffix ON file_entries(library_id, index_suffix);
 
+-- Each deletion has a unique physical location, including descendants moved together.
+CREATE TABLE IF NOT EXISTS file_trash_locations (
+  entry_id TEXT PRIMARY KEY,
+  relative_path TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS file_entry_security (
   entry_id TEXT PRIMARY KEY,
   password_hash TEXT NOT NULL,

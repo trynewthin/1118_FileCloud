@@ -84,17 +84,15 @@ export const PageContainer: FC<PageContainerProps> = ({
     navigate("/");
   };
 
-  useEffect(() => {
-    const path = location.pathname;
-    if (path.startsWith("/files") || path.startsWith("/preview")) {
-      const fullPath = location.search ? `${path}${location.search}` : path;
+  const fullPath = `${location.pathname}${location.search}`;
+  const [previousPath, setPreviousPath] = useState<string | null>(null);
+  if (previousPath !== fullPath) {
+    setPreviousPath(fullPath);
+    setFolderOpen(false);
+    if (location.pathname.startsWith("/files") || location.pathname.startsWith("/preview")) {
       setLastBrowsePath(fullPath);
     }
-  }, [location.pathname, location.search]);
-
-  useEffect(() => {
-    setFolderOpen(false);
-  }, [location.pathname, location.search]);
+  }
 
   useEffect(() => {
     if (!folderOpen) return;

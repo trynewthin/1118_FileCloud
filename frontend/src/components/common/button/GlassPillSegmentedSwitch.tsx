@@ -55,7 +55,7 @@ function GlassPillSegmentedSwitchInner<T extends string>(
 }
 
 const GlassPillSegmentedSwitchBase = forwardRef(GlassPillSegmentedSwitchInner);
-(GlassPillSegmentedSwitchBase as any).displayName = "GlassPillSegmentedSwitch";
+GlassPillSegmentedSwitchBase.displayName = "GlassPillSegmentedSwitch";
 
 export const GlassPillSegmentedSwitch = GlassPillSegmentedSwitchBase as <T extends string>(
   props: GlassPillSegmentedSwitchProps<T> & React.RefAttributes<HTMLDivElement>

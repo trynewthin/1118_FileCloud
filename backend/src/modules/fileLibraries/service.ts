@@ -1,8 +1,11 @@
 import fs from "node:fs";
+import { pathExists } from "../../core/fs.ts";
 import path from "node:path";
 import { db } from "../../core/db/index.ts";
-import { createTask } from "../tasks/service.ts";
-import { TASK_TYPE_FILE_INDEX_LIBRARY } from "../files/indexTasks.ts";
+import { assertLibraryRootPath, resolvePathWithinLibrary } from "../../core/config/pathSecurity.ts";
+import { createTask } from "../tasks/index.ts";
+import { TASK_TYPE_FILE_INDEX_LIBRARY } from "../files/index.ts";
+import { assertLibraryRootOwnership } from "../../core/auth/libraryOwnership.ts";
 // 注意：已移除 indexSuffix 导入，采用非侵入式索引策略
 
 export interface FileLibrary {
@@ -20,17 +23,20 @@ export interface FileLibrary {
 }
 
 // 递归计算目录大小（字节数），简单实现，后续可按需优化为异步任务
-const calculateDirectorySize = (dir: string): number => {
+const calculateDirectorySize = async (dir: string, root?: string): Promise<number> => {
+  root ??= await assertLibraryRootPath(dir);
+  dir = (await resolvePathWithinLibrary(root, path.relative(root, dir)));
   let total = 0;
-  if (!fs.existsSync(dir)) return 0;
+  if (!(await pathExists(dir))) return 0;
 
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const entries = (await fs.promises.readdir(dir, { withFileTypes: true }));
   for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    const fullPath = (await resolvePathWithinLibrary(root, path.relative(root, path.join(dir, entry.name))));
     if (entry.isDirectory()) {
-      total += calculateDirectorySize(fullPath);
+      total += (await calculateDirectorySize(fullPath, root));
     } else if (entry.isFile()) {
-      const stat = fs.statSync(fullPath);
+      const stat = (await fs.promises.stat(fullPath));
       total += stat.size;
     }
   }
@@ -98,9 +104,12 @@ interface CreateFileLibraryInput {
 }
 
 // 创建新的文件库配置
-export const createFileLibrary = (input: CreateFileLibraryInput): FileLibrary => {
-  const rootPath = path.resolve(input.rootPath);
-  const exists = fs.existsSync(rootPath);
+export const createFileLibrary = async (input: CreateFileLibraryInput): Promise<FileLibrary> => {
+  return serializeRegistration(async () => {
+
+  const rootPath = (await assertLibraryRootPath(input.rootPath));
+  (await assertLibraryRootOwnership(rootPath, input.userId));
+  const exists = (await pathExists(rootPath));
 
   const now = new Date().toISOString();
 
@@ -136,6 +145,8 @@ export const createFileLibrary = (input: CreateFileLibraryInput): FileLibrary =>
   });
 
   return getFileLibraryById(id)!;
+
+  });
 };
 
 interface UpdateFileLibraryInput {
@@ -175,32 +186,6 @@ export const updateFileLibrary = (
 };
 
 /**
- * 辅助函数：根据 entry_id 构建相对于文件库根目录的物理路径
- * 非侵入式索引：直接使用原始文件名构建路径
- */
-const buildRelativePathForEntryId = (entryId: string): string | null => {
-  const segments: string[] = [];
-  let currentId: string | null = entryId;
-
-  while (currentId) {
-    const row = db
-      .prepare(
-        "SELECT id, parent_id, original_name FROM file_entries WHERE id = ?"
-      )
-      .get(currentId) as { id: string; parent_id: string | null; original_name: string } | undefined;
-
-    if (!row) return null;
-
-    // 非侵入式索引：直接使用原始文件名
-    segments.unshift(row.original_name);
-
-    currentId = row.parent_id;
-  }
-
-  return segments.length > 0 ? path.join(...segments) : null;
-};
-
-/**
  * 删除文件库配置记录（不删除真实目录）
  * 非侵入式索引：物理文件保持原始名称，无需恢复
  */
@@ -220,12 +205,13 @@ export const deleteFileLibrary = (id: number): boolean => {
 };
 
 // 刷新文件库的容量与在线状态
-export const refreshFileLibraryStatus = (id: number): FileLibrary | null => {
+export const refreshFileLibraryStatus = async (id: number): Promise<FileLibrary | null> => {
   const existing = getFileLibraryById(id);
   if (!existing) return null;
 
-  const exists = fs.existsSync(existing.root_path);
-  const size = exists ? calculateDirectorySize(existing.root_path) : 0;
+  const rootPath = (await assertLibraryRootPath(existing.root_path));
+  const exists = (await pathExists(rootPath));
+  const size = exists ? (await calculateDirectorySize(rootPath)) : 0;
   const now = new Date().toISOString();
 
   db.prepare(
@@ -245,23 +231,24 @@ export interface FileLibraryStats {
 }
 
 // 获取文件库统计信息
-export const getFileLibraryStats = (id: number): FileLibraryStats | null => {
+export const getFileLibraryStats = async (id: number): Promise<FileLibraryStats | null> => {
   const library = getFileLibraryById(id);
   if (!library) return null;
 
   // 从索引中统计文件和文件夹数量
   const countResult = db.prepare(`
-    SELECT 
+    SELECT
       SUM(CASE WHEN is_directory = 0 AND is_deleted = 0 THEN 1 ELSE 0 END) as file_count,
       SUM(CASE WHEN is_directory = 1 AND is_deleted = 0 THEN 1 ELSE 0 END) as folder_count,
       SUM(CASE WHEN is_deleted = 0 THEN size_bytes ELSE 0 END) as total_size
-    FROM file_entries 
+    FROM file_entries
     WHERE library_id = ?
   `).get(id) as { file_count: number; folder_count: number; total_size: number } | undefined;
 
   // 计算磁盘实际大小
-  const diskSize = fs.existsSync(library.root_path) 
-    ? calculateDirectorySize(library.root_path) 
+  const rootPath = (await assertLibraryRootPath(library.root_path));
+  const diskSize = (await pathExists(rootPath))
+    ? (await calculateDirectorySize(rootPath))
     : 0;
 
   return {
@@ -272,3 +259,15 @@ export const getFileLibraryStats = (id: number): FileLibraryStats | null => {
     diskSizeBytes: diskSize,
   };
 };
+
+// Ownership preflight now awaits canonical paths. Serialize registrations so
+// two competing users cannot both pass the overlap check before either inserts.
+let registrationTail = Promise.resolve();
+async function serializeRegistration<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = registrationTail;
+  let release!: () => void;
+  registrationTail = new Promise<void>(resolve => { release = resolve; });
+  await previous;
+  try { return await operation(); }
+  finally { release(); }
+}

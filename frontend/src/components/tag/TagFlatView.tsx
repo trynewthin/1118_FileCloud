@@ -62,7 +62,7 @@ export const TagFlatView: React.FC<TagFlatViewProps> = ({
       const parsed = JSON.parse(raw) as Record<number, boolean>;
       // 只接受布尔值，防止异常数据
       return Object.keys(parsed).reduce<Record<number, boolean>>((acc, key) => {
-        const v = parsed[key as any as number];
+        const v = parsed[Number(key)];
         if (typeof v === "boolean") {
           acc[Number(key)] = v;
         }

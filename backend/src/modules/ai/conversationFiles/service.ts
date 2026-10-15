@@ -49,7 +49,7 @@ export interface UploadFileResult {
   info: ConversationFileInfo;
 }
 
-export const uploadFile = (input: UploadFileInput): UploadFileResult => {
+export const uploadFile = async (input: UploadFileInput): Promise<UploadFileResult> => {
   const ext = path.extname(input.originalName).toLowerCase() || null;
   const mimeType = input.mimeType || inferMimeType(ext);
   const purpose = inferPurposeFromMime(mimeType);
@@ -77,7 +77,7 @@ export const uploadFile = (input: UploadFileInput): UploadFileResult => {
   );
 
   // 保存文件
-  const { sizeBytes, sha256 } = saveFileFromBuffer(relativePath, input.buffer);
+  const { sizeBytes, sha256 } = await saveFileFromBuffer(relativePath, input.buffer);
 
   // 更新记录
   const file = updateConversationFile(tempFile.id, {
@@ -107,9 +107,9 @@ export interface CreateGeneratedFileInput {
   mimeType?: string | null;
 }
 
-export const createGeneratedFile = (
+export const createGeneratedFile = async (
   input: CreateGeneratedFileInput,
-): UploadFileResult => {
+): Promise<UploadFileResult> => {
   const ext = path.extname(input.originalName).toLowerCase() || ".md";
   const mimeType = input.mimeType || inferMimeType(ext);
   const purpose = input.purpose || inferPurposeFromMime(mimeType);
@@ -138,7 +138,7 @@ export const createGeneratedFile = (
   );
 
   // 保存文件
-  const { sizeBytes, sha256 } = saveFileFromString(relativePath, input.content);
+  const { sizeBytes, sha256 } = await saveFileFromString(relativePath, input.content);
 
   // 更新记录
   const file = updateConversationFile(tempFile.id, {
@@ -172,10 +172,10 @@ export const listFiles = (
   return listConversationFiles(options);
 };
 
-export const getFileReadStream = (
+export const getFileReadStream = async (
   file: ConversationFile,
-): NodeJS.ReadableStream => {
-  if (!fileExists(file.relative_path)) {
+): Promise<NodeJS.ReadableStream> => {
+  if (!(await fileExists(file.relative_path))) {
     throw new Error("文件不存在");
   }
   return createReadStream(file.relative_path);
@@ -190,14 +190,14 @@ export const deleteFile = (id: number): boolean => {
 };
 
 // 删除会话的所有文件（包括物理文件和数据库记录）
-export const deleteConversationFiles = (conversationId: number): number => {
+export const deleteConversationFiles = async (conversationId: number): Promise<number> => {
   // 先获取所有文件记录
   const files = getFilesByConversationId(conversationId);
   
   // 删除物理文件
   for (const file of files) {
     try {
-      deletePhysicalFile(file.relative_path);
+      await deletePhysicalFile(file.relative_path);
     } catch {
       // 忽略删除失败（文件可能已不存在）
     }

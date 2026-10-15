@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api/errors";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { User, Shield, Trash2, Plus, Key, LogOut, RefreshCw, Copy, Check } from "lucide-react";
@@ -86,8 +87,8 @@ export function AccountPage() {
     try {
       const res = await getSecretStatus();
       setHasSecret(res.hasSecret);
-    } catch (err: any) {
-      toast.error(err?.message || "加载密钥状态失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "加载密钥状态失败"));
     } finally {
       setLoadingSecret(false);
     }
@@ -104,8 +105,8 @@ export function AccountPage() {
     try {
       const res = await getUsers();
       setUsers(res.users);
-    } catch (err: any) {
-      toast.error(err?.message || "加载用户列表失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "加载用户列表失败"));
     } finally {
       setLoadingUsers(false);
     }
@@ -134,8 +135,8 @@ export function AccountPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      toast.error(err?.message || "密码修改失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "密码修改失败"));
     } finally {
       setChangingPassword(false);
     }
@@ -165,8 +166,8 @@ export function AccountPage() {
       setNewUserPassword("");
       setNewUserRole("user");
       loadUsers();
-    } catch (err: any) {
-      toast.error(err?.message || "创建用户失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "创建用户失败"));
     } finally {
       setCreatingUser(false);
     }
@@ -183,8 +184,8 @@ export function AccountPage() {
       setDeleteDialogOpen(false);
       setUserToDelete(null);
       loadUsers();
-    } catch (err: any) {
-      toast.error(err?.message || "删除用户失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "删除用户失败"));
     } finally {
       setDeletingUser(false);
     }
@@ -205,8 +206,8 @@ export function AccountPage() {
       setResetDialogOpen(false);
       setUserToReset(null);
       setResetPassword("");
-    } catch (err: any) {
-      toast.error(err?.message || "重置密码失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "重置密码失败"));
     } finally {
       setResettingPassword(false);
     }
@@ -219,8 +220,8 @@ export function AccountPage() {
       await updateUser(targetUser.id, { role: newRole });
       toast.success(`已将 ${targetUser.username} 的角色更改为 ${newRole === "admin" ? "管理员" : "普通用户"}`);
       loadUsers();
-    } catch (err: any) {
-      toast.error(err?.message || "更改角色失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "更改角色失败"));
     }
   };
 
@@ -233,8 +234,8 @@ export function AccountPage() {
       setSecretDialogOpen(true);
       setHasSecret(true);
       toast.success(hasSecret ? "密钥已重新生成" : "密钥已生成");
-    } catch (err: any) {
-      toast.error(err?.message || "生成密钥失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "生成密钥失败"));
     } finally {
       setGeneratingSecret(false);
     }
@@ -247,8 +248,8 @@ export function AccountPage() {
       await deleteSecret();
       setHasSecret(false);
       toast.success("密钥已删除");
-    } catch (err: any) {
-      toast.error(err?.message || "删除密钥失败");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "删除密钥失败"));
     } finally {
       setDeletingSecret(false);
     }

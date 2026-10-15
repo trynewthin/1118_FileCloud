@@ -52,9 +52,13 @@ export const listEntries = async (params: {
   parentId?: string | null;
   password?: string;
 }): Promise<ListEntriesResponse> => {
+  if (params.password !== undefined) {
+    return apiClient.post<ListEntriesResponse>(`/files/library/${params.libraryId}/entries`, {
+      parentId: params.parentId, password: params.password,
+    });
+  }
   const searchParams = new URLSearchParams();
   if (params.parentId) searchParams.set("parentId", params.parentId);
-  if (params.password) searchParams.set("password", params.password);
   const qs = searchParams.toString();
   const path = `/files/library/${params.libraryId}/entries${qs ? `?${qs}` : ""}`;
   return apiClient.get<ListEntriesResponse>(path);
@@ -65,11 +69,8 @@ export const listTrashEntries = async (libraryId: number): Promise<ListTrashResp
 };
 
 export const getEntry = async (id: string, password?: string): Promise<GetEntryResponse> => {
-  const searchParams = new URLSearchParams();
-  if (password) searchParams.set("password", password);
-  const qs = searchParams.toString();
-  const path = `/files/entries/${id}${qs ? `?${qs}` : ""}`;
-  return apiClient.get<GetEntryResponse>(path);
+  if (password !== undefined) return apiClient.post<GetEntryResponse>(`/files/entries/${id}`, { password });
+  return apiClient.get<GetEntryResponse>(`/files/entries/${id}`);
 };
 
 export const downloadEntry = (id: string, password?: string, originalName?: string): string => {
@@ -211,16 +212,28 @@ export const renameEntry = async (
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/rename`, params);
 };
 
+export interface MoveEntryParams {
+  targetParentId?: string | null;
+  sourcePassword?: string | null;
+  targetPassword?: string | null;
+  /** @deprecated Use sourcePassword and targetPassword. Fallback only for omitted fields. */
+  password?: string;
+}
+
+export interface CopyEntryParams extends MoveEntryParams {
+  newName?: string;
+}
+
 export const moveEntry = async (
   id: string,
-  params: { targetParentId?: string | null; password?: string },
+  params: MoveEntryParams,
 ): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/move`, params);
 };
 
 export const copyEntry = async (
   id: string,
-  params: { targetParentId?: string | null; newName?: string; password?: string },
+  params: CopyEntryParams,
 ): Promise<FileTaskResponse> => {
   return apiClient.post<FileTaskResponse>(`/files/entries/${id}/copy`, params);
 };

@@ -1,0 +1,48 @@
+name: FileCloud checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Backend tests
+            directory: backend
+            command: bun run test
+          - name: Backend typecheck
+            directory: backend
+            command: bun run typecheck
+          - name: Module boundaries
+            directory: backend
+            command: bun run test:boundaries && bun run check:boundaries
+          - name: Frontend lint
+            directory: frontend
+            command: bun run lint
+          - name: Frontend tests
+            directory: frontend
+            command: bun run test
+          - name: Frontend build
+            directory: frontend
+            command: bun run build
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Run check
+        run: ${{ matrix.command }}

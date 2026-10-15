@@ -13,8 +13,8 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
-// 启用 WAL 模式，提高并发性能，避免 "database is locked" 错误
-db.exec("PRAGMA journal_mode = WAL");
+// Startup configures WAL under the migration lock. Negotiating it here can race
+// another fresh process before either has entered the serialized bootstrap.
 db.exec("PRAGMA busy_timeout = 5000"); // 等待 5 秒再报锁定错误
 
 export { db };

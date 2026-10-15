@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { PermissionLevel } from "./roles";
 import { verifyUserToken } from "./jwt";
+import { resolveAuthUser } from "./libraryAccess.ts";
 
 // 在 Request 上扩展一个 user 字段保存认证后的用户信息
 declare module "express-serve-static-core" {
@@ -45,11 +46,11 @@ export const authenticate = (
     return res.status(401).json({ message: "身份令牌无效或已过期" });
   }
 
-  req.user = {
-    id: payload.id,
-    username: payload.username,
-    role: payload.role,
-  };
+  try {
+    req.user = resolveAuthUser(payload.id);
+  } catch {
+    return res.status(401).json({ message: "未登录或会话已失效" });
+  }
 
   next();
 };

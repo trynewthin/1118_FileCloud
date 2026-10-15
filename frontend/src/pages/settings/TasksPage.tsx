@@ -31,7 +31,9 @@ export function TasksPage() {
         <Tabs
           defaultValue="ALL"
           value={status}
-          onValueChange={(v) => setStatus(v as any)}
+          onValueChange={(v) => {
+            if (v === "ALL" || v === "RUNNING" || v === "SUCCESS" || v === "FAILED") setStatus(v);
+          }}
           className="w-full"
         >
           <TabsList>

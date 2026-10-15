@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "react";
 import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/AuthProvider";
 import { AppRouter } from "@/router/AppRouter";
 import { Toaster } from "@/components/ui/sonner";
 

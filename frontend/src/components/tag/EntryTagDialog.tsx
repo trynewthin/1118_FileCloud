@@ -1,4 +1,4 @@
-import { useState, useMemo, useLayoutEffect, useRef, useEffect } from "react";
+import { useState, useMemo, useLayoutEffect, useRef } from "react";
 import { Check, Search, X, Tag, ChevronRight, ChevronDown, Plus, Star } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/common/dialog/dialog";
 import { useTagList, useEntryTags } from "@/hooks/useTags";
 import type { FileTag } from "@/lib/api/tags";
+
+  const filterTags = (tags: FileTag[], query: string): FileTag[] => {
+    if (!query.trim()) return tags;
+    const lowerQuery = query.toLowerCase();
+    return tags.reduce<FileTag[]>((acc, tag) => {
+      const matchesSelf = tag.name.toLowerCase().includes(lowerQuery);
+      const filteredChildren = tag.children ? filterTags(tag.children, query) : [];
+      if (matchesSelf || filteredChildren.length > 0) {
+        acc.push({
+          ...tag,
+          children: matchesSelf ? tag.children : filteredChildren,
+        });
+      }
+      return acc;
+    }, []);
+  };
 
 interface EntryTagDialogProps {
   open: boolean;
@@ -27,7 +43,7 @@ export const EntryTagDialog = ({
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [primaryMode, setPrimaryMode] = useState(false);
 
-  const expandedBeforeSearchRef = useRef<Set<number> | null>(null);
+
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingRestoreScrollTopRef = useRef<number | null>(null);
@@ -38,35 +54,8 @@ export const EntryTagDialog = ({
     return entryTags.find((t) => t.is_primary)?.tag_id ?? null;
   }, [entryTags]);
 
-  // 切换展开状态
-  const toggleExpand = (id: number) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
   // 过滤标签（搜索）
-  const filterTags = (tags: FileTag[], query: string): FileTag[] => {
-    if (!query.trim()) return tags;
-    const lowerQuery = query.toLowerCase();
-    return tags.reduce<FileTag[]>((acc, tag) => {
-      const matchesSelf = tag.name.toLowerCase().includes(lowerQuery);
-      const filteredChildren = tag.children ? filterTags(tag.children, query) : [];
-      if (matchesSelf || filteredChildren.length > 0) {
-        acc.push({
-          ...tag,
-          children: matchesSelf ? tag.children : filteredChildren,
-        });
-      }
-      return acc;
-    }, []);
-  };
+
 
   const filteredTags = useMemo(() => filterTags(allTags, searchQuery), [allTags, searchQuery]);
 
@@ -85,22 +74,17 @@ export const EntryTagDialog = ({
     return ids;
   };
 
-  useEffect(() => {
-    const q = searchQuery.trim();
-    if (q.length > 0) {
-      if (!expandedBeforeSearchRef.current) {
-        expandedBeforeSearchRef.current = new Set(expandedIds);
-      }
-      setExpandedIds(collectExpandableIds(filteredTags));
-      return;
-    }
-
-    // 清空搜索：恢复用户之前的展开状态（默认仍为折叠）
-    if (expandedBeforeSearchRef.current) {
-      setExpandedIds(expandedBeforeSearchRef.current);
-      expandedBeforeSearchRef.current = null;
-    }
-  }, [searchQuery, filteredTags]);
+  const [searchExpansion, setSearchExpansion] = useState<{ tree: FileTag[]; ids: Set<number> } | null>(null);
+  const visibleExpandedIds = searchQuery.trim()
+    ? (searchExpansion?.tree === filteredTags ? searchExpansion.ids : collectExpandableIds(filteredTags))
+    : expandedIds;
+  const toggleExpand = (id: number) => {
+    const next = new Set(visibleExpandedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    if (searchQuery.trim()) setSearchExpansion({ tree: filteredTags, ids: next });
+    else setExpandedIds(next);
+  };
 
   // 切换标签
   const handleToggleTag = async (tag: FileTag) => {
@@ -115,8 +99,8 @@ export const EntryTagDialog = ({
         await addTag(tag.id, false);
         toast.success(`已添加标签「${tag.name}」`);
       }
-    } catch (err: any) {
-      toast.error(err.message || "操作失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "操作失败");
     } finally {
       setOperating(false);
     }
@@ -133,8 +117,8 @@ export const EntryTagDialog = ({
         await setAsPrimary(tag.id);
       }
       toast.success(`已设置「${tag.name}」为主标签`);
-    } catch (err: any) {
-      toast.error(err.message || "操作失败");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : "") || "操作失败");
     } finally {
       setOperating(false);
     }
@@ -208,7 +192,7 @@ export const EntryTagDialog = ({
       const isSelected = entryTagIdSet.has(tag.id);
       const isPrimary = primaryTagId === tag.id;
       const hasChildren = !!tag.children && tag.children.length > 0;
-      const isExpanded = hasChildren && expandedIds.has(tag.id);
+      const isExpanded = hasChildren && visibleExpandedIds.has(tag.id);
       const useLane = hasChildren && areChildrenAllLeaf(tag);
 
       return (

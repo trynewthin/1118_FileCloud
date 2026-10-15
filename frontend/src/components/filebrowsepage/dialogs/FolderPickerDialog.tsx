@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Folder, ChevronRight, Home, XIcon, Check, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,11 @@ interface FolderPickerDialogProps {
   description?: string;
 }
 
-export function FolderPickerDialog({
+export function FolderPickerDialog(props: FolderPickerDialogProps) {
+  return <FolderPickerDialogContent key={`${props.open}-${props.mode}-${props.libraryId}-${props.initialParentId}-${props.initialPath}`} {...props} />;
+}
+
+function FolderPickerDialogContent({
   open,
   onOpenChange,
   mode,
@@ -46,12 +50,11 @@ export function FolderPickerDialog({
   description,
 }: FolderPickerDialogProps) {
   const [currentPath, setCurrentPath] = useState<string>(initialPath || ""); // for system
-  const [currentParentId, setCurrentParentId] = useState<string | null>(null); // for library
+  const [currentParentId, setCurrentParentId] = useState<string | null>(initialParentId ?? null); // for library
   const [items, setItems] = useState<FolderItem[]>([]);
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
   const systemBreadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
 
   // 密钥验证状态（仅 system 模式）
@@ -77,153 +80,110 @@ export function FolderPickerDialog({
     return parts;
   }, [currentPath]);
 
-  // 检查是否需要密钥
-  const checkRequireKey = useCallback(async () => {
-    if (mode !== "system") return;
-    try {
-      const res = await apiClient.get<{ required: boolean }>("/system/fs/require-key");
+  useEffect(() => {
+    if (!open || mode !== "system") return;
+    let active = true;
+    apiClient.get<{ required: boolean }>("/system/fs/require-key").then(res => {
+      if (!active) return;
       setRequireKey(res.required);
-      if (!res.required) {
-        setKeyVerified(true);
-      }
-    } catch {
+      setKeyVerified(!res.required);
+    }).catch(() => {
+      if (!active) return;
       setRequireKey(false);
       setKeyVerified(true);
-    }
-  }, [mode]);
+    });
+    return () => { active = false; };
+  }, [open, mode]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (mode === "system") {
-        const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : "";
-        const headers: Record<string, string> = {};
-        if (fsAccessKey) {
-          headers["x-fs-access-key"] = fsAccessKey;
-        }
-        const res = await apiClient.get<{ items: any[], separator: string, currentPath: string }>(
-          `/system/fs/list${query}`,
-          { headers }
-        );
-        setItems(res.items.filter((i: any) => i.is_directory).map((i: any) => ({
-          id: i.path,
-          name: i.name,
-          path: i.path
-        })));
-        setKeyError("");
-        // System mode breadcrumbs handled simply by splitting path or just showing current
-      } else {
-        if (!libraryId) return;
-        const query = currentParentId ? `?parentId=${encodeURIComponent(currentParentId)}` : "";
-        const res = await apiClient.get<{ items: any[] }>(
-          `/files/library/${libraryId}/entries${query}`
-        );
-
-        const dirs = res.items
-          .filter((i: any) => i.is_directory)
-          .map((i: any) => ({
-            id: i.id,
-            name: i.original_name,
-          }));
-
-        // 根目录下增加一个显式的“根目录”虚拟项，方便选择移动到根
-        if (!currentParentId) {
-          setItems([
-            { id: "__ROOT__", name: "根目录（当前文件库）" },
-            ...dirs,
-          ]);
-        } else {
-          setItems(dirs);
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      if (err?.message?.includes("密钥")) {
-        setKeyError(err.message);
-        setKeyVerified(false);
-      }
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [mode, currentPath, currentParentId, libraryId, fsAccessKey]);
-
-  // 初始化：当对话框打开时，设置初始目录
   useEffect(() => {
-    if (open && !initialized) {
-      if (mode === "system") {
-        // 检查是否需要密钥
-        checkRequireKey();
-      }
-      if (mode === "library" && initialParentId) {
-        // 需要加载初始目录的祖先路径来构建面包屑
-        loadInitialBreadcrumbs(initialParentId);
-      } else if (mode === "library") {
-        setCurrentParentId(null);
-        setBreadcrumbs([]);
-        load();
-      }
-      setSelectedId(null);
-      setInitialized(true);
-    }
-    if (!open) {
-      setInitialized(false);
-      setRequireKey(null);
-      setKeyVerified(false);
-      setFsAccessKey("");
-      setKeyError("");
-    }
-  }, [open, initialized, mode, initialParentId, checkRequireKey]);
-
-  // 当密钥验证通过后加载目录
-  useEffect(() => {
-    if (open && initialized && mode === "system" && keyVerified) {
-      load();
-    }
-  }, [keyVerified]);
-
-  // 加载初始目录的祖先路径
-  const loadInitialBreadcrumbs = async (parentId: string) => {
-    if (!libraryId) return;
-    try {
-      // 获取祖先路径
-      const res = await apiClient.get<{ entry: any; ancestors?: { id: string; name: string }[] }>(
-        `/files/entries/${parentId}`
-      );
-      if (res.ancestors && res.ancestors.length > 0) {
-        // ancestors 是从根到当前的路径，需要加上当前目录本身
-        const crumbs = [...res.ancestors, { id: parentId, name: res.entry.original_name }];
-        setBreadcrumbs(crumbs);
-        setCurrentParentId(parentId);
-      } else {
-        // 当前目录就是根目录的直接子目录
-        setBreadcrumbs([{ id: parentId, name: res.entry.original_name }]);
-        setCurrentParentId(parentId);
-      }
-      load();
-    } catch {
-      // 加载失败，回退到根目录
+    if (!open || mode !== "library" || !currentParentId || !libraryId) return;
+    let active = true;
+    apiClient.get<{ entry: { original_name: string }; ancestors?: { id: string; name: string }[] }>(
+      `/files/entries/${currentParentId}`
+    ).then(res => {
+      if (active) setBreadcrumbs([...(res.ancestors ?? []), { id: currentParentId, name: res.entry.original_name }]);
+    }).catch(() => {
+      if (!active) return;
       setCurrentParentId(null);
       setBreadcrumbs([]);
-      load();
-    }
-  };
+    });
+    return () => { active = false; };
+  }, [open, mode, currentParentId, libraryId]);
+
+  useEffect(() => {
+    if (!open || (mode === "system" && !keyVerified)) return;
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (mode === "system") {
+          const query = currentPath ? `?path=${encodeURIComponent(currentPath)}` : "";
+          const headers: Record<string, string> = {};
+          if (fsAccessKey) {
+            headers["x-fs-access-key"] = fsAccessKey;
+          }
+          const res = await apiClient.get<{ items: { path: string; name: string; is_directory: boolean }[], separator: string, currentPath: string }>(
+            `/system/fs/list${query}`,
+            { headers }
+          );
+          if (!active) return;
+          setItems(res.items.filter((i) => i.is_directory).map((i) => ({
+            id: i.path,
+            name: i.name,
+            path: i.path
+          })));
+          setKeyError("");
+          // System mode breadcrumbs handled simply by splitting path or just showing current
+        } else {
+          if (!libraryId) return;
+          const query = currentParentId ? `?parentId=${encodeURIComponent(currentParentId)}` : "";
+          const res = await apiClient.get<{ items: { id: string; original_name: string; is_directory: boolean }[] }>(
+            `/files/library/${libraryId}/entries${query}`
+          );
+
+          if (!active) return;
+          const dirs = res.items
+            .filter((i) => i.is_directory)
+            .map((i) => ({
+              id: i.id,
+              name: i.original_name,
+            }));
+
+          // 根目录下增加一个显式的“根目录”虚拟项，方便选择移动到根
+          if (!currentParentId) {
+            setItems([
+              { id: "__ROOT__", name: "根目录（当前文件库）" },
+              ...dirs,
+            ]);
+          } else {
+            setItems(dirs);
+          }
+        }
+      } catch (err: unknown) {
+        if (!active) return;
+        console.error(err);
+        if ((err instanceof Error ? err.message : "")?.includes("密钥")) {
+          setKeyError((err instanceof Error ? err.message : ""));
+          setKeyVerified(false);
+        }
+        setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [open, keyVerified, mode, currentPath, currentParentId, libraryId, fsAccessKey]);
 
   useEffect(() => {
     const el = systemBreadcrumbScrollRef.current;
     if (!el) return;
     if (!currentPath) return;
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       el.scrollLeft = el.scrollWidth;
     });
+    return () => cancelAnimationFrame(frame);
   }, [systemBreadcrumbs.length, currentPath]);
-
-  // 当 currentParentId 或 currentPath 变化时重新加载
-  useEffect(() => {
-    if (open && initialized && (mode === "library" || keyVerified)) {
-      load();
-    }
-  }, [currentParentId, currentPath]);
 
   // 密钥验证提交
   const handleKeySubmit = () => {
